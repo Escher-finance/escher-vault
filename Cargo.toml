@@ -23,7 +23,7 @@ schemars = "0.8.16"
 serde = { version = "1.0.197", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.58" }
 cw-multi-test = "2.0.0"
-cw4626 = { path = "packages/cw4626", version = "0.1.0" }
+cw4626 = { path = "packages/cw4626", version = "0.1.0-rc.0" }
 
 [profile.release]
 opt-level = 3
