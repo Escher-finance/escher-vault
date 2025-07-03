@@ -35,6 +35,7 @@ pub fn execute(
             receiver,
             owner,
         } => execute::redeem(),
+        ExecuteMsg::TransferOwnership { new_owner } => execute::transfer_ownership(),
     }
 }
 
@@ -56,6 +57,10 @@ pub mod execute {
     pub fn redeem() -> Result<Response, ContractError> {
         todo!()
     }
+
+    pub fn transfer_ownership() -> Result<Response, ContractError> {
+        todo!()
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -75,6 +80,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::PreviewWithdraw { assets } => to_json_binary(&query::preview_withdraw()?),
         QueryMsg::MaxRedeem { owner } => to_json_binary(&query::max_redeem()?),
         QueryMsg::PreviewRedeem { shares } => to_json_binary(&query::preview_redeem()?),
+        QueryMsg::Ownership {} => to_json_binary(&query::ownership()?),
     }
 }
 
@@ -135,6 +141,10 @@ pub mod query {
     }
 
     pub fn preview_redeem() -> StdResult<PreviewRedeemResponse> {
+        todo!();
+    }
+
+    pub fn ownership() -> StdResult<PreviewRedeemResponse> {
         todo!();
     }
 }

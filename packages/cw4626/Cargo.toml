@@ -9,6 +9,7 @@ cosmwasm-std = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 cw20 = { workspace = true }
+cw-ownable = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
