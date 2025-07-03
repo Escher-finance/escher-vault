@@ -20,11 +20,13 @@ pub fn instantiate(
         msg.owner.as_ref().map(|o| o.as_str()),
     )?;
     let deps_ref = deps.as_ref();
-    validate_cw20(&deps_ref, &msg.underlying_token_address)?;
-    validate_cw20(&deps_ref, &msg.share_token_address)?;
+    let asset_info = validate_cw20(&deps_ref, &msg.underlying_token_address)?;
+    let share_info = validate_cw20(&deps_ref, &msg.share_token_address)?;
     let config = Config {
-        underlying_token_address: msg.underlying_token_address,
-        share_token_address: msg.share_token_address,
+        asset_address: msg.underlying_token_address,
+        share_address: msg.share_token_address,
+        asset_decimals: asset_info.decimals,
+        share_decimals: share_info.decimals,
     };
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::new())

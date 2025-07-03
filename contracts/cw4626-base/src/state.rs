@@ -4,8 +4,10 @@ use cw_storage_plus::Item;
 
 #[cw_serde]
 pub struct Config {
-    pub underlying_token_address: Addr,
-    pub share_token_address: Addr,
+    pub asset_address: Addr,
+    pub share_address: Addr,
+    pub asset_decimals: u8,
+    pub share_decimals: u8,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
