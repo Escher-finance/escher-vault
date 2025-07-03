@@ -1,9 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+};
 
 use crate::error::ContractError;
-use crate::helpers::validate_cw20;
+use crate::helpers::{validate_cw20, validate_share_connected};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{ASSET, SHARE};
 
@@ -31,6 +33,13 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    if !matches!(
+        msg,
+        ExecuteMsg::ConnectShareToken { .. } | ExecuteMsg::UpdateOwnership(_)
+    ) {
+        validate_share_connected(deps.storage)?;
+    }
+    let this = env.contract.address;
     match msg {
         ExecuteMsg::Deposit { assets, receiver } => execute::deposit(assets, receiver),
         ExecuteMsg::Mint { shares, receiver } => execute::mint(shares, receiver),
@@ -46,7 +55,7 @@ pub fn execute(
         } => execute::redeem(shares, receiver, owner),
         ExecuteMsg::ConnectShareToken {
             share_token_address,
-        } => execute::connect_share_token(share_token_address),
+        } => execute::connect_share_token(deps, info, this, share_token_address),
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, &env.block, info.sender, action)
         }
@@ -82,8 +91,31 @@ pub mod execute {
         todo!()
     }
 
-    pub fn connect_share_token(_share_token_address: Addr) -> Result<Response, ContractError> {
-        todo!()
+    pub fn connect_share_token(
+        deps: DepsMut,
+        info: MessageInfo,
+        this: Addr,
+        share_token_address: Addr,
+    ) -> Result<Response, ContractError> {
+        cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+        let asset = ASSET.load(deps.storage)?;
+        let asset_info = validate_cw20(&deps.querier, &asset)?;
+        let share_info = validate_cw20(&deps.querier, &share_token_address)?;
+        if asset_info.decimals != share_info.decimals {
+            return Err(ContractError::DecimalsMismatch {});
+        }
+        let cw20::MinterResponse { minter, cap } = deps
+            .querier
+            .query_wasm_smart(&share_token_address, &cw20::Cw20QueryMsg::Minter {})?;
+        if minter != this.to_string() {
+            return Err(ContractError::InvalidSharesMinter {});
+        }
+        if cap == Some(Uint128::zero()) {
+            return Err(ContractError::SharesMinterCapTooSmall {});
+        }
+        SHARE.save(deps.storage, &share_token_address)?;
+        Ok(Response::new())
     }
 
     pub fn update_ownership(
@@ -99,6 +131,9 @@ pub mod execute {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    if !matches!(msg, QueryMsg::Asset {} | QueryMsg::Ownership {}) {
+        validate_share_connected(deps.storage).map_err(|e| StdError::generic_err(e.to_string()))?;
+    }
     let this = env.contract.address;
     match msg {
         QueryMsg::Share {} => to_json_binary(&query::share(deps.storage)?),

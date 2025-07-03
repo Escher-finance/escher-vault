@@ -1,6 +1,6 @@
-use cosmwasm_std::{Addr, QuerierWrapper, StdError, Uint128};
+use cosmwasm_std::{Addr, QuerierWrapper, StdError, Storage, Uint128};
 
-use crate::ContractError;
+use crate::{state::SHARE, ContractError};
 
 pub fn validate_cw20(
     querier: &QuerierWrapper,
@@ -14,6 +14,13 @@ pub fn validate_cw20(
         .map_err(|_| ContractError::InvalidCw20 {
             addr: token_address.to_string(),
         })
+}
+
+pub fn validate_share_connected(storage: &dyn Storage) -> Result<(), ContractError> {
+    if SHARE.may_load(storage)?.is_none() {
+        return Err(ContractError::ShareTokenNotConnected {});
+    }
+    Ok(())
 }
 
 pub fn query_cw20_balance(

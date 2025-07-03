@@ -15,4 +15,13 @@ pub enum ContractError {
 
     #[error("Share and asset must have the same decimals")]
     DecimalsMismatch {},
+
+    #[error("Share must have this contract as the minter")]
+    InvalidSharesMinter {},
+
+    #[error("Shares minter must have a nonzero cap")]
+    SharesMinterCapTooSmall {},
+
+    #[error("The share token has not been set")]
+    ShareTokenNotConnected {},
 }
