@@ -7,58 +7,68 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: InstantiateMsg,
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     todo!()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Deposit { assets, receiver } => execute::deposit(),
-        ExecuteMsg::Mint { shares, receiver } => execute::mint(),
+        ExecuteMsg::Deposit { assets, receiver } => execute::deposit(assets, receiver),
+        ExecuteMsg::Mint { shares, receiver } => execute::mint(shares, receiver),
         ExecuteMsg::Withdraw {
             assets,
             receiver,
             owner,
-        } => execute::withdraw(),
+        } => execute::withdraw(assets, receiver, owner),
         ExecuteMsg::Redeem {
             shares,
             receiver,
             owner,
-        } => execute::redeem(),
-        ExecuteMsg::TransferOwnership { new_owner } => execute::transfer_ownership(),
+        } => execute::redeem(shares, receiver, owner),
+        ExecuteMsg::TransferOwnership { new_owner } => execute::transfer_ownership(new_owner),
     }
 }
 
 pub mod execute {
+    use cosmwasm_std::{Addr, Uint128};
+
     use super::*;
 
-    pub fn deposit() -> Result<Response, ContractError> {
+    pub fn deposit(_assets: Uint128, _receiver: Addr) -> Result<Response, ContractError> {
         todo!()
     }
 
-    pub fn mint() -> Result<Response, ContractError> {
+    pub fn mint(_shares: Uint128, _receiver: Addr) -> Result<Response, ContractError> {
         todo!()
     }
 
-    pub fn withdraw() -> Result<Response, ContractError> {
+    pub fn withdraw(
+        _assets: Uint128,
+        _receiver: Addr,
+        _owner: Addr,
+    ) -> Result<Response, ContractError> {
         todo!()
     }
 
-    pub fn redeem() -> Result<Response, ContractError> {
+    pub fn redeem(
+        _shares: Uint128,
+        _receiver: Addr,
+        _owner: Addr,
+    ) -> Result<Response, ContractError> {
         todo!()
     }
 
-    pub fn transfer_ownership() -> Result<Response, ContractError> {
+    pub fn transfer_ownership(_new_owner: Addr) -> Result<Response, ContractError> {
         todo!()
     }
 }
