@@ -3,23 +3,38 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use crate::error::ContractError;
+use crate::helpers::validate_cw20;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{Config, CONFIG};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    todo!()
+    cw_ownable::initialize_owner(
+        deps.storage,
+        deps.api,
+        msg.owner.as_ref().map(|o| o.as_str()),
+    )?;
+    let deps_ref = deps.as_ref();
+    validate_cw20(&deps_ref, &msg.underlying_token_address)?;
+    validate_cw20(&deps_ref, &msg.share_token_address)?;
+    let config = Config {
+        underlying_token_address: msg.underlying_token_address,
+        share_token_address: msg.share_token_address,
+    };
+    CONFIG.save(deps.storage, &config)?;
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
@@ -35,7 +50,10 @@ pub fn execute(
             receiver,
             owner,
         } => execute::redeem(shares, receiver, owner),
-        ExecuteMsg::TransferOwnership { new_owner } => execute::transfer_ownership(new_owner),
+        ExecuteMsg::UpdateOwnership(action) => {
+            cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+            Ok(Response::new())
+        }
     }
 }
 
@@ -65,10 +83,6 @@ pub mod execute {
         _receiver: Addr,
         _owner: Addr,
     ) -> Result<Response, ContractError> {
-        todo!()
-    }
-
-    pub fn transfer_ownership(_new_owner: Addr) -> Result<Response, ContractError> {
         todo!()
     }
 }

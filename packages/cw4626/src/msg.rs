@@ -1,8 +1,9 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-// So that consumers don't need a cw_ownable dependency to consume this contract's queries
-pub use cw_ownable::Ownership;
+use cw_ownable::{cw_ownable_execute, cw_ownable_query};
+
+pub use cw_ownable;
 
 #[cw_serde]
 pub struct Cw4626InstantiateMsg {
@@ -11,18 +12,13 @@ pub struct Cw4626InstantiateMsg {
     pub underlying_token_address: Addr,
 }
 
+#[cw_ownable_execute]
 #[cw_serde]
 pub enum Cw4626ExecuteMsg {
     /// Mints shares to receiver by depositing exact amount of underlying tokens
-    Deposit {
-        assets: Uint128,
-        receiver: Addr,
-    },
+    Deposit { assets: Uint128, receiver: Addr },
     /// Mints exact shares to receiver by depositing amount of underlying tokens
-    Mint {
-        shares: Uint128,
-        receiver: Addr,
-    },
+    Mint { shares: Uint128, receiver: Addr },
     /// Burns shares from owner and sends exact assets of underlying tokens to receiver
     Withdraw {
         assets: Uint128,
@@ -35,11 +31,9 @@ pub enum Cw4626ExecuteMsg {
         receiver: Addr,
         owner: Addr,
     },
-    TransferOwnership {
-        new_owner: Addr,
-    },
 }
 
+#[cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum Cw4626QueryMsg {
@@ -96,8 +90,6 @@ pub enum Cw4626QueryMsg {
     /// given current on-chain conditions
     #[returns(PreviewRedeemResponse)]
     PreviewRedeem { shares: Uint128 },
-    #[returns(::cw_ownable::Ownership::<::cosmwasm_std::Addr>)]
-    Ownership {},
 }
 
 #[cw_serde]
