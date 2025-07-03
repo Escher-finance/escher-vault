@@ -1,5 +1,5 @@
 [workspace]
-members = ["packages/*"]
+members = ["packages/*", "contracts/*"]
 
 # Resolver has to be set explicitely in workspaces, see https://github.com/rust-lang/cargo/issues/9956
 resolver = "2"
@@ -23,6 +23,7 @@ schemars = "0.8.16"
 serde = { version = "1.0.197", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.58" }
 cw-multi-test = "2.0.0"
+cw4626 = { path = "packages/cw4626" }
 
 [profile.release]
 opt-level = 3
