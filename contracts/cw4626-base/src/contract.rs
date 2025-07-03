@@ -19,9 +19,11 @@ pub fn instantiate(
         deps.api,
         msg.owner.as_ref().map(|o| o.as_str()),
     )?;
-    let deps_ref = deps.as_ref();
-    let asset_info = validate_cw20(&deps_ref, &msg.underlying_token_address)?;
-    let share_info = validate_cw20(&deps_ref, &msg.share_token_address)?;
+    let asset_info = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
+    let share_info = validate_cw20(&deps.querier, &msg.share_token_address)?;
+    if share_info.decimals != asset_info.decimals {
+        return Err(ContractError::DecimalsMismatch {});
+    }
     let config = Config {
         asset_address: msg.underlying_token_address,
         share_address: msg.share_token_address,
@@ -90,14 +92,19 @@ pub mod execute {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    let this = env.contract.address;
     match msg {
-        QueryMsg::Share {} => to_json_binary(&query::share()?),
-        QueryMsg::Asset {} => to_json_binary(&query::asset()?),
-        QueryMsg::TotalShares {} => to_json_binary(&query::total_shares()?),
-        QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets()?),
-        QueryMsg::ConvertToShares { assets } => to_json_binary(&query::convert_to_shares(assets)?),
-        QueryMsg::ConvertToAssets { shares } => to_json_binary(&query::convert_to_assets(shares)?),
+        QueryMsg::Share {} => to_json_binary(&query::share(deps.storage)?),
+        QueryMsg::Asset {} => to_json_binary(&query::asset(deps.storage)?),
+        QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(&this, &deps)?),
+        QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets(&this, &deps)?),
+        QueryMsg::ConvertToShares { assets } => {
+            to_json_binary(&query::convert_to_shares(&this, &deps, assets)?)
+        }
+        QueryMsg::ConvertToAssets { shares } => {
+            to_json_binary(&query::convert_to_assets(&this, &deps, shares)?)
+        }
         QueryMsg::MaxDeposit { receiver } => to_json_binary(&query::max_deposit(receiver)?),
         QueryMsg::PreviewDeposit { assets } => to_json_binary(&query::preview_deposit(assets)?),
         QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(receiver)?),
@@ -111,32 +118,64 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub mod query {
+    use crate::helpers::{_convert_to_shares, query_cw20_balance, Rounding};
+
     use super::*;
-    use cosmwasm_std::{Addr, Uint128};
+    use cosmwasm_std::{Addr, Storage, Uint128};
     use cw4626::*;
 
-    pub fn share() -> StdResult<ShareResponse> {
-        todo!();
+    pub fn share(storage: &dyn Storage) -> StdResult<ShareResponse> {
+        let config = CONFIG.load(storage)?;
+        Ok(ShareResponse {
+            share_token_address: config.share_address,
+        })
     }
 
-    pub fn asset() -> StdResult<AssetResponse> {
-        todo!();
+    pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
+        let config = CONFIG.load(storage)?;
+        Ok(AssetResponse {
+            asset_token_address: config.asset_address,
+        })
     }
 
-    pub fn total_shares() -> StdResult<TotalSharesResponse> {
-        todo!();
+    pub fn total_shares(this: &Addr, deps: &Deps) -> StdResult<TotalSharesResponse> {
+        let config = CONFIG.load(deps.storage)?;
+        let balance = query_cw20_balance(&deps.querier, &config.share_address, this)?;
+        Ok(TotalSharesResponse {
+            total_managed_shares: balance,
+        })
     }
 
-    pub fn total_assets() -> StdResult<TotalAssetsResponse> {
-        todo!();
+    pub fn total_assets(this: &Addr, deps: &Deps) -> StdResult<TotalAssetsResponse> {
+        let config = CONFIG.load(deps.storage)?;
+        let balance = query_cw20_balance(&deps.querier, &config.asset_address, this)?;
+        Ok(TotalAssetsResponse {
+            total_managed_assets: balance,
+        })
     }
 
-    pub fn convert_to_shares(_assets: Uint128) -> StdResult<ConvertToSharesResponse> {
-        todo!();
+    pub fn convert_to_shares(
+        this: &Addr,
+        deps: &Deps,
+        assets: Uint128,
+    ) -> StdResult<ConvertToSharesResponse> {
+        let config = CONFIG.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &config.share_address, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &config.asset_address, this)?;
+        let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+        Ok(ConvertToSharesResponse { shares })
     }
 
-    pub fn convert_to_assets(_shares: Uint128) -> StdResult<ConvertToAssetsResponse> {
-        todo!();
+    pub fn convert_to_assets(
+        this: &Addr,
+        deps: &Deps,
+        shares: Uint128,
+    ) -> StdResult<ConvertToAssetsResponse> {
+        let config = CONFIG.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &config.share_address, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &config.asset_address, this)?;
+        let assets = _convert_to_shares(total_shares, total_assets, shares, Rounding::Floor)?;
+        Ok(ConvertToAssetsResponse { assets })
     }
 
     pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
