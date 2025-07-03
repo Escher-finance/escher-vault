@@ -8,7 +8,6 @@ pub use cw_ownable;
 #[cw_serde]
 pub struct Cw4626InstantiateMsg {
     pub owner: Option<Addr>,
-    pub share_token_address: Addr,
     pub underlying_token_address: Addr,
 }
 
@@ -31,6 +30,9 @@ pub enum Cw4626ExecuteMsg {
         receiver: Addr,
         owner: Addr,
     },
+    /// Connects the share token to the vault asserting its minter and decimals
+    /// which must be the same as the underlying asset
+    ConnectShareToken { share_token_address: Addr },
 }
 
 #[cw_ownable_query]

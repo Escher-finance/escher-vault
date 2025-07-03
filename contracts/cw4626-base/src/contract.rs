@@ -5,7 +5,7 @@ use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Resp
 use crate::error::ContractError;
 use crate::helpers::validate_cw20;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, CONFIG};
+use crate::state::{ASSET, SHARE};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -19,18 +19,8 @@ pub fn instantiate(
         deps.api,
         msg.owner.as_ref().map(|o| o.as_str()),
     )?;
-    let asset_info = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
-    let share_info = validate_cw20(&deps.querier, &msg.share_token_address)?;
-    if share_info.decimals != asset_info.decimals {
-        return Err(ContractError::DecimalsMismatch {});
-    }
-    let config = Config {
-        asset_address: msg.underlying_token_address,
-        share_address: msg.share_token_address,
-        asset_decimals: asset_info.decimals,
-        share_decimals: share_info.decimals,
-    };
-    CONFIG.save(deps.storage, &config)?;
+    validate_cw20(&deps.querier, &msg.underlying_token_address)?;
+    ASSET.save(deps.storage, &msg.underlying_token_address)?;
     Ok(Response::new())
 }
 
@@ -54,15 +44,17 @@ pub fn execute(
             receiver,
             owner,
         } => execute::redeem(shares, receiver, owner),
+        ExecuteMsg::ConnectShareToken {
+            share_token_address,
+        } => execute::connect_share_token(share_token_address),
         ExecuteMsg::UpdateOwnership(action) => {
-            cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
-            Ok(Response::new())
+            execute::update_ownership(deps, &env.block, info.sender, action)
         }
     }
 }
 
 pub mod execute {
-    use cosmwasm_std::{Addr, Uint128};
+    use cosmwasm_std::{Addr, BlockInfo, Uint128};
 
     use super::*;
 
@@ -88,6 +80,20 @@ pub mod execute {
         _owner: Addr,
     ) -> Result<Response, ContractError> {
         todo!()
+    }
+
+    pub fn connect_share_token(_share_token_address: Addr) -> Result<Response, ContractError> {
+        todo!()
+    }
+
+    pub fn update_ownership(
+        deps: DepsMut,
+        block: &BlockInfo,
+        new_owner: Addr,
+        action: cw_ownable::Action,
+    ) -> Result<Response, ContractError> {
+        cw_ownable::update_ownership(deps, block, &new_owner, action)?;
+        Ok(Response::new())
     }
 }
 
@@ -125,30 +131,30 @@ pub mod query {
     use cw4626::*;
 
     pub fn share(storage: &dyn Storage) -> StdResult<ShareResponse> {
-        let config = CONFIG.load(storage)?;
+        let share = SHARE.load(storage)?;
         Ok(ShareResponse {
-            share_token_address: config.share_address,
+            share_token_address: share,
         })
     }
 
     pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
-        let config = CONFIG.load(storage)?;
+        let asset = ASSET.load(storage)?;
         Ok(AssetResponse {
-            asset_token_address: config.asset_address,
+            asset_token_address: asset,
         })
     }
 
     pub fn total_shares(this: &Addr, deps: &Deps) -> StdResult<TotalSharesResponse> {
-        let config = CONFIG.load(deps.storage)?;
-        let balance = query_cw20_balance(&deps.querier, &config.share_address, this)?;
+        let share = SHARE.load(deps.storage)?;
+        let balance = query_cw20_balance(&deps.querier, &share, this)?;
         Ok(TotalSharesResponse {
             total_managed_shares: balance,
         })
     }
 
     pub fn total_assets(this: &Addr, deps: &Deps) -> StdResult<TotalAssetsResponse> {
-        let config = CONFIG.load(deps.storage)?;
-        let balance = query_cw20_balance(&deps.querier, &config.asset_address, this)?;
+        let asset = ASSET.load(deps.storage)?;
+        let balance = query_cw20_balance(&deps.querier, &asset, this)?;
         Ok(TotalAssetsResponse {
             total_managed_assets: balance,
         })
@@ -159,9 +165,10 @@ pub mod query {
         deps: &Deps,
         assets: Uint128,
     ) -> StdResult<ConvertToSharesResponse> {
-        let config = CONFIG.load(deps.storage)?;
-        let total_shares = query_cw20_balance(&deps.querier, &config.share_address, this)?;
-        let total_assets = query_cw20_balance(&deps.querier, &config.asset_address, this)?;
+        let share = SHARE.load(deps.storage)?;
+        let asset = ASSET.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
         let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
         Ok(ConvertToSharesResponse { shares })
     }
@@ -171,9 +178,10 @@ pub mod query {
         deps: &Deps,
         shares: Uint128,
     ) -> StdResult<ConvertToAssetsResponse> {
-        let config = CONFIG.load(deps.storage)?;
-        let total_shares = query_cw20_balance(&deps.querier, &config.share_address, this)?;
-        let total_assets = query_cw20_balance(&deps.querier, &config.asset_address, this)?;
+        let share = SHARE.load(deps.storage)?;
+        let asset = ASSET.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
         let assets = _convert_to_shares(total_shares, total_assets, shares, Rounding::Floor)?;
         Ok(ConvertToAssetsResponse { assets })
     }
