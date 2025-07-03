@@ -74,28 +74,29 @@ pub mod execute {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Share {} => to_json_binary(&query::share()?),
         QueryMsg::Asset {} => to_json_binary(&query::asset()?),
         QueryMsg::TotalShares {} => to_json_binary(&query::total_shares()?),
         QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets()?),
-        QueryMsg::ConvertToShares { assets } => to_json_binary(&query::convert_to_shares()?),
-        QueryMsg::ConvertToAssets { shares } => to_json_binary(&query::convert_to_assets()?),
-        QueryMsg::MaxDeposit { receiver } => to_json_binary(&query::max_deposit()?),
-        QueryMsg::PreviewDeposit { assets } => to_json_binary(&query::preview_deposit()?),
-        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint()?),
-        QueryMsg::PreviewMint { shares } => to_json_binary(&query::preview_mint()?),
-        QueryMsg::MaxWithdraw { owner } => to_json_binary(&query::max_withdraw()?),
-        QueryMsg::PreviewWithdraw { assets } => to_json_binary(&query::preview_withdraw()?),
-        QueryMsg::MaxRedeem { owner } => to_json_binary(&query::max_redeem()?),
-        QueryMsg::PreviewRedeem { shares } => to_json_binary(&query::preview_redeem()?),
+        QueryMsg::ConvertToShares { assets } => to_json_binary(&query::convert_to_shares(assets)?),
+        QueryMsg::ConvertToAssets { shares } => to_json_binary(&query::convert_to_assets(shares)?),
+        QueryMsg::MaxDeposit { receiver } => to_json_binary(&query::max_deposit(receiver)?),
+        QueryMsg::PreviewDeposit { assets } => to_json_binary(&query::preview_deposit(assets)?),
+        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(receiver)?),
+        QueryMsg::PreviewMint { shares } => to_json_binary(&query::preview_mint(shares)?),
+        QueryMsg::MaxWithdraw { owner } => to_json_binary(&query::max_withdraw(owner)?),
+        QueryMsg::PreviewWithdraw { assets } => to_json_binary(&query::preview_withdraw(assets)?),
+        QueryMsg::MaxRedeem { owner } => to_json_binary(&query::max_redeem(owner)?),
+        QueryMsg::PreviewRedeem { shares } => to_json_binary(&query::preview_redeem(shares)?),
         QueryMsg::Ownership {} => to_json_binary(&query::ownership()?),
     }
 }
 
 pub mod query {
     use super::*;
+    use cosmwasm_std::{Addr, Uint128};
     use cw4626::*;
 
     pub fn share() -> StdResult<ShareResponse> {
@@ -114,43 +115,43 @@ pub mod query {
         todo!();
     }
 
-    pub fn convert_to_shares() -> StdResult<ConvertToSharesResponse> {
+    pub fn convert_to_shares(_assets: Uint128) -> StdResult<ConvertToSharesResponse> {
         todo!();
     }
 
-    pub fn convert_to_assets() -> StdResult<ConvertToAssetsResponse> {
+    pub fn convert_to_assets(_shares: Uint128) -> StdResult<ConvertToAssetsResponse> {
         todo!();
     }
 
-    pub fn max_deposit() -> StdResult<MaxDepositResponse> {
+    pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
         todo!();
     }
 
-    pub fn preview_deposit() -> StdResult<PreviewDepositResponse> {
+    pub fn preview_deposit(_assets: Uint128) -> StdResult<PreviewDepositResponse> {
         todo!();
     }
 
-    pub fn max_mint() -> StdResult<MaxMintResponse> {
+    pub fn max_mint(_receiver: Addr) -> StdResult<MaxMintResponse> {
         todo!();
     }
 
-    pub fn preview_mint() -> StdResult<PreviewMintResponse> {
+    pub fn preview_mint(_shares: Uint128) -> StdResult<PreviewMintResponse> {
         todo!();
     }
 
-    pub fn max_withdraw() -> StdResult<MaxWithdrawResponse> {
+    pub fn max_withdraw(_owner: Addr) -> StdResult<MaxWithdrawResponse> {
         todo!();
     }
 
-    pub fn preview_withdraw() -> StdResult<PreviewWithdrawResponse> {
+    pub fn preview_withdraw(_assets: Uint128) -> StdResult<PreviewWithdrawResponse> {
         todo!();
     }
 
-    pub fn max_redeem() -> StdResult<MaxRedeemResponse> {
+    pub fn max_redeem(_owner: Addr) -> StdResult<MaxRedeemResponse> {
         todo!();
     }
 
-    pub fn preview_redeem() -> StdResult<PreviewRedeemResponse> {
+    pub fn preview_redeem(_shares: Uint128) -> StdResult<PreviewRedeemResponse> {
         todo!();
     }
 
