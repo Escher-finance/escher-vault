@@ -1,13 +1,31 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, MessageInfo, Response, Uint128};
+use cw4626::{MaxDepositResponse, PreviewDepositResponse};
 
 use crate::{
-    helpers::validate_cw20,
+    helpers::{_deposit, validate_cw20},
+    query,
     state::{ASSET, SHARE},
     ContractError,
 };
 
-pub fn deposit(_assets: Uint128, _receiver: Addr) -> Result<Response, ContractError> {
-    todo!()
+pub fn deposit(
+    deps: DepsMut,
+    this: Addr,
+    sender: Addr,
+    assets: Uint128,
+    receiver: Addr,
+) -> Result<Response, ContractError> {
+    let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
+    if assets > max_assets {
+        return Err(ContractError::ExceededMaxDeposit {
+            receiver: receiver.to_string(),
+            assets: assets.u128(),
+            max_assets: max_assets.u128(),
+        });
+    }
+    let PreviewDepositResponse { shares } = query::preview_deposit(&this, &deps.as_ref(), assets)?;
+    let response = _deposit(deps, this, sender, receiver, assets, shares)?;
+    Ok(response)
 }
 
 pub fn mint(_shares: Uint128, _receiver: Addr) -> Result<Response, ContractError> {

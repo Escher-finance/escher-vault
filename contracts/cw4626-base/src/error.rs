@@ -24,4 +24,11 @@ pub enum ContractError {
 
     #[error("The share token has not been set")]
     ShareTokenNotConnected {},
+
+    #[error("{receiver} deposit of {assets} exceeds the max {max_assets}")]
+    ExceededMaxDeposit {
+        receiver: String,
+        assets: u128,
+        max_assets: u128,
+    },
 }

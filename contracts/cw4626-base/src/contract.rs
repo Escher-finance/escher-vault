@@ -42,8 +42,11 @@ pub fn execute(
         validate_share_connected(deps.storage)?;
     }
     let this = env.contract.address;
+    let sender = info.sender.clone();
     match msg {
-        ExecuteMsg::Deposit { assets, receiver } => execute::deposit(assets, receiver),
+        ExecuteMsg::Deposit { assets, receiver } => {
+            execute::deposit(deps, this, sender, assets, receiver)
+        }
         ExecuteMsg::Mint { shares, receiver } => execute::mint(shares, receiver),
         ExecuteMsg::Withdraw {
             assets,
@@ -59,7 +62,7 @@ pub fn execute(
             share_token_address,
         } => execute::connect_share_token(deps, info, this, share_token_address),
         ExecuteMsg::UpdateOwnership(action) => {
-            execute::update_ownership(deps, &env.block, info.sender, action)
+            execute::update_ownership(deps, &env.block, sender, action)
         }
     }
 }
