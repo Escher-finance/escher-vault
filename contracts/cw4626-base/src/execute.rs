@@ -1,8 +1,10 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, MessageInfo, Response, Uint128};
-use cw4626::{MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse};
+use cw4626::{
+    Expiration, MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse,
+};
 
 use crate::{
-    helpers::{_deposit, validate_cw20},
+    helpers::{_deposit, _update_withdrawal_share_allowance, validate_cw20, AllowanceOperation},
     query,
     state::{ASSET, SHARE},
     ContractError,
@@ -89,10 +91,58 @@ pub fn connect_share_token(
 
 pub fn update_ownership(
     deps: DepsMut,
-    block: &BlockInfo,
+    block: BlockInfo,
     new_owner: Addr,
     action: cw_ownable::Action,
 ) -> Result<Response, ContractError> {
-    cw_ownable::update_ownership(deps, block, &new_owner, action)?;
+    cw_ownable::update_ownership(deps, &block, &new_owner, action)?;
     Ok(Response::new())
+}
+
+pub fn increase_withdrawal_share_allowance(
+    deps: DepsMut,
+    block: BlockInfo,
+    sender: Addr,
+    spender: Addr,
+    amount: Uint128,
+    expires: Option<Expiration>,
+) -> Result<Response, ContractError> {
+    let _ = _update_withdrawal_share_allowance(
+        deps,
+        block,
+        sender.clone(),
+        spender.clone(),
+        amount,
+        AllowanceOperation::Increase,
+        expires,
+    )?;
+    Ok(Response::new()
+        .add_attribute("action", "increase_withdrawal_share_allowance")
+        .add_attribute("owner", sender)
+        .add_attribute("spender", spender)
+        .add_attribute("amount", amount))
+}
+
+pub fn decrease_withdrawal_share_allowance(
+    deps: DepsMut,
+    block: BlockInfo,
+    sender: Addr,
+    spender: Addr,
+    amount: Uint128,
+    expires: Option<Expiration>,
+) -> Result<Response, ContractError> {
+    let _ = _update_withdrawal_share_allowance(
+        deps,
+        block,
+        sender.clone(),
+        spender.clone(),
+        amount,
+        AllowanceOperation::Decrease,
+        expires,
+    )?;
+    Ok(Response::new()
+        .add_attribute("action", "decrease_withdrawal_share_allowance")
+        .add_attribute("owner", sender)
+        .add_attribute("spender", spender)
+        .add_attribute("amount", amount))
 }

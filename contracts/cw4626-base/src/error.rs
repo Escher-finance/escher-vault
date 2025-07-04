@@ -38,4 +38,10 @@ pub enum ContractError {
         shares: u128,
         max_shares: u128,
     },
+
+    #[error("Cannot set allowance to own account")]
+    CannotSetAllowanceToOwnAccount {},
+
+    #[error("Invalid allowance expiration")]
+    InvalidAllowanceExpiration {},
 }
