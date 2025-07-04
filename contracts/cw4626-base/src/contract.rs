@@ -147,9 +147,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::convert_to_assets(&this, &deps, shares)?)
         }
         QueryMsg::MaxDeposit { receiver } => to_json_binary(&query::max_deposit(receiver)?),
-        QueryMsg::PreviewDeposit { assets } => to_json_binary(&query::preview_deposit(assets)?),
-        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(receiver)?),
-        QueryMsg::PreviewMint { shares } => to_json_binary(&query::preview_mint(shares)?),
+        QueryMsg::PreviewDeposit { assets } => {
+            to_json_binary(&query::preview_deposit(&this, &deps, assets)?)
+        }
+        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(&deps, receiver)?),
+        QueryMsg::PreviewMint { shares } => {
+            to_json_binary(&query::preview_mint(&this, &deps, shares)?)
+        }
         QueryMsg::MaxWithdraw { owner } => to_json_binary(&query::max_withdraw(owner)?),
         QueryMsg::PreviewWithdraw { assets } => to_json_binary(&query::preview_withdraw(assets)?),
         QueryMsg::MaxRedeem { owner } => to_json_binary(&query::max_redeem(owner)?),
@@ -159,7 +163,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub mod query {
-    use crate::helpers::{_convert_to_shares, query_cw20_balance, Rounding};
+    use crate::helpers::{_convert_to_shares, query_cw20_balance, Rounding, _convert_to_assets};
 
     use super::*;
     use cosmwasm_std::{Addr, Storage, Uint128};
@@ -222,19 +226,45 @@ pub mod query {
     }
 
     pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
-        todo!();
+        Ok(MaxDepositResponse {
+            max_assets: Uint128::MAX,
+        })
     }
 
-    pub fn preview_deposit(_assets: Uint128) -> StdResult<PreviewDepositResponse> {
-        todo!();
+    pub fn preview_deposit(
+        this: &Addr,
+        deps: &Deps,
+        assets: Uint128,
+    ) -> StdResult<PreviewDepositResponse> {
+        let share = SHARE.load(deps.storage)?;
+        let asset = ASSET.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+        let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+        Ok(PreviewDepositResponse { shares })
     }
 
-    pub fn max_mint(_receiver: Addr) -> StdResult<MaxMintResponse> {
-        todo!();
+    pub fn max_mint(deps: &Deps, _receiver: Addr) -> StdResult<MaxMintResponse> {
+        let share = SHARE.load(deps.storage)?;
+        let cw20::MinterResponse { minter: _, cap } = deps
+            .querier
+            .query_wasm_smart(&share, &cw20::Cw20QueryMsg::Minter {})?;
+        Ok(MaxMintResponse {
+            max_shares: cap.unwrap_or(Uint128::MAX),
+        })
     }
 
-    pub fn preview_mint(_shares: Uint128) -> StdResult<PreviewMintResponse> {
-        todo!();
+    pub fn preview_mint(
+        this: &Addr,
+        deps: &Deps,
+        shares: Uint128,
+    ) -> StdResult<PreviewMintResponse> {
+        let share = SHARE.load(deps.storage)?;
+        let asset = ASSET.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+        let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Ceil)?;
+        Ok(PreviewMintResponse { assets })
     }
 
     pub fn max_withdraw(_owner: Addr) -> StdResult<MaxWithdrawResponse> {
