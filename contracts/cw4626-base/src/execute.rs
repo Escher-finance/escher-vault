@@ -1,5 +1,7 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, MessageInfo, Response, Uint128};
-use cw4626::{MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse};
+use cw4626::{
+    Expiration, MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse,
+};
 
 use crate::{
     helpers::{_deposit, validate_cw20},
@@ -95,4 +97,20 @@ pub fn update_ownership(
 ) -> Result<Response, ContractError> {
     cw_ownable::update_ownership(deps, block, &new_owner, action)?;
     Ok(Response::new())
+}
+
+pub fn increase_withdrawal_share_allowance(
+    _spender: Addr,
+    _amount: Uint128,
+    _expires: Option<Expiration>,
+) -> Result<Response, ContractError> {
+    todo!()
+}
+
+pub fn decrease_withdrawal_share_allowance(
+    _spender: Addr,
+    _amount: Uint128,
+    _expires: Option<Expiration>,
+) -> Result<Response, ContractError> {
+    todo!()
 }

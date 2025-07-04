@@ -162,3 +162,18 @@ pub fn preview_redeem(
 pub fn ownership(storage: &dyn Storage) -> StdResult<cw_ownable::Ownership<Addr>> {
     cw_ownable::get_ownership(storage)
 }
+
+pub fn withdrawal_share_allowance(
+    _owner: Addr,
+    _spender: Addr,
+) -> StdResult<WithdrawalShareAllowanceResponse> {
+    todo!()
+}
+
+pub fn all_withdrawal_share_allowances(
+    _owner: Addr,
+    _start_after: Option<Addr>,
+    _limit: Option<u32>,
+) -> StdResult<AllWithdrawalShareAllowancesResponse> {
+    todo!()
+}

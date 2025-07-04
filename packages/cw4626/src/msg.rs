@@ -3,6 +3,9 @@ use cosmwasm_std::{Addr, Uint128};
 
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 
+pub use cw20::AllAllowancesResponse as AllWithdrawalShareAllowancesResponse;
+pub use cw20::AllowanceResponse as WithdrawalShareAllowanceResponse;
+pub use cw20::Expiration;
 pub use cw_ownable;
 
 #[cw_serde]
@@ -32,7 +35,24 @@ pub enum Cw4626ExecuteMsg {
     },
     /// Connects the share token to the vault asserting its minter and decimals
     /// which must be the same as the underlying asset
+    /// All functionality should be blocked until the share token is connected
     ConnectShareToken { share_token_address: Addr },
+    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
+    /// Allows spender to access an additional amount tokens from the owner's (env.sender) account
+    /// If expires is Some(), overwrites current allowance expiration with this one
+    IncreaseWithdrawalShareAllowance {
+        spender: Addr,
+        amount: Uint128,
+        expires: Option<Expiration>,
+    },
+    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
+    /// Lowers the spender's access of tokens from the owner's (env.sender) account by amount
+    /// If expires is Some(), overwrites current allowance expiration with this one
+    DecreaseWithdrawalShareAllowance {
+        spender: Addr,
+        amount: Uint128,
+        expires: Option<Expiration>,
+    },
 }
 
 #[cw_ownable_query]
@@ -92,6 +112,18 @@ pub enum Cw4626QueryMsg {
     /// given current on-chain conditions
     #[returns(PreviewRedeemResponse)]
     PreviewRedeem { shares: Uint128 },
+    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
+    /// Returns how much spender can use from owner account, 0 if unset
+    #[returns(WithdrawalShareAllowanceResponse)]
+    WithdrawalShareAllowance { owner: Addr, spender: Addr },
+    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
+    /// Returns all allowances this owner has approved, supports pagination
+    #[returns(AllWithdrawalShareAllowancesResponse)]
+    AllWithdrawalShareAllowances {
+        owner: Addr,
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]
