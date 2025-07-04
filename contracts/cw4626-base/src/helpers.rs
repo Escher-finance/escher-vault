@@ -1,4 +1,7 @@
-use cosmwasm_std::{Addr, Deps, QuerierWrapper, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{
+    to_json_binary, Addr, Deps, DepsMut, QuerierWrapper, Response, StdError, StdResult, Storage,
+    Uint128, WasmMsg,
+};
 
 use crate::{
     state::{ASSET, SHARE},
@@ -67,6 +70,7 @@ pub enum Rounding {
     Ceil,
 }
 
+/// Internal conversion
 pub fn _convert_to_shares(
     total_shares: Uint128,
     total_assets: Uint128,
@@ -81,6 +85,7 @@ pub fn _convert_to_shares(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
+/// Internal conversion
 pub fn _convert_to_assets(
     total_shares: Uint128,
     total_assets: Uint128,
@@ -93,4 +98,44 @@ pub fn _convert_to_assets(
         Rounding::Floor => shares.checked_mul_floor(frac),
     }
     .map_err(|e| StdError::generic_err(e.to_string()))
+}
+
+/// Used internally in `deposit`/`mint` functionality
+pub fn _deposit(
+    deps: DepsMut,
+    this: Addr,
+    caller: Addr,
+    receiver: Addr,
+    assets: Uint128,
+    shares: Uint128,
+) -> StdResult<Response> {
+    let share = SHARE.load(deps.storage)?;
+    let asset = ASSET.load(deps.storage)?;
+    let asset_transfer_msg = WasmMsg::Execute {
+        contract_addr: asset.to_string(),
+        msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
+            owner: caller.to_string(),
+            recipient: this.to_string(),
+            amount: assets,
+        })?,
+        funds: vec![],
+    };
+    let share_mint_msg = WasmMsg::Execute {
+        contract_addr: share.to_string(),
+        msg: to_json_binary(&cw20::Cw20ExecuteMsg::Mint {
+            recipient: receiver.to_string(),
+            amount: shares,
+        })?,
+        funds: vec![],
+    };
+    Ok(Response::new()
+        .add_message(asset_transfer_msg)
+        .add_message(share_mint_msg)
+        .add_attribute("action", "deposit")
+        .add_attribute("share", share.to_string())
+        .add_attribute("asset", asset.to_string())
+        .add_attribute("depositor", caller.to_string())
+        .add_attribute("receiver", receiver.to_string())
+        .add_attribute("assets_transferred", assets.to_string())
+        .add_attribute("shares_minted", shares.to_string()))
 }
