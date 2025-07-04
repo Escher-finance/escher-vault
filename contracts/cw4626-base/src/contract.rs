@@ -47,7 +47,9 @@ pub fn execute(
         ExecuteMsg::Deposit { assets, receiver } => {
             execute::deposit(deps, this, sender, assets, receiver)
         }
-        ExecuteMsg::Mint { shares, receiver } => execute::mint(shares, receiver),
+        ExecuteMsg::Mint { shares, receiver } => {
+            execute::mint(deps, this, sender, shares, receiver)
+        }
         ExecuteMsg::Withdraw {
             assets,
             receiver,
