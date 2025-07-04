@@ -1,6 +1,9 @@
-use cosmwasm_std::{Addr, QuerierWrapper, StdError, Storage, Uint128};
+use cosmwasm_std::{Addr, Deps, QuerierWrapper, StdError, StdResult, Storage, Uint128};
 
-use crate::{state::SHARE, ContractError};
+use crate::{
+    state::{ASSET, SHARE},
+    ContractError,
+};
 
 pub fn validate_cw20(
     querier: &QuerierWrapper,
@@ -35,6 +38,27 @@ pub fn query_cw20_balance(
         },
     )?;
     Ok(balance)
+}
+
+#[derive(Debug)]
+pub struct Tokens {
+    pub share: Addr,
+    pub asset: Addr,
+    pub total_shares: Uint128,
+    pub total_assets: Uint128,
+}
+
+pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
+    let share = SHARE.load(deps.storage)?;
+    let asset = ASSET.load(deps.storage)?;
+    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    Ok(Tokens {
+        share,
+        asset,
+        total_shares,
+        total_assets,
+    })
 }
 
 #[derive(Debug)]

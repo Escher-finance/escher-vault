@@ -1,5 +1,7 @@
 use crate::{
-    helpers::{_convert_to_shares, query_cw20_balance, Rounding, _convert_to_assets},
+    helpers::{
+        _convert_to_shares, query_cw20_balance, Rounding, Tokens, _convert_to_assets, get_tokens,
+    },
     state::{ASSET, SHARE},
 };
 
@@ -41,10 +43,11 @@ pub fn convert_to_shares(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<ConvertToSharesResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
-    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(ConvertToSharesResponse { shares })
 }
@@ -54,10 +57,11 @@ pub fn convert_to_assets(
     deps: &Deps,
     shares: Uint128,
 ) -> StdResult<ConvertToAssetsResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
-    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
     let assets = _convert_to_shares(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(ConvertToAssetsResponse { assets })
 }
@@ -73,10 +77,11 @@ pub fn preview_deposit(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<PreviewDepositResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
-    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(PreviewDepositResponse { shares })
 }
@@ -92,19 +97,22 @@ pub fn max_mint(deps: &Deps, _receiver: Addr) -> StdResult<MaxMintResponse> {
 }
 
 pub fn preview_mint(this: &Addr, deps: &Deps, shares: Uint128) -> StdResult<PreviewMintResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
-    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
     let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Ceil)?;
     Ok(PreviewMintResponse { assets })
 }
 
 pub fn max_withdraw(this: &Addr, deps: &Deps, owner: Addr) -> StdResult<MaxWithdrawResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
-    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    let Tokens {
+        total_shares,
+        total_assets,
+        share,
+        ..
+    } = get_tokens(this, deps)?;
     let owner_shares_balance = query_cw20_balance(&deps.querier, &share, &owner)?;
     let assets = _convert_to_assets(
         total_shares,
@@ -120,10 +128,11 @@ pub fn preview_withdraw(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<PreviewWithdrawResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
-    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Ceil)?;
     Ok(PreviewWithdrawResponse { shares })
 }
@@ -141,10 +150,11 @@ pub fn preview_redeem(
     deps: &Deps,
     shares: Uint128,
 ) -> StdResult<PreviewRedeemResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
-    let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
     let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(PreviewRedeemResponse { assets })
 }
