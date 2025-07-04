@@ -156,10 +156,10 @@ pub struct PreviewWithdrawResponse {
 
 #[cw_serde]
 pub struct MaxRedeemResponse {
-    max_shares: Uint128,
+    pub max_shares: Uint128,
 }
 
 #[cw_serde]
 pub struct PreviewRedeemResponse {
-    assets: Uint128,
+    pub assets: Uint128,
 }

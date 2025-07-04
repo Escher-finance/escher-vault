@@ -98,7 +98,6 @@ pub mod execute {
         share_token_address: Addr,
     ) -> Result<Response, ContractError> {
         cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
         let asset = ASSET.load(deps.storage)?;
         let asset_info = validate_cw20(&deps.querier, &asset)?;
         let share_info = validate_cw20(&deps.querier, &share_token_address)?;
@@ -154,11 +153,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::PreviewMint { shares } => {
             to_json_binary(&query::preview_mint(&this, &deps, shares)?)
         }
-        QueryMsg::MaxWithdraw { owner } => to_json_binary(&query::max_withdraw(owner)?),
-        QueryMsg::PreviewWithdraw { assets } => to_json_binary(&query::preview_withdraw(assets)?),
-        QueryMsg::MaxRedeem { owner } => to_json_binary(&query::max_redeem(owner)?),
-        QueryMsg::PreviewRedeem { shares } => to_json_binary(&query::preview_redeem(shares)?),
-        QueryMsg::Ownership {} => to_json_binary(&query::ownership()?),
+        QueryMsg::MaxWithdraw { owner } => {
+            to_json_binary(&query::max_withdraw(&this, &deps, owner)?)
+        }
+        QueryMsg::PreviewWithdraw { assets } => {
+            to_json_binary(&query::preview_withdraw(&this, &deps, assets)?)
+        }
+        QueryMsg::MaxRedeem { owner } => to_json_binary(&query::max_redeem(&deps, owner)?),
+        QueryMsg::PreviewRedeem { shares } => {
+            to_json_binary(&query::preview_redeem(&this, &deps, shares)?)
+        }
+        QueryMsg::Ownership {} => to_json_binary(&query::ownership(deps.storage)?),
     }
 }
 
@@ -267,24 +272,57 @@ pub mod query {
         Ok(PreviewMintResponse { assets })
     }
 
-    pub fn max_withdraw(_owner: Addr) -> StdResult<MaxWithdrawResponse> {
-        todo!();
+    pub fn max_withdraw(this: &Addr, deps: &Deps, owner: Addr) -> StdResult<MaxWithdrawResponse> {
+        let share = SHARE.load(deps.storage)?;
+        let asset = ASSET.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+        let owner_shares_balance = query_cw20_balance(&deps.querier, &share, &owner)?;
+        let assets = _convert_to_assets(
+            total_shares,
+            total_assets,
+            owner_shares_balance,
+            Rounding::Floor,
+        )?;
+        Ok(MaxWithdrawResponse { max_assets: assets })
     }
 
-    pub fn preview_withdraw(_assets: Uint128) -> StdResult<PreviewWithdrawResponse> {
-        todo!();
+    pub fn preview_withdraw(
+        this: &Addr,
+        deps: &Deps,
+        assets: Uint128,
+    ) -> StdResult<PreviewWithdrawResponse> {
+        let share = SHARE.load(deps.storage)?;
+        let asset = ASSET.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+        let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Ceil)?;
+        Ok(PreviewWithdrawResponse { shares })
     }
 
-    pub fn max_redeem(_owner: Addr) -> StdResult<MaxRedeemResponse> {
-        todo!();
+    pub fn max_redeem(deps: &Deps, owner: Addr) -> StdResult<MaxRedeemResponse> {
+        let share = SHARE.load(deps.storage)?;
+        let owner_balance = query_cw20_balance(&deps.querier, &share, &owner)?;
+        Ok(MaxRedeemResponse {
+            max_shares: owner_balance,
+        })
     }
 
-    pub fn preview_redeem(_shares: Uint128) -> StdResult<PreviewRedeemResponse> {
-        todo!();
+    pub fn preview_redeem(
+        this: &Addr,
+        deps: &Deps,
+        shares: Uint128,
+    ) -> StdResult<PreviewRedeemResponse> {
+        let share = SHARE.load(deps.storage)?;
+        let asset = ASSET.load(deps.storage)?;
+        let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+        let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
+        let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
+        Ok(PreviewRedeemResponse { assets })
     }
 
-    pub fn ownership() -> StdResult<PreviewRedeemResponse> {
-        todo!();
+    pub fn ownership(storage: &dyn Storage) -> StdResult<cw_ownable::Ownership<Addr>> {
+        cw_ownable::get_ownership(storage)
     }
 }
 
