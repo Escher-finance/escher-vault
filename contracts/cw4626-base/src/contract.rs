@@ -82,7 +82,14 @@ pub fn execute(
             spender,
             amount,
             expires,
-        } => execute::decrease_withdrawal_share_allowance(spender, amount, expires),
+        } => execute::decrease_withdrawal_share_allowance(
+            deps,
+            info.sender,
+            env.block,
+            spender,
+            amount,
+            expires,
+        ),
     }
 }
 

@@ -131,9 +131,33 @@ pub fn increase_withdrawal_share_allowance(
 }
 
 pub fn decrease_withdrawal_share_allowance(
-    _spender: Addr,
-    _amount: Uint128,
-    _expires: Option<Expiration>,
+    deps: DepsMut,
+    sender: Addr,
+    block: BlockInfo,
+    spender: Addr,
+    amount: Uint128,
+    expires: Option<Expiration>,
 ) -> Result<Response, ContractError> {
-    todo!()
+    if spender == sender {
+        return Err(ContractError::CannotSetAllowanceToOwnAccount {});
+    }
+    let key = (&sender, &spender);
+    let mut allowance_response = WITHDRAWAL_SHARE_ALLOWANCES.load(deps.storage, key)?;
+    if amount < allowance_response.allowance {
+        allowance_response.allowance -= amount;
+        if let Some(expires) = expires {
+            if expires.is_expired(&block) {
+                return Err(ContractError::InvalidAllowanceExpiration {});
+            }
+            allowance_response.expires = expires;
+        }
+        WITHDRAWAL_SHARE_ALLOWANCES.save(deps.storage, key, &allowance_response)?;
+    } else {
+        WITHDRAWAL_SHARE_ALLOWANCES.remove(deps.storage, key);
+    };
+    Ok(Response::new()
+        .add_attribute("action", "decrease_withdrawal_share_allowance")
+        .add_attribute("owner", sender)
+        .add_attribute("spender", spender)
+        .add_attribute("amount", amount))
 }
