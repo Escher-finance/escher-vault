@@ -71,24 +71,14 @@ pub fn execute(
             amount,
             expires,
         } => execute::increase_withdrawal_share_allowance(
-            deps,
-            info.sender,
-            env.block,
-            spender,
-            amount,
-            expires,
+            deps, env.block, sender, spender, amount, expires,
         ),
         ExecuteMsg::DecreaseWithdrawalShareAllowance {
             spender,
             amount,
             expires,
         } => execute::decrease_withdrawal_share_allowance(
-            deps,
-            info.sender,
-            env.block,
-            spender,
-            amount,
-            expires,
+            deps, env.block, sender, spender, amount, expires,
         ),
     }
 }

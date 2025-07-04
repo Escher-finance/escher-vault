@@ -1,13 +1,12 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, MessageInfo, Response, Uint128};
 use cw4626::{
     Expiration, MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse,
-    WithdrawalShareAllowanceResponse,
 };
 
 use crate::{
-    helpers::{_deposit, validate_cw20},
+    helpers::{_deposit, _update_withdrawal_share_allowance, validate_cw20, AllowanceOperation},
     query,
-    state::{ASSET, SHARE, WITHDRAWAL_SHARE_ALLOWANCES},
+    state::{ASSET, SHARE},
     ContractError,
 };
 
@@ -102,27 +101,21 @@ pub fn update_ownership(
 
 pub fn increase_withdrawal_share_allowance(
     deps: DepsMut,
-    sender: Addr,
     block: BlockInfo,
+    sender: Addr,
     spender: Addr,
     amount: Uint128,
     expires: Option<Expiration>,
 ) -> Result<Response, ContractError> {
-    if spender == sender {
-        return Err(ContractError::CannotSetAllowanceToOwnAccount {});
-    }
-    let update_fn = |allow: Option<WithdrawalShareAllowanceResponse>| -> Result<_, _> {
-        let mut allowance_response = allow.unwrap_or_default();
-        if let Some(expires) = expires {
-            if expires.is_expired(&block) {
-                return Err(ContractError::InvalidAllowanceExpiration {});
-            }
-            allowance_response.expires = expires;
-        }
-        allowance_response.allowance += amount;
-        Ok(allowance_response)
-    };
-    WITHDRAWAL_SHARE_ALLOWANCES.update(deps.storage, (&sender, &spender), update_fn)?;
+    let _ = _update_withdrawal_share_allowance(
+        deps,
+        block,
+        sender.clone(),
+        spender.clone(),
+        amount,
+        AllowanceOperation::Increase,
+        expires,
+    )?;
     Ok(Response::new()
         .add_attribute("action", "increase_withdrawal_share_allowance")
         .add_attribute("owner", sender)
@@ -132,29 +125,21 @@ pub fn increase_withdrawal_share_allowance(
 
 pub fn decrease_withdrawal_share_allowance(
     deps: DepsMut,
-    sender: Addr,
     block: BlockInfo,
+    sender: Addr,
     spender: Addr,
     amount: Uint128,
     expires: Option<Expiration>,
 ) -> Result<Response, ContractError> {
-    if spender == sender {
-        return Err(ContractError::CannotSetAllowanceToOwnAccount {});
-    }
-    let key = (&sender, &spender);
-    let mut allowance_response = WITHDRAWAL_SHARE_ALLOWANCES.load(deps.storage, key)?;
-    if amount < allowance_response.allowance {
-        allowance_response.allowance -= amount;
-        if let Some(expires) = expires {
-            if expires.is_expired(&block) {
-                return Err(ContractError::InvalidAllowanceExpiration {});
-            }
-            allowance_response.expires = expires;
-        }
-        WITHDRAWAL_SHARE_ALLOWANCES.save(deps.storage, key, &allowance_response)?;
-    } else {
-        WITHDRAWAL_SHARE_ALLOWANCES.remove(deps.storage, key);
-    };
+    let _ = _update_withdrawal_share_allowance(
+        deps,
+        block,
+        sender.clone(),
+        spender.clone(),
+        amount,
+        AllowanceOperation::Decrease,
+        expires,
+    )?;
     Ok(Response::new()
         .add_attribute("action", "decrease_withdrawal_share_allowance")
         .add_attribute("owner", sender)

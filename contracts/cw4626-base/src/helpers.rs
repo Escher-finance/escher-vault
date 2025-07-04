@@ -1,10 +1,11 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, Deps, DepsMut, QuerierWrapper, Response, StdError, StdResult, Storage,
-    Uint128, WasmMsg,
+    to_json_binary, Addr, BlockInfo, Deps, DepsMut, QuerierWrapper, Response, StdError, StdResult,
+    Storage, Uint128, WasmMsg,
 };
+use cw4626::{Expiration, WithdrawalShareAllowanceResponse};
 
 use crate::{
-    state::{ASSET, SHARE},
+    state::{ASSET, SHARE, WITHDRAWAL_SHARE_ALLOWANCES},
     ContractError,
 };
 
@@ -138,4 +139,45 @@ pub fn _deposit(
         .add_attribute("receiver", receiver.to_string())
         .add_attribute("assets_transferred", assets.to_string())
         .add_attribute("shares_minted", shares.to_string()))
+}
+
+#[derive(Debug)]
+pub enum AllowanceOperation {
+    Increase,
+    Decrease,
+}
+
+/// Used internally to update withdrawal share allowance state
+pub fn _update_withdrawal_share_allowance(
+    deps: DepsMut,
+    block: BlockInfo,
+    sender: Addr,
+    spender: Addr,
+    amount: Uint128,
+    operation: AllowanceOperation,
+    expires: Option<Expiration>,
+) -> Result<WithdrawalShareAllowanceResponse, ContractError> {
+    if spender == sender {
+        return Err(ContractError::CannotSetAllowanceToOwnAccount {});
+    }
+    let key = (&sender, &spender);
+    let mut allowance_response = WITHDRAWAL_SHARE_ALLOWANCES
+        .may_load(deps.storage, key)?
+        .unwrap_or_default();
+    allowance_response.allowance = match operation {
+        AllowanceOperation::Increase => allowance_response.allowance.saturating_add(amount),
+        AllowanceOperation::Decrease => allowance_response.allowance.saturating_sub(amount),
+    };
+    if allowance_response.allowance.is_zero() {
+        WITHDRAWAL_SHARE_ALLOWANCES.remove(deps.storage, key);
+    } else {
+        if let Some(expires) = expires {
+            if expires.is_expired(&block) {
+                return Err(ContractError::InvalidAllowanceExpiration {});
+            }
+            allowance_response.expires = expires;
+        }
+        WITHDRAWAL_SHARE_ALLOWANCES.save(deps.storage, key, &allowance_response)?;
+    }
+    Ok(allowance_response)
 }
