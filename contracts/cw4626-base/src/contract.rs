@@ -64,13 +64,20 @@ pub fn execute(
             share_token_address,
         } => execute::connect_share_token(deps, info, this, share_token_address),
         ExecuteMsg::UpdateOwnership(action) => {
-            execute::update_ownership(deps, &env.block, sender, action)
+            execute::update_ownership(deps, env.block, sender, action)
         }
         ExecuteMsg::IncreaseWithdrawalShareAllowance {
             spender,
             amount,
             expires,
-        } => execute::increase_withdrawal_share_allowance(spender, amount, expires),
+        } => execute::increase_withdrawal_share_allowance(
+            deps,
+            info.sender,
+            env.block,
+            spender,
+            amount,
+            expires,
+        ),
         ExecuteMsg::DecreaseWithdrawalShareAllowance {
             spender,
             amount,

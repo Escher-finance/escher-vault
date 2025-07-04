@@ -1,12 +1,13 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, MessageInfo, Response, Uint128};
 use cw4626::{
     Expiration, MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse,
+    WithdrawalShareAllowanceResponse,
 };
 
 use crate::{
     helpers::{_deposit, validate_cw20},
     query,
-    state::{ASSET, SHARE},
+    state::{ASSET, SHARE, WITHDRAWAL_SHARE_ALLOWANCES},
     ContractError,
 };
 
@@ -91,20 +92,42 @@ pub fn connect_share_token(
 
 pub fn update_ownership(
     deps: DepsMut,
-    block: &BlockInfo,
+    block: BlockInfo,
     new_owner: Addr,
     action: cw_ownable::Action,
 ) -> Result<Response, ContractError> {
-    cw_ownable::update_ownership(deps, block, &new_owner, action)?;
+    cw_ownable::update_ownership(deps, &block, &new_owner, action)?;
     Ok(Response::new())
 }
 
 pub fn increase_withdrawal_share_allowance(
-    _spender: Addr,
-    _amount: Uint128,
-    _expires: Option<Expiration>,
+    deps: DepsMut,
+    sender: Addr,
+    block: BlockInfo,
+    spender: Addr,
+    amount: Uint128,
+    expires: Option<Expiration>,
 ) -> Result<Response, ContractError> {
-    todo!()
+    if spender == sender {
+        return Err(ContractError::CannotSetAllowanceToOwnAccount {});
+    }
+    let update_fn = |allow: Option<WithdrawalShareAllowanceResponse>| -> Result<_, _> {
+        let mut allowance_response = allow.unwrap_or_default();
+        if let Some(expires) = expires {
+            if expires.is_expired(&block) {
+                return Err(ContractError::InvalidAllowanceExpiration {});
+            }
+            allowance_response.expires = expires;
+        }
+        allowance_response.allowance += amount;
+        Ok(allowance_response)
+    };
+    WITHDRAWAL_SHARE_ALLOWANCES.update(deps.storage, (&sender, &spender), update_fn)?;
+    Ok(Response::new()
+        .add_attribute("action", "increase_withdrawal_share_allowance")
+        .add_attribute("owner", sender)
+        .add_attribute("spender", spender)
+        .add_attribute("amount", amount))
 }
 
 pub fn decrease_withdrawal_share_allowance(
