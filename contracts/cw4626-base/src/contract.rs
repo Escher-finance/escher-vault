@@ -57,6 +57,7 @@ pub fn execute(
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }
+        _ => todo!(),
     }
 }
 
