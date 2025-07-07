@@ -1,13 +1,11 @@
-use cosmwasm_std::{Addr, BlockInfo, DepsMut, MessageInfo, Response, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, DepsMut, Response, Uint128};
 use cw4626::{
     Expiration, MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse,
 };
 
 use crate::{
-    helpers::{_deposit, _update_withdrawal_share_allowance, validate_cw20, AllowanceOperation},
-    query,
-    state::{ASSET, SHARE},
-    ContractError,
+    helpers::{AllowanceOperation, _deposit, _update_withdrawal_share_allowance},
+    query, ContractError,
 };
 
 pub fn deposit(
@@ -61,32 +59,6 @@ pub fn withdraw(
 
 pub fn redeem(_shares: Uint128, _receiver: Addr, _owner: Addr) -> Result<Response, ContractError> {
     todo!()
-}
-
-pub fn connect_share_token(
-    deps: DepsMut,
-    info: MessageInfo,
-    this: Addr,
-    share_token_address: Addr,
-) -> Result<Response, ContractError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-    let asset = ASSET.load(deps.storage)?;
-    let asset_info = validate_cw20(&deps.querier, &asset)?;
-    let share_info = validate_cw20(&deps.querier, &share_token_address)?;
-    if asset_info.decimals != share_info.decimals {
-        return Err(ContractError::DecimalsMismatch {});
-    }
-    let cw20::MinterResponse { minter, cap } = deps
-        .querier
-        .query_wasm_smart(&share_token_address, &cw20::Cw20QueryMsg::Minter {})?;
-    if minter != this.to_string() {
-        return Err(ContractError::InvalidSharesMinter {});
-    }
-    if cap == Some(Uint128::zero()) {
-        return Err(ContractError::SharesMinterCapTooSmall {});
-    }
-    SHARE.save(deps.storage, &share_token_address)?;
-    Ok(Response::new())
 }
 
 pub fn update_ownership(

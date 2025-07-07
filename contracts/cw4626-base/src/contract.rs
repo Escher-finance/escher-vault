@@ -35,12 +35,6 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    if !matches!(
-        msg,
-        ExecuteMsg::ConnectShareToken { .. } | ExecuteMsg::UpdateOwnership(_)
-    ) {
-        validate_share_connected(deps.storage)?;
-    }
     let this = env.contract.address;
     let sender = info.sender.clone();
     match msg {
@@ -60,26 +54,9 @@ pub fn execute(
             receiver,
             owner,
         } => execute::redeem(shares, receiver, owner),
-        ExecuteMsg::ConnectShareToken {
-            share_token_address,
-        } => execute::connect_share_token(deps, info, this, share_token_address),
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }
-        ExecuteMsg::IncreaseWithdrawalShareAllowance {
-            spender,
-            amount,
-            expires,
-        } => execute::increase_withdrawal_share_allowance(
-            deps, env.block, sender, spender, amount, expires,
-        ),
-        ExecuteMsg::DecreaseWithdrawalShareAllowance {
-            spender,
-            amount,
-            expires,
-        } => execute::decrease_withdrawal_share_allowance(
-            deps, env.block, sender, spender, amount, expires,
-        ),
     }
 }
 
@@ -90,9 +67,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
     let this = env.contract.address;
     match msg {
-        QueryMsg::Share {} => to_json_binary(&query::share(deps.storage)?),
         QueryMsg::Asset {} => to_json_binary(&query::asset(deps.storage)?),
-        QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(&this, &deps)?),
         QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets(&this, &deps)?),
         QueryMsg::ConvertToShares { assets } => {
             to_json_binary(&query::convert_to_shares(&this, &deps, assets)?)

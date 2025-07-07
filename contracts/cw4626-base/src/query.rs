@@ -13,25 +13,10 @@ use cw_storage_plus::Bound;
 const ALLOWANCE_PAGINATION_MAX_LIMIT: u32 = 50;
 const ALLOWANCE_PAGINATION_DEFAULT_LIMIT: u32 = 10;
 
-pub fn share(storage: &dyn Storage) -> StdResult<ShareResponse> {
-    let share = SHARE.load(storage)?;
-    Ok(ShareResponse {
-        share_token_address: share,
-    })
-}
-
 pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
     let asset = ASSET.load(storage)?;
     Ok(AssetResponse {
         asset_token_address: asset,
-    })
-}
-
-pub fn total_shares(this: &Addr, deps: &Deps) -> StdResult<TotalSharesResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let balance = query_cw20_balance(&deps.querier, &share, this)?;
-    Ok(TotalSharesResponse {
-        total_managed_shares: balance,
     })
 }
 

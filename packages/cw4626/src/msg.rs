@@ -33,43 +33,15 @@ pub enum Cw4626ExecuteMsg {
         receiver: Addr,
         owner: Addr,
     },
-    /// Connects the share token to the vault asserting its minter and decimals
-    /// which must be the same as the underlying asset
-    /// All functionality should be blocked until the share token is connected
-    ConnectShareToken { share_token_address: Addr },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Allows spender to access an additional amount tokens from the owner's (env.sender) account
-    /// If expires is Some(), overwrites current allowance expiration with this one
-    IncreaseWithdrawalShareAllowance {
-        spender: Addr,
-        amount: Uint128,
-        expires: Option<Expiration>,
-    },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Lowers the spender's access of tokens from the owner's (env.sender) account by amount
-    /// If expires is Some(), overwrites current allowance expiration with this one
-    DecreaseWithdrawalShareAllowance {
-        spender: Addr,
-        amount: Uint128,
-        expires: Option<Expiration>,
-    },
 }
 
 #[cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum Cw4626QueryMsg {
-    /// Since the share token is separated from the vault, added a getter to the share
-    /// Returns the address of the share cw20 token used for the Vault for accounting, depositing, and withdrawing
-    #[returns(ShareResponse)]
-    Share {},
     /// Returns the address of the underlying cw20 token used for the Vault for accounting, depositing, and withdrawing
     #[returns(AssetResponse)]
     Asset {},
-    /// Since the share token is separated from the vault, added a getter to the total shares
-    /// Returns the total amount of the share asset that is managed by Vault
-    #[returns(TotalSharesResponse)]
-    TotalShares {},
     /// Returns the total amount of the underlying asset that is managed by Vault
     #[returns(TotalAssetsResponse)]
     TotalAssets {},
@@ -127,18 +99,8 @@ pub enum Cw4626QueryMsg {
 }
 
 #[cw_serde]
-pub struct ShareResponse {
-    pub share_token_address: Addr,
-}
-
-#[cw_serde]
 pub struct AssetResponse {
     pub asset_token_address: Addr,
-}
-
-#[cw_serde]
-pub struct TotalSharesResponse {
-    pub total_managed_shares: Uint128,
 }
 
 #[cw_serde]
