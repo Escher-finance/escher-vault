@@ -15,5 +15,4 @@
 *.iml
 .idea
 
-# remove me
-contracts/cw-4626/
+*/*/target/

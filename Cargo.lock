@@ -514,6 +514,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-ownable",
  "cw20",
+ "cw20-base",
  "schemars",
  "serde",
 ]

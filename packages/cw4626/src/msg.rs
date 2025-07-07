@@ -5,12 +5,17 @@ use cw20::{Expiration, Logo};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 
 pub use cw20;
+pub use cw20_base::msg::InstantiateMarketingInfo;
 pub use cw_ownable;
 
 #[cw_serde]
 pub struct Cw4626InstantiateMsg {
     pub owner: Option<Addr>,
     pub underlying_token_address: Addr,
+    pub share_name: String,
+    pub share_symbol: String,
+    pub share_decimals: u8,
+    pub share_marketing: Option<InstantiateMarketingInfo>,
 }
 
 #[cw_ownable_execute]
