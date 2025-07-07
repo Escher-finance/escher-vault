@@ -1,11 +1,11 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, BlockInfo, Deps, DepsMut, QuerierWrapper, Response, StdError, StdResult,
-    Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, Deps, DepsMut, QuerierWrapper, Response, StdError, StdResult, Storage,
+    Uint128, WasmMsg,
 };
-use cw4626::{Expiration, WithdrawalShareAllowanceResponse};
+use cw4626::cw20;
 
 use crate::{
-    state::{ASSET, SHARE, WITHDRAWAL_SHARE_ALLOWANCES},
+    state::{ASSET, SHARE},
     ContractError,
 };
 
@@ -141,88 +141,8 @@ pub fn _deposit(
         .add_attribute("shares_minted", shares.to_string()))
 }
 
-/// Used internally in `withdraw`/`redeem` functionality
-pub fn _withdraw(
-    mut deps: DepsMut,
-    block: BlockInfo,
-    // this: Addr,
-    caller: Addr,
-    // receiver: Addr,
-    owner: Addr,
-    // assets: Uint128,
-    shares: Uint128,
-) -> Result<Response, ContractError> {
-    if caller != owner {
-        _spend_allowance(deps.branch(), block, owner, caller.clone(), shares)?;
-    }
-    todo!()
-}
-
 #[derive(Debug)]
 pub enum AllowanceOperation {
     Increase,
     Decrease,
-}
-
-/// Used internally to update withdrawal share allowance state
-/// Returns updated WithdrawalShareAllowanceResponse
-pub fn _update_withdrawal_share_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
-    owner: Addr,
-    spender: Addr,
-    amount: Uint128,
-    operation: AllowanceOperation,
-    expires: Option<Expiration>,
-) -> Result<WithdrawalShareAllowanceResponse, ContractError> {
-    if spender == owner {
-        return Err(ContractError::CannotSetWithdrawalShareAllowanceToOwnAccount {});
-    }
-    let key = (&owner, &spender);
-    let mut allowance_response = WITHDRAWAL_SHARE_ALLOWANCES
-        .may_load(deps.storage, key)?
-        .unwrap_or_default();
-    allowance_response.allowance = match operation {
-        AllowanceOperation::Increase => allowance_response.allowance.saturating_add(amount),
-        AllowanceOperation::Decrease => allowance_response.allowance.saturating_sub(amount),
-    };
-    if allowance_response.allowance.is_zero() {
-        WITHDRAWAL_SHARE_ALLOWANCES.remove(deps.storage, key);
-    } else {
-        if let Some(expires) = expires {
-            if expires.is_expired(&block) {
-                return Err(ContractError::InvalidWithdrawalShareAllowanceExpiration {});
-            }
-            allowance_response.expires = expires;
-        }
-        WITHDRAWAL_SHARE_ALLOWANCES.save(deps.storage, key, &allowance_response)?;
-    }
-    Ok(allowance_response)
-}
-
-/// Used internally to spend allowance, validating whether there's enough to spend
-pub fn _spend_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
-    owner: Addr,
-    spender: Addr,
-    amount: Uint128,
-) -> Result<(), ContractError> {
-    let key = (&owner, &spender);
-    let mut allowance_response = WITHDRAWAL_SHARE_ALLOWANCES
-        .may_load(deps.storage, key)?
-        .unwrap_or_default();
-    if amount > allowance_response.allowance {
-        return Err(ContractError::InsufficientWithdrawalShareAllowance {});
-    }
-    if allowance_response.expires.is_expired(&block) {
-        return Err(ContractError::ExpiredWithdrawalShareAllowance {});
-    }
-    allowance_response.allowance -= amount;
-    if allowance_response.allowance.is_zero() {
-        WITHDRAWAL_SHARE_ALLOWANCES.remove(deps.storage, key);
-    } else {
-        WITHDRAWAL_SHARE_ALLOWANCES.save(deps.storage, key, &allowance_response)?;
-    }
-    Ok(())
 }

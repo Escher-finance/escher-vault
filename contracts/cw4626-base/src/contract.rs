@@ -94,19 +94,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::preview_redeem(&this, &deps, shares)?)
         }
         QueryMsg::Ownership {} => to_json_binary(&query::ownership(deps.storage)?),
-        QueryMsg::WithdrawalShareAllowance { owner, spender } => to_json_binary(
-            &query::withdrawal_share_allowance(deps.storage, &env.block, owner, spender)?,
-        ),
-        QueryMsg::AllWithdrawalShareAllowances {
-            owner,
-            start_after,
-            limit,
-        } => to_json_binary(&query::all_withdrawal_share_allowances(
-            deps.storage,
-            owner,
-            start_after,
-            limit,
-        )?),
+        _ => todo!(),
     }
 }
 

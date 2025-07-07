@@ -1,12 +1,7 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, Response, Uint128};
-use cw4626::{
-    Expiration, MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse,
-};
+use cw4626::{MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse};
 
-use crate::{
-    helpers::{AllowanceOperation, _deposit, _update_withdrawal_share_allowance},
-    query, ContractError,
-};
+use crate::{helpers::_deposit, query, ContractError};
 
 pub fn deposit(
     deps: DepsMut,
@@ -69,52 +64,4 @@ pub fn update_ownership(
 ) -> Result<Response, ContractError> {
     cw_ownable::update_ownership(deps, &block, &new_owner, action)?;
     Ok(Response::new())
-}
-
-pub fn increase_withdrawal_share_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
-    sender: Addr,
-    spender: Addr,
-    amount: Uint128,
-    expires: Option<Expiration>,
-) -> Result<Response, ContractError> {
-    let _ = _update_withdrawal_share_allowance(
-        deps,
-        block,
-        sender.clone(),
-        spender.clone(),
-        amount,
-        AllowanceOperation::Increase,
-        expires,
-    )?;
-    Ok(Response::new()
-        .add_attribute("action", "increase_withdrawal_share_allowance")
-        .add_attribute("owner", sender)
-        .add_attribute("spender", spender)
-        .add_attribute("amount", amount))
-}
-
-pub fn decrease_withdrawal_share_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
-    sender: Addr,
-    spender: Addr,
-    amount: Uint128,
-    expires: Option<Expiration>,
-) -> Result<Response, ContractError> {
-    let _ = _update_withdrawal_share_allowance(
-        deps,
-        block,
-        sender.clone(),
-        spender.clone(),
-        amount,
-        AllowanceOperation::Decrease,
-        expires,
-    )?;
-    Ok(Response::new()
-        .add_attribute("action", "decrease_withdrawal_share_allowance")
-        .add_attribute("owner", sender)
-        .add_attribute("spender", spender)
-        .add_attribute("amount", amount))
 }

@@ -3,9 +3,7 @@ use cosmwasm_std::{Addr, Uint128};
 
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 
-pub use cw20::AllAllowancesResponse as AllWithdrawalShareAllowancesResponse;
-pub use cw20::AllowanceResponse as WithdrawalShareAllowanceResponse;
-pub use cw20::Expiration;
+pub use cw20;
 pub use cw_ownable;
 
 #[cw_serde]
@@ -39,6 +37,9 @@ pub enum Cw4626ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum Cw4626QueryMsg {
+    //
+    // CW4626
+    //
     /// Returns the address of the underlying cw20 token used for the Vault for accounting, depositing, and withdrawing
     #[returns(AssetResponse)]
     Asset {},
@@ -84,18 +85,47 @@ pub enum Cw4626QueryMsg {
     /// given current on-chain conditions
     #[returns(PreviewRedeemResponse)]
     PreviewRedeem { shares: Uint128 },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Returns how much spender can use from owner account, 0 if unset
-    #[returns(WithdrawalShareAllowanceResponse)]
-    WithdrawalShareAllowance { owner: Addr, spender: Addr },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Returns all allowances this owner has approved, supports pagination
-    #[returns(AllWithdrawalShareAllowancesResponse)]
-    AllWithdrawalShareAllowances {
-        owner: Addr,
-        start_after: Option<Addr>,
+
+    //
+    // CW20
+    //
+    /// Returns the current balance of the given address, 0 if unset.
+    #[returns(cw20::BalanceResponse)]
+    Balance { address: String },
+    /// Returns metadata on the contract - name, decimals, supply, etc.
+    #[returns(cw20::TokenInfoResponse)]
+    TokenInfo {},
+    /// Returns how much spender can use from owner account, 0 if unset.
+    #[returns(cw20::AllowanceResponse)]
+    Allowance { owner: String, spender: String },
+    /// Returns all allowances this owner has approved. Supports pagination.
+    #[returns(cw20::AllAllowancesResponse)]
+    AllAllowances {
+        owner: String,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns all allowances this spender has been granted. Supports pagination.
+    #[returns(cw20::AllSpenderAllowancesResponse)]
+    AllSpenderAllowances {
+        spender: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Returns all accounts that have balances. Supports pagination.
+    #[returns(cw20::AllAccountsResponse)]
+    AllAccounts {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Returns more metadata on the contract to display in the client:
+    /// - description, logo, project url, etc.
+    #[returns(cw20::MarketingInfoResponse)]
+    MarketingInfo {},
+    /// Downloads the embedded logo data (if stored on chain). Errors if no logo data is stored for this
+    /// contract.
+    #[returns(cw20::DownloadLogoResponse)]
+    DownloadLogo {},
 }
 
 #[cw_serde]

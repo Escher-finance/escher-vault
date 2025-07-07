@@ -528,7 +528,6 @@ dependencies = [
  "cw-ownable",
  "cw-storage-plus",
  "cw2",
- "cw20",
  "cw20-base",
  "cw4626",
  "schemars",

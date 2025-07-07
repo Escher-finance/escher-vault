@@ -2,16 +2,11 @@ use crate::{
     helpers::{
         _convert_to_shares, query_cw20_balance, Rounding, Tokens, _convert_to_assets, get_tokens,
     },
-    state::{ASSET, SHARE, WITHDRAWAL_SHARE_ALLOWANCES},
+    state::{ASSET, SHARE},
 };
 
-use cosmwasm_std::{Addr, BlockInfo, Deps, Order, StdResult, Storage, Uint128};
-use cw20::AllowanceInfo;
+use cosmwasm_std::{Addr, Deps, StdResult, Storage, Uint128};
 use cw4626::*;
-use cw_storage_plus::Bound;
-
-const ALLOWANCE_PAGINATION_MAX_LIMIT: u32 = 50;
-const ALLOWANCE_PAGINATION_DEFAULT_LIMIT: u32 = 10;
 
 pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
     let asset = ASSET.load(storage)?;
@@ -151,42 +146,4 @@ pub fn preview_redeem(
 
 pub fn ownership(storage: &dyn Storage) -> StdResult<cw_ownable::Ownership<Addr>> {
     cw_ownable::get_ownership(storage)
-}
-
-pub fn withdrawal_share_allowance(
-    storage: &dyn Storage,
-    block: &BlockInfo,
-    owner: Addr,
-    spender: Addr,
-) -> StdResult<WithdrawalShareAllowanceResponse> {
-    let allowance = WITHDRAWAL_SHARE_ALLOWANCES
-        .may_load(storage, (&owner, &spender))?
-        .filter(|allow| !allow.expires.is_expired(block))
-        .unwrap_or_default();
-    Ok(allowance)
-}
-
-pub fn all_withdrawal_share_allowances(
-    storage: &dyn Storage,
-    owner: Addr,
-    start_after: Option<Addr>,
-    limit: Option<u32>,
-) -> StdResult<AllWithdrawalShareAllowancesResponse> {
-    let limit = limit
-        .unwrap_or(ALLOWANCE_PAGINATION_DEFAULT_LIMIT)
-        .min(ALLOWANCE_PAGINATION_MAX_LIMIT) as usize;
-    let start = start_after.map(|s| Bound::ExclusiveRaw(s.as_bytes().to_vec()));
-    let allowances = WITHDRAWAL_SHARE_ALLOWANCES
-        .prefix(&owner)
-        .range(storage, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| {
-            item.map(|(addr, allow)| AllowanceInfo {
-                spender: addr.into(),
-                allowance: allow.allowance,
-                expires: allow.expires,
-            })
-        })
-        .collect::<StdResult<_>>()?;
-    Ok(AllWithdrawalShareAllowancesResponse { allowances })
 }
