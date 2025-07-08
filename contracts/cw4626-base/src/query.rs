@@ -95,10 +95,10 @@ pub fn max_withdraw(this: &Addr, deps: &Deps, owner: Addr) -> StdResult<MaxWithd
     let Tokens {
         total_shares,
         total_assets,
-        share,
         ..
     } = get_tokens(this, deps)?;
-    let owner_shares_balance = query_cw20_balance(&deps.querier, &share, &owner)?;
+    let owner_shares_balance =
+        cw20_base::contract::query_balance(*deps, owner.to_string())?.balance;
     let assets = _convert_to_assets(
         total_shares,
         total_assets,
@@ -123,8 +123,7 @@ pub fn preview_withdraw(
 }
 
 pub fn max_redeem(deps: &Deps, owner: Addr) -> StdResult<MaxRedeemResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let owner_balance = query_cw20_balance(&deps.querier, &share, &owner)?;
+    let owner_balance = cw20_base::contract::query_balance(*deps, owner.to_string())?.balance;
     Ok(MaxRedeemResponse {
         max_shares: owner_balance,
     })
