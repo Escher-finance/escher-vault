@@ -53,9 +53,11 @@ pub struct Tokens {
 }
 
 pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
-    let share = SHARE.load(deps.storage)?;
+    let share = this.clone();
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+    let total_shares = cw20_base::state::TOKEN_INFO
+        .load(deps.storage)?
+        .total_supply;
     let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
     Ok(Tokens {
         share,
