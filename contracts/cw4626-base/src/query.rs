@@ -2,41 +2,21 @@ use crate::{
     helpers::{
         _convert_to_shares, query_cw20_balance, Rounding, Tokens, _convert_to_assets, get_tokens,
     },
-    state::{ASSET, SHARE, WITHDRAWAL_SHARE_ALLOWANCES},
+    state::{SHARE, UNDERLYING_ASSET},
 };
 
-use cosmwasm_std::{Addr, BlockInfo, Deps, Order, StdResult, Storage, Uint128};
-use cw20::AllowanceInfo;
+use cosmwasm_std::{Addr, Deps, StdResult, Storage, Uint128};
 use cw4626::*;
-use cw_storage_plus::Bound;
-
-const ALLOWANCE_PAGINATION_MAX_LIMIT: u32 = 50;
-const ALLOWANCE_PAGINATION_DEFAULT_LIMIT: u32 = 10;
-
-pub fn share(storage: &dyn Storage) -> StdResult<ShareResponse> {
-    let share = SHARE.load(storage)?;
-    Ok(ShareResponse {
-        share_token_address: share,
-    })
-}
 
 pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
-    let asset = ASSET.load(storage)?;
+    let asset = UNDERLYING_ASSET.load(storage)?;
     Ok(AssetResponse {
         asset_token_address: asset,
     })
 }
 
-pub fn total_shares(this: &Addr, deps: &Deps) -> StdResult<TotalSharesResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let balance = query_cw20_balance(&deps.querier, &share, this)?;
-    Ok(TotalSharesResponse {
-        total_managed_shares: balance,
-    })
-}
-
 pub fn total_assets(this: &Addr, deps: &Deps) -> StdResult<TotalAssetsResponse> {
-    let asset = ASSET.load(deps.storage)?;
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
     let balance = query_cw20_balance(&deps.querier, &asset, this)?;
     Ok(TotalAssetsResponse {
         total_managed_assets: balance,
@@ -115,10 +95,10 @@ pub fn max_withdraw(this: &Addr, deps: &Deps, owner: Addr) -> StdResult<MaxWithd
     let Tokens {
         total_shares,
         total_assets,
-        share,
         ..
     } = get_tokens(this, deps)?;
-    let owner_shares_balance = query_cw20_balance(&deps.querier, &share, &owner)?;
+    let owner_shares_balance =
+        cw20_base::contract::query_balance(*deps, owner.to_string())?.balance;
     let assets = _convert_to_assets(
         total_shares,
         total_assets,
@@ -143,8 +123,7 @@ pub fn preview_withdraw(
 }
 
 pub fn max_redeem(deps: &Deps, owner: Addr) -> StdResult<MaxRedeemResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let owner_balance = query_cw20_balance(&deps.querier, &share, &owner)?;
+    let owner_balance = cw20_base::contract::query_balance(*deps, owner.to_string())?.balance;
     Ok(MaxRedeemResponse {
         max_shares: owner_balance,
     })
@@ -166,42 +145,4 @@ pub fn preview_redeem(
 
 pub fn ownership(storage: &dyn Storage) -> StdResult<cw_ownable::Ownership<Addr>> {
     cw_ownable::get_ownership(storage)
-}
-
-pub fn withdrawal_share_allowance(
-    storage: &dyn Storage,
-    block: &BlockInfo,
-    owner: Addr,
-    spender: Addr,
-) -> StdResult<WithdrawalShareAllowanceResponse> {
-    let allowance = WITHDRAWAL_SHARE_ALLOWANCES
-        .may_load(storage, (&owner, &spender))?
-        .filter(|allow| !allow.expires.is_expired(block))
-        .unwrap_or_default();
-    Ok(allowance)
-}
-
-pub fn all_withdrawal_share_allowances(
-    storage: &dyn Storage,
-    owner: Addr,
-    start_after: Option<Addr>,
-    limit: Option<u32>,
-) -> StdResult<AllWithdrawalShareAllowancesResponse> {
-    let limit = limit
-        .unwrap_or(ALLOWANCE_PAGINATION_DEFAULT_LIMIT)
-        .min(ALLOWANCE_PAGINATION_MAX_LIMIT) as usize;
-    let start = start_after.map(|s| Bound::ExclusiveRaw(s.as_bytes().to_vec()));
-    let allowances = WITHDRAWAL_SHARE_ALLOWANCES
-        .prefix(&owner)
-        .range(storage, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| {
-            item.map(|(addr, allow)| AllowanceInfo {
-                spender: addr.into(),
-                allowance: allow.allowance,
-                expires: allow.expires,
-            })
-        })
-        .collect::<StdResult<_>>()?;
-    Ok(AllWithdrawalShareAllowancesResponse { allowances })
 }

@@ -1,22 +1,29 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Binary, Uint128};
 
+use cw20::{Expiration, Logo};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 
-pub use cw20::AllAllowancesResponse as AllWithdrawalShareAllowancesResponse;
-pub use cw20::AllowanceResponse as WithdrawalShareAllowanceResponse;
-pub use cw20::Expiration;
+pub use cw20;
+pub use cw20_base::msg::InstantiateMarketingInfo;
 pub use cw_ownable;
 
 #[cw_serde]
 pub struct Cw4626InstantiateMsg {
     pub owner: Option<Addr>,
     pub underlying_token_address: Addr,
+    pub share_name: String,
+    pub share_symbol: String,
+    pub share_decimals: u8,
+    pub share_marketing: Option<InstantiateMarketingInfo>,
 }
 
 #[cw_ownable_execute]
 #[cw_serde]
 pub enum Cw4626ExecuteMsg {
+    //
+    // CW4626
+    //
     /// Mints shares to receiver by depositing exact amount of underlying tokens
     Deposit { assets: Uint128, receiver: Addr },
     /// Mints exact shares to receiver by depositing amount of underlying tokens
@@ -33,43 +40,79 @@ pub enum Cw4626ExecuteMsg {
         receiver: Addr,
         owner: Addr,
     },
-    /// Connects the share token to the vault asserting its minter and decimals
-    /// which must be the same as the underlying asset
-    /// All functionality should be blocked until the share token is connected
-    ConnectShareToken { share_token_address: Addr },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Allows spender to access an additional amount tokens from the owner's (env.sender) account
-    /// If expires is Some(), overwrites current allowance expiration with this one
-    IncreaseWithdrawalShareAllowance {
-        spender: Addr,
+
+    //
+    // CW20
+    //
+    /// Transfer is a base message to move tokens to another account without triggering actions
+    Transfer { recipient: String, amount: Uint128 },
+    /// Burn is a base message to destroy tokens forever
+    Burn { amount: Uint128 },
+    /// Send is a base message to transfer tokens to a contract and trigger an action
+    /// on the receiving contract.
+    Send {
+        contract: String,
+        amount: Uint128,
+        msg: Binary,
+    },
+    /// Allows spender to access an additional amount tokens
+    /// from the owner's (env.sender) account. If expires is Some(), overwrites current allowance
+    /// expiration with this one.
+    IncreaseAllowance {
+        spender: String,
         amount: Uint128,
         expires: Option<Expiration>,
     },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Lowers the spender's access of tokens from the owner's (env.sender) account by amount
-    /// If expires is Some(), overwrites current allowance expiration with this one
-    DecreaseWithdrawalShareAllowance {
-        spender: Addr,
+    /// Lowers the spender's access of tokens
+    /// from the owner's (env.sender) account by amount. If expires is Some(), overwrites current
+    /// allowance expiration with this one.
+    DecreaseAllowance {
+        spender: String,
         amount: Uint128,
         expires: Option<Expiration>,
     },
+    /// Transfers amount tokens from owner -> recipient
+    /// if `env.sender` has sufficient pre-approval.
+    TransferFrom {
+        owner: String,
+        recipient: String,
+        amount: Uint128,
+    },
+    /// Sends amount tokens from owner -> contract
+    /// if `env.sender` has sufficient pre-approval.
+    SendFrom {
+        owner: String,
+        contract: String,
+        amount: Uint128,
+        msg: Binary,
+    },
+    /// Destroys tokens forever
+    BurnFrom { owner: String, amount: Uint128 },
+    /// If authorized, updates marketing metadata.
+    /// Setting None/null for any of these will leave it unchanged.
+    /// Setting Some("") will clear this field on the contract storage
+    UpdateMarketing {
+        /// A URL pointing to the project behind this token.
+        project: Option<String>,
+        /// A longer description of the token and it's utility. Designed for tooltips or such
+        description: Option<String>,
+        /// The address (if any) who can update this data structure
+        marketing: Option<String>,
+    },
+    /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
+    UploadLogo(Logo),
 }
 
 #[cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum Cw4626QueryMsg {
-    /// Since the share token is separated from the vault, added a getter to the share
-    /// Returns the address of the share cw20 token used for the Vault for accounting, depositing, and withdrawing
-    #[returns(ShareResponse)]
-    Share {},
+    //
+    // CW4626
+    //
     /// Returns the address of the underlying cw20 token used for the Vault for accounting, depositing, and withdrawing
     #[returns(AssetResponse)]
     Asset {},
-    /// Since the share token is separated from the vault, added a getter to the total shares
-    /// Returns the total amount of the share asset that is managed by Vault
-    #[returns(TotalSharesResponse)]
-    TotalShares {},
     /// Returns the total amount of the underlying asset that is managed by Vault
     #[returns(TotalAssetsResponse)]
     TotalAssets {},
@@ -112,33 +155,52 @@ pub enum Cw4626QueryMsg {
     /// given current on-chain conditions
     #[returns(PreviewRedeemResponse)]
     PreviewRedeem { shares: Uint128 },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Returns how much spender can use from owner account, 0 if unset
-    #[returns(WithdrawalShareAllowanceResponse)]
-    WithdrawalShareAllowance { owner: Addr, spender: Addr },
-    /// Share allowance used in delegated withdrawals which follows cw20 allowance implementation
-    /// Returns all allowances this owner has approved, supports pagination
-    #[returns(AllWithdrawalShareAllowancesResponse)]
-    AllWithdrawalShareAllowances {
-        owner: Addr,
-        start_after: Option<Addr>,
+
+    //
+    // CW20
+    //
+    /// Returns the current balance of the given address, 0 if unset.
+    #[returns(cw20::BalanceResponse)]
+    Balance { address: String },
+    /// Returns metadata on the contract - name, decimals, supply, etc.
+    #[returns(cw20::TokenInfoResponse)]
+    TokenInfo {},
+    /// Returns how much spender can use from owner account, 0 if unset.
+    #[returns(cw20::AllowanceResponse)]
+    Allowance { owner: String, spender: String },
+    /// Returns all allowances this owner has approved. Supports pagination.
+    #[returns(cw20::AllAllowancesResponse)]
+    AllAllowances {
+        owner: String,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
-}
-
-#[cw_serde]
-pub struct ShareResponse {
-    pub share_token_address: Addr,
+    /// Returns all allowances this spender has been granted. Supports pagination.
+    #[returns(cw20::AllSpenderAllowancesResponse)]
+    AllSpenderAllowances {
+        spender: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Returns all accounts that have balances. Supports pagination.
+    #[returns(cw20::AllAccountsResponse)]
+    AllAccounts {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Returns more metadata on the contract to display in the client:
+    /// - description, logo, project url, etc.
+    #[returns(cw20::MarketingInfoResponse)]
+    MarketingInfo {},
+    /// Downloads the embedded logo data (if stored on chain). Errors if no logo data is stored for this
+    /// contract.
+    #[returns(cw20::DownloadLogoResponse)]
+    DownloadLogo {},
 }
 
 #[cw_serde]
 pub struct AssetResponse {
     pub asset_token_address: Addr,
-}
-
-#[cw_serde]
-pub struct TotalSharesResponse {
-    pub total_managed_shares: Uint128,
 }
 
 #[cw_serde]

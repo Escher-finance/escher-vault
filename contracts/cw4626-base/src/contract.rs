@@ -3,28 +3,46 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
+use cw4626::cw20;
 
 use crate::error::ContractError;
 use crate::execute;
 use crate::helpers::{validate_cw20, validate_share_connected};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query;
-use crate::state::ASSET;
+use crate::state::{UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let cw20::TokenInfoResponse {
+        decimals: underlying_decimals,
+        ..
+    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
+    cw20_base::contract::instantiate(
+        deps.branch(),
+        env,
+        info,
+        cw20_base::msg::InstantiateMsg {
+            name: msg.share_name,
+            symbol: msg.share_symbol,
+            decimals: underlying_decimals,
+            initial_balances: vec![],
+            mint: None,
+            marketing: msg.share_marketing,
+        },
+    )?;
     cw_ownable::initialize_owner(
         deps.storage,
         deps.api,
         msg.owner.as_ref().map(|o| o.as_str()),
     )?;
-    validate_cw20(&deps.querier, &msg.underlying_token_address)?;
-    ASSET.save(deps.storage, &msg.underlying_token_address)?;
+    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
+    UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
     Ok(Response::new())
 }
 
@@ -35,51 +53,93 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    if !matches!(
-        msg,
-        ExecuteMsg::ConnectShareToken { .. } | ExecuteMsg::UpdateOwnership(_)
-    ) {
-        validate_share_connected(deps.storage)?;
-    }
-    let this = env.contract.address;
     let sender = info.sender.clone();
     match msg {
+        //
+        // CW4626
+        //
         ExecuteMsg::Deposit { assets, receiver } => {
-            execute::deposit(deps, this, sender, assets, receiver)
+            execute::deposit(deps, env, info, sender, assets, receiver)
         }
         ExecuteMsg::Mint { shares, receiver } => {
-            execute::mint(deps, this, sender, shares, receiver)
+            execute::mint(deps, env, info, sender, shares, receiver)
         }
         ExecuteMsg::Withdraw {
             assets,
             receiver,
             owner,
-        } => execute::withdraw(assets, receiver, owner),
+        } => execute::withdraw(deps, env, info, assets, receiver, owner),
         ExecuteMsg::Redeem {
             shares,
             receiver,
             owner,
-        } => execute::redeem(shares, receiver, owner),
-        ExecuteMsg::ConnectShareToken {
-            share_token_address,
-        } => execute::connect_share_token(deps, info, this, share_token_address),
+        } => execute::redeem(deps, env, info, shares, receiver, owner),
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }
-        ExecuteMsg::IncreaseWithdrawalShareAllowance {
+        //
+        // CW20
+        //
+        ExecuteMsg::Transfer { recipient, amount } => Ok(cw20_base::contract::execute_transfer(
+            deps, env, info, recipient, amount,
+        )?),
+        ExecuteMsg::Burn { amount } => {
+            Ok(cw20_base::contract::execute_burn(deps, env, info, amount)?)
+        }
+        ExecuteMsg::Send {
+            contract,
+            amount,
+            msg,
+        } => Ok(cw20_base::contract::execute_send(
+            deps, env, info, contract, amount, msg,
+        )?),
+        ExecuteMsg::IncreaseAllowance {
             spender,
             amount,
             expires,
-        } => execute::increase_withdrawal_share_allowance(
-            deps, env.block, sender, spender, amount, expires,
-        ),
-        ExecuteMsg::DecreaseWithdrawalShareAllowance {
+        } => Ok(cw20_base::allowances::execute_increase_allowance(
+            deps, env, info, spender, amount, expires,
+        )?),
+        ExecuteMsg::DecreaseAllowance {
             spender,
             amount,
             expires,
-        } => execute::decrease_withdrawal_share_allowance(
-            deps, env.block, sender, spender, amount, expires,
-        ),
+        } => Ok(cw20_base::allowances::execute_decrease_allowance(
+            deps, env, info, spender, amount, expires,
+        )?),
+        ExecuteMsg::TransferFrom {
+            owner,
+            recipient,
+            amount,
+        } => Ok(cw20_base::allowances::execute_transfer_from(
+            deps, env, info, owner, recipient, amount,
+        )?),
+        ExecuteMsg::BurnFrom { owner, amount } => Ok(cw20_base::allowances::execute_burn_from(
+            deps, env, info, owner, amount,
+        )?),
+        ExecuteMsg::SendFrom {
+            owner,
+            contract,
+            amount,
+            msg,
+        } => Ok(cw20_base::allowances::execute_send_from(
+            deps, env, info, owner, contract, amount, msg,
+        )?),
+        ExecuteMsg::UpdateMarketing {
+            project,
+            description,
+            marketing,
+        } => Ok(cw20_base::contract::execute_update_marketing(
+            deps,
+            env,
+            info,
+            project,
+            description,
+            marketing,
+        )?),
+        ExecuteMsg::UploadLogo(logo) => Ok(cw20_base::contract::execute_upload_logo(
+            deps, env, info, logo,
+        )?),
     }
 }
 
@@ -90,9 +150,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
     let this = env.contract.address;
     match msg {
-        QueryMsg::Share {} => to_json_binary(&query::share(deps.storage)?),
+        //
+        // CW4626
+        //
         QueryMsg::Asset {} => to_json_binary(&query::asset(deps.storage)?),
-        QueryMsg::TotalShares {} => to_json_binary(&query::total_shares(&this, &deps)?),
         QueryMsg::TotalAssets {} => to_json_binary(&query::total_assets(&this, &deps)?),
         QueryMsg::ConvertToShares { assets } => {
             to_json_binary(&query::convert_to_shares(&this, &deps, assets)?)
@@ -119,19 +180,45 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query::preview_redeem(&this, &deps, shares)?)
         }
         QueryMsg::Ownership {} => to_json_binary(&query::ownership(deps.storage)?),
-        QueryMsg::WithdrawalShareAllowance { owner, spender } => to_json_binary(
-            &query::withdrawal_share_allowance(deps.storage, &env.block, owner, spender)?,
+        //
+        // CW20
+        //
+        QueryMsg::Balance { address } => {
+            to_json_binary(&cw20_base::contract::query_balance(deps, address)?)
+        }
+        QueryMsg::TokenInfo {} => to_json_binary(&cw20_base::contract::query_token_info(deps)?),
+        QueryMsg::Allowance { owner, spender } => to_json_binary(
+            &cw20_base::allowances::query_allowance(deps, owner, spender)?,
         ),
-        QueryMsg::AllWithdrawalShareAllowances {
+        QueryMsg::AllAllowances {
             owner,
             start_after,
             limit,
-        } => to_json_binary(&query::all_withdrawal_share_allowances(
-            deps.storage,
+        } => to_json_binary(&cw20_base::enumerable::query_owner_allowances(
+            deps,
             owner,
             start_after,
             limit,
         )?),
+        QueryMsg::AllSpenderAllowances {
+            spender,
+            start_after,
+            limit,
+        } => to_json_binary(&cw20_base::enumerable::query_spender_allowances(
+            deps,
+            spender,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::AllAccounts { start_after, limit } => to_json_binary(
+            &cw20_base::enumerable::query_all_accounts(deps, start_after, limit)?,
+        ),
+        QueryMsg::MarketingInfo {} => {
+            to_json_binary(&cw20_base::contract::query_marketing_info(deps)?)
+        }
+        QueryMsg::DownloadLogo {} => {
+            to_json_binary(&cw20_base::contract::query_download_logo(deps)?)
+        }
     }
 }
 

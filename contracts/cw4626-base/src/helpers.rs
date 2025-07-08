@@ -1,11 +1,11 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, BlockInfo, Deps, DepsMut, QuerierWrapper, Response, StdError, StdResult,
-    Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError,
+    StdResult, Storage, Uint128, WasmMsg,
 };
-use cw4626::{Expiration, WithdrawalShareAllowanceResponse};
+use cw4626::cw20;
 
 use crate::{
-    state::{ASSET, SHARE, WITHDRAWAL_SHARE_ALLOWANCES},
+    state::{SHARE, UNDERLYING_ASSET},
     ContractError,
 };
 
@@ -53,9 +53,11 @@ pub struct Tokens {
 }
 
 pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
+    let share = this.clone();
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
+    let total_shares = cw20_base::state::TOKEN_INFO
+        .load(deps.storage)?
+        .total_supply;
     let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
     Ok(Tokens {
         share,
@@ -103,126 +105,157 @@ pub fn _convert_to_assets(
 
 /// Used internally in `deposit`/`mint` functionality
 pub fn _deposit(
-    deps: DepsMut,
-    this: Addr,
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     caller: Addr,
     receiver: Addr,
     assets: Uint128,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
-    let asset_transfer_msg = WasmMsg::Execute {
-        contract_addr: asset.to_string(),
-        msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
-            owner: caller.to_string(),
-            recipient: this.to_string(),
-            amount: assets,
-        })?,
-        funds: vec![],
-    };
-    let share_mint_msg = WasmMsg::Execute {
-        contract_addr: share.to_string(),
-        msg: to_json_binary(&cw20::Cw20ExecuteMsg::Mint {
-            recipient: receiver.to_string(),
-            amount: shares,
-        })?,
-        funds: vec![],
-    };
+    let this = env.contract.address.clone();
+    let transfer_response = cw20_base::allowances::execute_transfer_from(
+        deps.branch(),
+        env.clone(),
+        info.clone(),
+        caller.to_string(),
+        this.to_string(),
+        assets,
+    )?;
+    _mint(deps.branch(), receiver.to_string(), shares)?;
     Ok(Response::new()
-        .add_message(asset_transfer_msg)
-        .add_message(share_mint_msg)
+        .add_submessages(transfer_response.messages)
         .add_attribute("action", "deposit")
-        .add_attribute("share", share.to_string())
-        .add_attribute("asset", asset.to_string())
-        .add_attribute("depositor", caller.to_string())
-        .add_attribute("receiver", receiver.to_string())
-        .add_attribute("assets_transferred", assets.to_string())
-        .add_attribute("shares_minted", shares.to_string()))
+        .add_attribute("depositor", caller)
+        .add_attribute("receiver", receiver)
+        .add_attribute("assets_transferred", assets)
+        .add_attribute("shares_minted", shares))
 }
 
 /// Used internally in `withdraw`/`redeem` functionality
 pub fn _withdraw(
-    mut deps: DepsMut,
-    block: BlockInfo,
-    // this: Addr,
+    deps: DepsMut,
+    env: Env,
     caller: Addr,
-    // receiver: Addr,
+    receiver: Addr,
     owner: Addr,
-    // assets: Uint128,
+    assets: Uint128,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
     if caller != owner {
-        _spend_allowance(deps.branch(), block, owner, caller.clone(), shares)?;
+        _decrease_allowance(
+            deps.storage,
+            env.clone(),
+            owner.clone(),
+            caller.clone(),
+            shares,
+            None,
+        )?;
     }
-    todo!()
-}
-
-#[derive(Debug)]
-pub enum AllowanceOperation {
-    Increase,
-    Decrease,
-}
-
-/// Used internally to update withdrawal share allowance state
-/// Returns updated WithdrawalShareAllowanceResponse
-pub fn _update_withdrawal_share_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
-    owner: Addr,
-    spender: Addr,
-    amount: Uint128,
-    operation: AllowanceOperation,
-    expires: Option<Expiration>,
-) -> Result<WithdrawalShareAllowanceResponse, ContractError> {
-    if spender == owner {
-        return Err(ContractError::CannotSetWithdrawalShareAllowanceToOwnAccount {});
-    }
-    let key = (&owner, &spender);
-    let mut allowance_response = WITHDRAWAL_SHARE_ALLOWANCES
-        .may_load(deps.storage, key)?
-        .unwrap_or_default();
-    allowance_response.allowance = match operation {
-        AllowanceOperation::Increase => allowance_response.allowance.saturating_add(amount),
-        AllowanceOperation::Decrease => allowance_response.allowance.saturating_sub(amount),
+    _burn(deps, owner, shares)?;
+    let transfer_msg = WasmMsg::Execute {
+        contract_addr: asset.to_string(),
+        msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
+            recipient: receiver.to_string(),
+            amount: assets,
+        })?,
+        funds: vec![],
     };
-    if allowance_response.allowance.is_zero() {
-        WITHDRAWAL_SHARE_ALLOWANCES.remove(deps.storage, key);
-    } else {
-        if let Some(expires) = expires {
-            if expires.is_expired(&block) {
-                return Err(ContractError::InvalidWithdrawalShareAllowanceExpiration {});
-            }
-            allowance_response.expires = expires;
-        }
-        WITHDRAWAL_SHARE_ALLOWANCES.save(deps.storage, key, &allowance_response)?;
-    }
-    Ok(allowance_response)
+    Ok(Response::new()
+        .add_message(transfer_msg)
+        .add_attribute("action", "withdraw")
+        .add_attribute("withdrawer", caller)
+        .add_attribute("receiver", receiver)
+        .add_attribute("assets_received", assets)
+        .add_attribute("shares_burned", shares))
 }
 
-/// Used internally to spend allowance, validating whether there's enough to spend
-pub fn _spend_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
+// Internal unchecked `decrease_allowance`
+pub fn _decrease_allowance(
+    storage: &mut dyn Storage,
+    env: Env,
     owner: Addr,
     spender: Addr,
     amount: Uint128,
+    expires: Option<cw20::Expiration>,
 ) -> Result<(), ContractError> {
+    if spender == owner {
+        return Err(ContractError::ShareCw20Error(
+            cw20_base::ContractError::CannotSetOwnAccount {},
+        ));
+    }
+
     let key = (&owner, &spender);
-    let mut allowance_response = WITHDRAWAL_SHARE_ALLOWANCES
-        .may_load(deps.storage, key)?
-        .unwrap_or_default();
-    if amount > allowance_response.allowance {
-        return Err(ContractError::InsufficientWithdrawalShareAllowance {});
+
+    fn reverse<'a>(t: (&'a Addr, &'a Addr)) -> (&'a Addr, &'a Addr) {
+        (t.1, t.0)
     }
-    if allowance_response.expires.is_expired(&block) {
-        return Err(ContractError::ExpiredWithdrawalShareAllowance {});
-    }
-    allowance_response.allowance -= amount;
-    if allowance_response.allowance.is_zero() {
-        WITHDRAWAL_SHARE_ALLOWANCES.remove(deps.storage, key);
+
+    // load value and delete if it hits 0, or update otherwise
+    let mut allowance = cw20_base::state::ALLOWANCES.load(storage, key)?;
+    if amount < allowance.allowance {
+        // update the new amount
+        allowance.allowance = allowance
+            .allowance
+            .checked_sub(amount)
+            .map_err(StdError::overflow)?;
+        if let Some(exp) = expires {
+            if exp.is_expired(&env.block) {
+                return Err(ContractError::ShareCw20Error(
+                    cw20_base::ContractError::InvalidExpiration {},
+                ));
+            }
+            allowance.expires = exp;
+        }
+        cw20_base::state::ALLOWANCES.save(storage, key, &allowance)?;
+        cw20_base::state::ALLOWANCES_SPENDER.save(storage, reverse(key), &allowance)?;
     } else {
-        WITHDRAWAL_SHARE_ALLOWANCES.save(deps.storage, key, &allowance_response)?;
+        cw20_base::state::ALLOWANCES.remove(storage, key);
+        cw20_base::state::ALLOWANCES_SPENDER.remove(storage, reverse(key));
     }
+    Ok(())
+}
+
+// Internal unchecked `mint`
+pub fn _mint(deps: DepsMut, recipient: String, amount: Uint128) -> Result<(), ContractError> {
+    let mut config = cw20_base::state::TOKEN_INFO.load(deps.storage)?;
+
+    // update supply and enforce cap
+    config.total_supply += amount;
+    if let Some(limit) = config.get_cap() {
+        if config.total_supply > limit {
+            return Err(ContractError::ShareCw20Error(
+                cw20_base::ContractError::CannotExceedCap {},
+            ));
+        }
+    }
+    cw20_base::state::TOKEN_INFO.save(deps.storage, &config)?;
+
+    // add amount to recipient balance
+    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    cw20_base::state::BALANCES.update(
+        deps.storage,
+        &rcpt_addr,
+        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
+    )?;
+    Ok(())
+}
+
+// Internal unchecked `burn`
+pub fn _burn(deps: DepsMut, user: Addr, amount: Uint128) -> Result<(), ContractError> {
+    // lower balance
+    cw20_base::state::BALANCES.update(
+        deps.storage,
+        &user,
+        |balance: Option<Uint128>| -> StdResult<_> {
+            Ok(balance.unwrap_or_default().checked_sub(amount)?)
+        },
+    )?;
+    // reduce total_supply
+    cw20_base::state::TOKEN_INFO.update(deps.storage, |mut info| -> StdResult<_> {
+        info.total_supply = info.total_supply.checked_sub(amount)?;
+        Ok(info)
+    })?;
     Ok(())
 }

@@ -1,18 +1,18 @@
-use cosmwasm_std::{Addr, BlockInfo, DepsMut, MessageInfo, Response, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, MessageInfo, Response, Uint128};
 use cw4626::{
-    Expiration, MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse,
+    MaxDepositResponse, MaxMintResponse, MaxRedeemResponse, MaxWithdrawResponse,
+    PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse, PreviewWithdrawResponse,
 };
 
 use crate::{
-    helpers::{_deposit, _update_withdrawal_share_allowance, validate_cw20, AllowanceOperation},
-    query,
-    state::{ASSET, SHARE},
-    ContractError,
+    helpers::{_deposit, _withdraw},
+    query, ContractError,
 };
 
 pub fn deposit(
     deps: DepsMut,
-    this: Addr,
+    env: Env,
+    info: MessageInfo,
     sender: Addr,
     assets: Uint128,
     receiver: Addr,
@@ -25,14 +25,15 @@ pub fn deposit(
             max_assets: max_assets.u128(),
         });
     }
-    let PreviewDepositResponse { shares } = query::preview_deposit(&this, &deps.as_ref(), assets)?;
-    let response = _deposit(deps, this, sender, receiver, assets, shares)?;
-    Ok(response)
+    let PreviewDepositResponse { shares } =
+        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+    _deposit(deps, env, info, sender, receiver, assets, shares)
 }
 
 pub fn mint(
     deps: DepsMut,
-    this: Addr,
+    env: Env,
+    info: MessageInfo,
     sender: Addr,
     shares: Uint128,
     receiver: Addr,
@@ -46,47 +47,53 @@ pub fn mint(
             max_shares: max_shares.u128(),
         });
     }
-    let PreviewMintResponse { assets } = query::preview_mint(&this, &deps_ref, shares)?;
-    let response = _deposit(deps, this, sender, receiver, assets, shares)?;
-    Ok(response)
+    let PreviewMintResponse { assets } =
+        query::preview_mint(&env.contract.address, &deps_ref, shares)?;
+    _deposit(deps, env, info, sender, receiver, assets, shares)
 }
 
 pub fn withdraw(
-    _assets: Uint128,
-    _receiver: Addr,
-    _owner: Addr,
-) -> Result<Response, ContractError> {
-    todo!()
-}
-
-pub fn redeem(_shares: Uint128, _receiver: Addr, _owner: Addr) -> Result<Response, ContractError> {
-    todo!()
-}
-
-pub fn connect_share_token(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    this: Addr,
-    share_token_address: Addr,
+    assets: Uint128,
+    receiver: Addr,
+    owner: Addr,
 ) -> Result<Response, ContractError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-    let asset = ASSET.load(deps.storage)?;
-    let asset_info = validate_cw20(&deps.querier, &asset)?;
-    let share_info = validate_cw20(&deps.querier, &share_token_address)?;
-    if asset_info.decimals != share_info.decimals {
-        return Err(ContractError::DecimalsMismatch {});
+    let this = env.contract.address.clone();
+    let MaxWithdrawResponse { max_assets } =
+        query::max_withdraw(&this, &deps.as_ref(), owner.clone())?;
+    if assets > max_assets {
+        return Err(ContractError::ExceededMaxWithdraw {
+            owner: owner.to_string(),
+            assets: assets.u128(),
+            max_assets: max_assets.u128(),
+        });
     }
-    let cw20::MinterResponse { minter, cap } = deps
-        .querier
-        .query_wasm_smart(&share_token_address, &cw20::Cw20QueryMsg::Minter {})?;
-    if minter != this.to_string() {
-        return Err(ContractError::InvalidSharesMinter {});
+    let PreviewWithdrawResponse { shares } =
+        query::preview_withdraw(&this, &deps.as_ref(), assets)?;
+    _withdraw(deps, env, info.sender, receiver, owner, assets, shares)
+}
+
+pub fn redeem(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    shares: Uint128,
+    receiver: Addr,
+    owner: Addr,
+) -> Result<Response, ContractError> {
+    let MaxRedeemResponse { max_shares } = query::max_redeem(&deps.as_ref(), owner.clone())?;
+    if shares > max_shares {
+        return Err(ContractError::ExceededMaxRedeem {
+            owner: owner.to_string(),
+            shares: shares.u128(),
+            max_shares: max_shares.u128(),
+        });
     }
-    if cap == Some(Uint128::zero()) {
-        return Err(ContractError::SharesMinterCapTooSmall {});
-    }
-    SHARE.save(deps.storage, &share_token_address)?;
-    Ok(Response::new())
+    let PreviewRedeemResponse { assets } =
+        query::preview_redeem(&env.contract.address, &deps.as_ref(), shares)?;
+    _withdraw(deps, env, info.sender, receiver, owner, assets, shares)
 }
 
 pub fn update_ownership(
@@ -97,52 +104,4 @@ pub fn update_ownership(
 ) -> Result<Response, ContractError> {
     cw_ownable::update_ownership(deps, &block, &new_owner, action)?;
     Ok(Response::new())
-}
-
-pub fn increase_withdrawal_share_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
-    sender: Addr,
-    spender: Addr,
-    amount: Uint128,
-    expires: Option<Expiration>,
-) -> Result<Response, ContractError> {
-    let _ = _update_withdrawal_share_allowance(
-        deps,
-        block,
-        sender.clone(),
-        spender.clone(),
-        amount,
-        AllowanceOperation::Increase,
-        expires,
-    )?;
-    Ok(Response::new()
-        .add_attribute("action", "increase_withdrawal_share_allowance")
-        .add_attribute("owner", sender)
-        .add_attribute("spender", spender)
-        .add_attribute("amount", amount))
-}
-
-pub fn decrease_withdrawal_share_allowance(
-    deps: DepsMut,
-    block: BlockInfo,
-    sender: Addr,
-    spender: Addr,
-    amount: Uint128,
-    expires: Option<Expiration>,
-) -> Result<Response, ContractError> {
-    let _ = _update_withdrawal_share_allowance(
-        deps,
-        block,
-        sender.clone(),
-        spender.clone(),
-        amount,
-        AllowanceOperation::Decrease,
-        expires,
-    )?;
-    Ok(Response::new()
-        .add_attribute("action", "decrease_withdrawal_share_allowance")
-        .add_attribute("owner", sender)
-        .add_attribute("spender", spender)
-        .add_attribute("amount", amount))
 }
