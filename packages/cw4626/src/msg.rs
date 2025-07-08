@@ -88,10 +88,6 @@ pub enum Cw4626ExecuteMsg {
     },
     /// Destroys tokens forever
     BurnFrom { owner: String, amount: Uint128 },
-    /// The current minter may set
-    /// a new minter. Setting the minter to None will remove the
-    /// token's minter forever.
-    UpdateMinter { new_minter: Option<String> },
     /// If authorized, updates marketing metadata.
     /// Setting None/null for any of these will leave it unchanged.
     /// Setting Some("") will clear this field on the contract storage
