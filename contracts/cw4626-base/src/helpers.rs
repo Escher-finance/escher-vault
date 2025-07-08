@@ -240,3 +240,21 @@ pub fn _mint(deps: DepsMut, recipient: String, amount: Uint128) -> Result<(), Co
     )?;
     Ok(())
 }
+
+// Internal unchecked `burn`
+pub fn _burn(deps: DepsMut, user: Addr, amount: Uint128) -> Result<(), ContractError> {
+    // lower balance
+    cw20_base::state::BALANCES.update(
+        deps.storage,
+        &user,
+        |balance: Option<Uint128>| -> StdResult<_> {
+            Ok(balance.unwrap_or_default().checked_sub(amount)?)
+        },
+    )?;
+    // reduce total_supply
+    cw20_base::state::TOKEN_INFO.update(deps.storage, |mut info| -> StdResult<_> {
+        info.total_supply = info.total_supply.checked_sub(amount)?;
+        Ok(info)
+    })?;
+    Ok(())
+}
