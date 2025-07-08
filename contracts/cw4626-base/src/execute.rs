@@ -27,8 +27,7 @@ pub fn deposit(
     }
     let PreviewDepositResponse { shares } =
         query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
-    let response = _deposit(deps, env, info, sender, receiver, assets, shares)?;
-    Ok(response)
+    _deposit(deps, env, info, sender, receiver, assets, shares)
 }
 
 pub fn mint(
@@ -50,8 +49,7 @@ pub fn mint(
     }
     let PreviewMintResponse { assets } =
         query::preview_mint(&env.contract.address, &deps_ref, shares)?;
-    let response = _deposit(deps, env, info, sender, receiver, assets, shares)?;
-    Ok(response)
+    _deposit(deps, env, info, sender, receiver, assets, shares)
 }
 
 pub fn withdraw(
@@ -74,8 +72,7 @@ pub fn withdraw(
     }
     let PreviewWithdrawResponse { shares } =
         query::preview_withdraw(&this, &deps.as_ref(), assets)?;
-    let response = _withdraw(deps, env, info.sender, receiver, owner, assets, shares)?;
-    Ok(response)
+    _withdraw(deps, env, info.sender, receiver, owner, assets, shares)
 }
 
 pub fn redeem(
@@ -96,8 +93,7 @@ pub fn redeem(
     }
     let PreviewRedeemResponse { assets } =
         query::preview_redeem(&env.contract.address, &deps.as_ref(), shares)?;
-    let response = _withdraw(deps, env, info.sender, receiver, owner, assets, shares)?;
-    Ok(response)
+    _withdraw(deps, env, info.sender, receiver, owner, assets, shares)
 }
 
 pub fn update_ownership(
