@@ -1,7 +1,13 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, MessageInfo, Response, Uint128};
-use cw4626::{MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse};
+use cw4626::{
+    MaxDepositResponse, MaxMintResponse, MaxWithdrawResponse, PreviewDepositResponse,
+    PreviewMintResponse, PreviewWithdrawResponse,
+};
 
-use crate::{helpers::_deposit, query, ContractError};
+use crate::{
+    helpers::{_deposit, _withdraw},
+    query, ContractError,
+};
 
 pub fn deposit(
     deps: DepsMut,
@@ -49,11 +55,27 @@ pub fn mint(
 }
 
 pub fn withdraw(
-    _assets: Uint128,
-    _receiver: Addr,
-    _owner: Addr,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    assets: Uint128,
+    receiver: Addr,
+    owner: Addr,
 ) -> Result<Response, ContractError> {
-    todo!()
+    let this = env.contract.address.clone();
+    let MaxWithdrawResponse { max_assets } =
+        query::max_withdraw(&this, &deps.as_ref(), owner.clone())?;
+    if assets > max_assets {
+        return Err(ContractError::ExceededMaxWithdraw {
+            receiver: receiver.to_string(),
+            assets: assets.u128(),
+            max_assets: max_assets.u128(),
+        });
+    }
+    let PreviewWithdrawResponse { shares } =
+        query::preview_withdraw(&this, &deps.as_ref(), assets)?;
+    let response = _withdraw(deps, env, info.sender, receiver, owner, assets, shares)?;
+    Ok(response)
 }
 
 pub fn redeem(_shares: Uint128, _receiver: Addr, _owner: Addr) -> Result<Response, ContractError> {

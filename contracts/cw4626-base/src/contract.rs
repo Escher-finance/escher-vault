@@ -68,7 +68,7 @@ pub fn execute(
             assets,
             receiver,
             owner,
-        } => execute::withdraw(assets, receiver, owner),
+        } => execute::withdraw(deps, env, info, assets, receiver, owner),
         ExecuteMsg::Redeem {
             shares,
             receiver,
