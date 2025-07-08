@@ -17,9 +17,6 @@ pub enum ContractError {
     #[error("{addr} is not a cw20")]
     InvalidCw20 { addr: String },
 
-    #[error("Share and asset must have the same decimals")]
-    DecimalsMismatch {},
-
     #[error("Share must have this contract as the minter")]
     InvalidSharesMinter {},
 

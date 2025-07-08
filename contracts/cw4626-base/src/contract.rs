@@ -19,6 +19,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    let cw20::TokenInfoResponse {
+        decimals: underlying_decimals,
+        ..
+    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -26,7 +30,7 @@ pub fn instantiate(
         cw20_base::msg::InstantiateMsg {
             name: msg.share_name,
             symbol: msg.share_symbol,
-            decimals: msg.share_decimals,
+            decimals: underlying_decimals,
             initial_balances: vec![],
             mint: None,
             marketing: msg.share_marketing,
@@ -37,10 +41,6 @@ pub fn instantiate(
         deps.api,
         msg.owner.as_ref().map(|o| o.as_str()),
     )?;
-    let cw20::TokenInfoResponse {
-        decimals: underlying_decimals,
-        ..
-    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
     UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
     Ok(Response::new())
