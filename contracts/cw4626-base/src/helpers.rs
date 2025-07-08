@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use cw4626::cw20;
 
 use crate::{
-    state::{ASSET, SHARE},
+    state::{SHARE, UNDERLYING_ASSET},
     ContractError,
 };
 
@@ -54,7 +54,7 @@ pub struct Tokens {
 
 pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
     let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
     let total_shares = query_cw20_balance(&deps.querier, &share, this)?;
     let total_assets = query_cw20_balance(&deps.querier, &asset, this)?;
     Ok(Tokens {
@@ -111,7 +111,7 @@ pub fn _deposit(
     shares: Uint128,
 ) -> Result<Response, ContractError> {
     let share = SHARE.load(deps.storage)?;
-    let asset = ASSET.load(deps.storage)?;
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
     let asset_transfer_msg = WasmMsg::Execute {
         contract_addr: asset.to_string(),
         msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {

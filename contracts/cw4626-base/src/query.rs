@@ -2,21 +2,21 @@ use crate::{
     helpers::{
         _convert_to_shares, query_cw20_balance, Rounding, Tokens, _convert_to_assets, get_tokens,
     },
-    state::{ASSET, SHARE},
+    state::{SHARE, UNDERLYING_ASSET},
 };
 
 use cosmwasm_std::{Addr, Deps, StdResult, Storage, Uint128};
 use cw4626::*;
 
 pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
-    let asset = ASSET.load(storage)?;
+    let asset = UNDERLYING_ASSET.load(storage)?;
     Ok(AssetResponse {
         asset_token_address: asset,
     })
 }
 
 pub fn total_assets(this: &Addr, deps: &Deps) -> StdResult<TotalAssetsResponse> {
-    let asset = ASSET.load(deps.storage)?;
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
     let balance = query_cw20_balance(&deps.querier, &asset, this)?;
     Ok(TotalAssetsResponse {
         total_managed_assets: balance,

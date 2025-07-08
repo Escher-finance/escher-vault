@@ -3,28 +3,46 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
+use cw4626::cw20;
 
 use crate::error::ContractError;
 use crate::execute;
 use crate::helpers::{validate_cw20, validate_share_connected};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query;
-use crate::state::ASSET;
+use crate::state::{UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    cw20_base::contract::instantiate(
+        deps.branch(),
+        env,
+        info,
+        cw20_base::msg::InstantiateMsg {
+            name: msg.share_name,
+            symbol: msg.share_symbol,
+            decimals: msg.share_decimals,
+            initial_balances: vec![],
+            mint: None,
+            marketing: msg.share_marketing,
+        },
+    )?;
     cw_ownable::initialize_owner(
         deps.storage,
         deps.api,
         msg.owner.as_ref().map(|o| o.as_str()),
     )?;
-    validate_cw20(&deps.querier, &msg.underlying_token_address)?;
-    ASSET.save(deps.storage, &msg.underlying_token_address)?;
+    let cw20::TokenInfoResponse {
+        decimals: underlying_decimals,
+        ..
+    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
+    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
+    UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
     Ok(Response::new())
 }
 
