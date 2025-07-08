@@ -53,17 +53,16 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let this = env.contract.address.clone();
     let sender = info.sender.clone();
     match msg {
         //
         // CW4626
         //
         ExecuteMsg::Deposit { assets, receiver } => {
-            execute::deposit(deps, this, sender, assets, receiver)
+            execute::deposit(deps, env, info, sender, assets, receiver)
         }
         ExecuteMsg::Mint { shares, receiver } => {
-            execute::mint(deps, this, sender, shares, receiver)
+            execute::mint(deps, env, info, sender, shares, receiver)
         }
         ExecuteMsg::Withdraw {
             assets,

@@ -1,11 +1,12 @@
-use cosmwasm_std::{Addr, BlockInfo, DepsMut, Response, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, MessageInfo, Response, Uint128};
 use cw4626::{MaxDepositResponse, MaxMintResponse, PreviewDepositResponse, PreviewMintResponse};
 
 use crate::{helpers::_deposit, query, ContractError};
 
 pub fn deposit(
     deps: DepsMut,
-    this: Addr,
+    env: Env,
+    info: MessageInfo,
     sender: Addr,
     assets: Uint128,
     receiver: Addr,
@@ -18,14 +19,16 @@ pub fn deposit(
             max_assets: max_assets.u128(),
         });
     }
-    let PreviewDepositResponse { shares } = query::preview_deposit(&this, &deps.as_ref(), assets)?;
-    let response = _deposit(deps, this, sender, receiver, assets, shares)?;
+    let PreviewDepositResponse { shares } =
+        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+    let response = _deposit(deps, env, info, sender, receiver, assets, shares)?;
     Ok(response)
 }
 
 pub fn mint(
     deps: DepsMut,
-    this: Addr,
+    env: Env,
+    info: MessageInfo,
     sender: Addr,
     shares: Uint128,
     receiver: Addr,
@@ -39,8 +42,9 @@ pub fn mint(
             max_shares: max_shares.u128(),
         });
     }
-    let PreviewMintResponse { assets } = query::preview_mint(&this, &deps_ref, shares)?;
-    let response = _deposit(deps, this, sender, receiver, assets, shares)?;
+    let PreviewMintResponse { assets } =
+        query::preview_mint(&env.contract.address, &deps_ref, shares)?;
+    let response = _deposit(deps, env, info, sender, receiver, assets, shares)?;
     Ok(response)
 }
 
