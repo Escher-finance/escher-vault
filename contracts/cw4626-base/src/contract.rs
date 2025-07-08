@@ -73,7 +73,7 @@ pub fn execute(
             shares,
             receiver,
             owner,
-        } => execute::redeem(shares, receiver, owner),
+        } => execute::redeem(deps, env, info, shares, receiver, owner),
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }

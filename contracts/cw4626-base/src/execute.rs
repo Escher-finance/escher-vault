@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, MessageInfo, Response, Uint128};
 use cw4626::{
-    MaxDepositResponse, MaxMintResponse, MaxWithdrawResponse, PreviewDepositResponse,
-    PreviewMintResponse, PreviewWithdrawResponse,
+    MaxDepositResponse, MaxMintResponse, MaxRedeemResponse, MaxWithdrawResponse,
+    PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse, PreviewWithdrawResponse,
 };
 
 use crate::{
@@ -67,7 +67,7 @@ pub fn withdraw(
         query::max_withdraw(&this, &deps.as_ref(), owner.clone())?;
     if assets > max_assets {
         return Err(ContractError::ExceededMaxWithdraw {
-            receiver: receiver.to_string(),
+            owner: owner.to_string(),
             assets: assets.u128(),
             max_assets: max_assets.u128(),
         });
@@ -78,8 +78,26 @@ pub fn withdraw(
     Ok(response)
 }
 
-pub fn redeem(_shares: Uint128, _receiver: Addr, _owner: Addr) -> Result<Response, ContractError> {
-    todo!()
+pub fn redeem(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    shares: Uint128,
+    receiver: Addr,
+    owner: Addr,
+) -> Result<Response, ContractError> {
+    let MaxRedeemResponse { max_shares } = query::max_redeem(&deps.as_ref(), owner.clone())?;
+    if shares > max_shares {
+        return Err(ContractError::ExceededMaxRedeem {
+            owner: owner.to_string(),
+            shares: shares.u128(),
+            max_shares: max_shares.u128(),
+        });
+    }
+    let PreviewRedeemResponse { assets } =
+        query::preview_redeem(&env.contract.address, &deps.as_ref(), shares)?;
+    let response = _withdraw(deps, env, info.sender, receiver, owner, assets, shares)?;
+    Ok(response)
 }
 
 pub fn update_ownership(

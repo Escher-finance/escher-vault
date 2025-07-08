@@ -40,11 +40,18 @@ pub enum ContractError {
         max_shares: u128,
     },
 
-    #[error("{receiver} withdraw of {assets} assets exceeds the max {max_assets}")]
+    #[error("{owner} withdraw of {assets} assets exceeds the max {max_assets}")]
     ExceededMaxWithdraw {
-        receiver: String,
+        owner: String,
         assets: u128,
         max_assets: u128,
+    },
+
+    #[error("{owner} withdraw of {shares} shares exceeds the max {max_shares}")]
+    ExceededMaxRedeem {
+        owner: String,
+        shares: u128,
+        max_shares: u128,
     },
 
     #[error("Cannot set withdrawal share allowance to own account")]
