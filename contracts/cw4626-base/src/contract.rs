@@ -53,7 +53,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    let this = env.contract.address;
+    let this = env.contract.address.clone();
     let sender = info.sender.clone();
     match msg {
         ExecuteMsg::Deposit { assets, receiver } => {
@@ -75,7 +75,66 @@ pub fn execute(
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }
-        _ => todo!(),
+        ExecuteMsg::Transfer { recipient, amount } => Ok(cw20_base::contract::execute_transfer(
+            deps, env, info, recipient, amount,
+        )?),
+        ExecuteMsg::Burn { amount } => {
+            Ok(cw20_base::contract::execute_burn(deps, env, info, amount)?)
+        }
+        ExecuteMsg::Send {
+            contract,
+            amount,
+            msg,
+        } => Ok(cw20_base::contract::execute_send(
+            deps, env, info, contract, amount, msg,
+        )?),
+        ExecuteMsg::IncreaseAllowance {
+            spender,
+            amount,
+            expires,
+        } => Ok(cw20_base::allowances::execute_increase_allowance(
+            deps, env, info, spender, amount, expires,
+        )?),
+        ExecuteMsg::DecreaseAllowance {
+            spender,
+            amount,
+            expires,
+        } => Ok(cw20_base::allowances::execute_decrease_allowance(
+            deps, env, info, spender, amount, expires,
+        )?),
+        ExecuteMsg::TransferFrom {
+            owner,
+            recipient,
+            amount,
+        } => Ok(cw20_base::allowances::execute_transfer_from(
+            deps, env, info, owner, recipient, amount,
+        )?),
+        ExecuteMsg::BurnFrom { owner, amount } => Ok(cw20_base::allowances::execute_burn_from(
+            deps, env, info, owner, amount,
+        )?),
+        ExecuteMsg::SendFrom {
+            owner,
+            contract,
+            amount,
+            msg,
+        } => Ok(cw20_base::allowances::execute_send_from(
+            deps, env, info, owner, contract, amount, msg,
+        )?),
+        ExecuteMsg::UpdateMarketing {
+            project,
+            description,
+            marketing,
+        } => Ok(cw20_base::contract::execute_update_marketing(
+            deps,
+            env,
+            info,
+            project,
+            description,
+            marketing,
+        )?),
+        ExecuteMsg::UploadLogo(logo) => Ok(cw20_base::contract::execute_upload_logo(
+            deps, env, info, logo,
+        )?),
     }
 }
 

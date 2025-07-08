@@ -140,9 +140,3 @@ pub fn _deposit(
         .add_attribute("assets_transferred", assets.to_string())
         .add_attribute("shares_minted", shares.to_string()))
 }
-
-#[derive(Debug)]
-pub enum AllowanceOperation {
-    Increase,
-    Decrease,
-}
