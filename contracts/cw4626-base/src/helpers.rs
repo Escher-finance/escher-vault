@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    Addr, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage,
-    Uint128,
+    to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError,
+    StdResult, Storage, Uint128, WasmMsg,
 };
 use cw4626::cw20;
 
@@ -134,40 +134,41 @@ pub fn _deposit(
 
 /// Used internally in `withdraw`/`redeem` functionality
 pub fn _withdraw(
-    mut _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _caller: Addr,
-    _receiver: Addr,
-    _owner: Addr,
-    _assets: Uint128,
-    _shares: Uint128,
+    deps: DepsMut,
+    env: Env,
+    caller: Addr,
+    receiver: Addr,
+    owner: Addr,
+    assets: Uint128,
+    shares: Uint128,
 ) -> Result<Response, ContractError> {
-    // if caller != owner {
-    //     _decrease_allowance(deps.storage, env.clone(), owner, caller, shares, None)?;
-    // }
-    todo!()
-    // let this = env.contract.address.clone();
-    // let transfer_response = cw20_base::allowances::execute_transfer_from(
-    //     deps.branch(),
-    //     env.clone(),
-    //     info.clone(),
-    //     caller.to_string(),
-    //     this.to_string(),
-    //     assets,
-    // )?;
-    // let mint_response =
-    //     cw20_base::contract::execute_mint(deps.branch(), env, info, receiver.to_string(), shares)?;
-    // Ok(Response::new()
-    //     .add_submessages(transfer_response.messages)
-    //     .add_events(transfer_response.events)
-    //     .add_submessages(mint_response.messages)
-    //     .add_events(mint_response.events)
-    //     .add_attribute("action", "deposit")
-    //     .add_attribute("depositor", caller)
-    //     .add_attribute("receiver", receiver)
-    //     .add_attribute("assets_transferred", assets)
-    //     .add_attribute("shares_minted", shares))
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
+    if caller != owner {
+        _decrease_allowance(
+            deps.storage,
+            env.clone(),
+            owner.clone(),
+            caller.clone(),
+            shares,
+            None,
+        )?;
+    }
+    _burn(deps, owner, shares)?;
+    let transfer_msg = WasmMsg::Execute {
+        contract_addr: asset.to_string(),
+        msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
+            recipient: receiver.to_string(),
+            amount: assets,
+        })?,
+        funds: vec![],
+    };
+    Ok(Response::new()
+        .add_message(transfer_msg)
+        .add_attribute("action", "withdraw")
+        .add_attribute("withdrawer", caller)
+        .add_attribute("receiver", receiver)
+        .add_attribute("assets_received", assets)
+        .add_attribute("shares_burned", shares))
 }
 
 // Internal unchecked `decrease_allowance`
