@@ -214,5 +214,19 @@ mod tests {
             1000,
             "initial preview deposit must be 1:1"
         );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<PreviewMintResponse>(
+                    &vault,
+                    &QueryMsg::PreviewMint {
+                        shares: 1000_u128.into()
+                    }
+                )
+                .unwrap()
+                .assets
+                .u128(),
+            1000,
+            "initial preview mint must be 1:1"
+        );
     }
 }
