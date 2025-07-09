@@ -257,4 +257,58 @@ mod tests {
             "initial preview redeem must be 1:1"
         );
     }
+
+    #[test]
+    fn can_transfer_ownership() {
+        let mut app = get_app();
+        let asset = instantitate_asset(&mut app);
+        let vault = proper_instantiate(&mut app, asset.clone());
+        let api = app.api();
+        let user = addr(api, USER);
+        let admin = addr(api, ADMIN);
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<cw_ownable::Ownership<Addr>>(&vault, &QueryMsg::Ownership {})
+                .unwrap()
+                .owner
+                .unwrap(),
+            admin,
+            "initial owner must be admin"
+        );
+        app.execute_contract(
+            admin.clone(),
+            vault.clone(),
+            &ExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+                new_owner: user.to_string(),
+                expiry: None,
+            }),
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<cw_ownable::Ownership<Addr>>(&vault, &QueryMsg::Ownership {})
+                .unwrap()
+                .owner
+                .unwrap(),
+            admin,
+            "owner must still be admin after transfer request"
+        );
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::UpdateOwnership(cw_ownable::Action::AcceptOwnership {}),
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<cw_ownable::Ownership<Addr>>(&vault, &QueryMsg::Ownership {})
+                .unwrap()
+                .owner
+                .unwrap(),
+            user,
+            "owner must be user after accepting the transfer request"
+        );
+    }
 }
