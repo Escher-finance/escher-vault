@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError,
-    StdResult, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, Deps, DepsMut, Env, QuerierWrapper, Response, StdError, StdResult,
+    Storage, Uint128, WasmMsg,
 };
 use cw4626::cw20;
 
@@ -97,24 +97,25 @@ pub fn _convert_to_assets(
 pub fn _deposit(
     mut deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     caller: Addr,
     receiver: Addr,
     assets: Uint128,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
     let this = env.contract.address.clone();
-    let transfer_response = cw20_base::allowances::execute_transfer_from(
-        deps.branch(),
-        env.clone(),
-        info.clone(),
-        caller.to_string(),
-        this.to_string(),
-        assets,
-    )?;
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
+    let transfer_message = WasmMsg::Execute {
+        contract_addr: asset.to_string(),
+        msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
+            owner: caller.to_string(),
+            recipient: this.to_string(),
+            amount: assets,
+        })?,
+        funds: vec![],
+    };
     _mint(deps.branch(), receiver.to_string(), shares)?;
     Ok(Response::new()
-        .add_submessages(transfer_response.messages)
+        .add_message(transfer_message)
         .add_attribute("action", "deposit")
         .add_attribute("depositor", caller)
         .add_attribute("receiver", receiver)

@@ -57,21 +57,19 @@ pub fn execute(
         // CW4626
         //
         ExecuteMsg::Deposit { assets, receiver } => {
-            execute::deposit(deps, env, info, sender, assets, receiver)
+            execute::deposit(deps, env, sender, assets, receiver)
         }
-        ExecuteMsg::Mint { shares, receiver } => {
-            execute::mint(deps, env, info, sender, shares, receiver)
-        }
+        ExecuteMsg::Mint { shares, receiver } => execute::mint(deps, env, sender, shares, receiver),
         ExecuteMsg::Withdraw {
             assets,
             receiver,
             owner,
-        } => execute::withdraw(deps, env, info, assets, receiver, owner),
+        } => execute::withdraw(deps, env, sender, assets, receiver, owner),
         ExecuteMsg::Redeem {
             shares,
             receiver,
             owner,
-        } => execute::redeem(deps, env, info, shares, receiver, owner),
+        } => execute::redeem(deps, env, sender, shares, receiver, owner),
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }
