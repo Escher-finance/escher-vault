@@ -242,5 +242,19 @@ mod tests {
             1000,
             "initial preview withdraw must be 1:1"
         );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<PreviewRedeemResponse>(
+                    &vault,
+                    &QueryMsg::PreviewRedeem {
+                        shares: 1000_u128.into()
+                    }
+                )
+                .unwrap()
+                .assets
+                .u128(),
+            1000,
+            "initial preview redeem must be 1:1"
+        );
     }
 }
