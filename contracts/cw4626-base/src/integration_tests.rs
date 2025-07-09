@@ -79,6 +79,7 @@ mod tests {
         let vault = proper_instantiate(&mut app, asset.clone());
         let api = app.api();
         let querier = app.wrap();
+        let user = addr(api, USER);
         assert_eq!(
             querier
                 .query_wasm_smart::<AssetResponse>(&vault, &QueryMsg::Asset {})
@@ -144,6 +145,19 @@ mod tests {
                 .assets,
             Uint128::zero(),
             "initial share to asset conversion must yield zero"
+        );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<MaxDepositResponse>(
+                    &vault,
+                    &QueryMsg::MaxDeposit {
+                        receiver: user.clone()
+                    }
+                )
+                .unwrap()
+                .max_assets,
+            Uint128::MAX,
+            "max deposit should not be limited"
         );
     }
 }
