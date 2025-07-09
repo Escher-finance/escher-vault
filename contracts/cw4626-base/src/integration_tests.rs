@@ -157,7 +157,7 @@ mod tests {
                 .unwrap()
                 .max_assets,
             Uint128::MAX,
-            "max deposit should not be limited"
+            "max deposit must not be limited"
         );
         assert_eq!(
             querier
@@ -170,7 +170,20 @@ mod tests {
                 .unwrap()
                 .max_shares,
             Uint128::MAX,
-            "max mint should not be limited"
+            "max mint must not be limited"
+        );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<MaxWithdrawResponse>(
+                    &vault,
+                    &QueryMsg::MaxWithdraw {
+                        owner: user.clone()
+                    }
+                )
+                .unwrap()
+                .max_assets,
+            Uint128::zero(),
+            "initial max withdraw must be zero"
         );
     }
 }

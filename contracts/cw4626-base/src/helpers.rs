@@ -85,6 +85,9 @@ pub fn _convert_to_assets(
     shares: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
+    if total_shares.is_zero() {
+        return Ok(Uint128::zero());
+    }
     let frac = (total_assets + Uint128::one(), total_shares);
     match rounding {
         Rounding::Ceil => shares.checked_mul_ceil(frac),
