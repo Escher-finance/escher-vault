@@ -159,5 +159,18 @@ mod tests {
             Uint128::MAX,
             "max deposit should not be limited"
         );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<MaxMintResponse>(
+                    &vault,
+                    &QueryMsg::MaxMint {
+                        receiver: user.clone()
+                    }
+                )
+                .unwrap()
+                .max_shares,
+            Uint128::MAX,
+            "max mint should not be limited"
+        );
     }
 }
