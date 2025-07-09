@@ -200,19 +200,19 @@ mod tests {
             Uint128::zero(),
             "initial max redeem must be zero"
         );
-        // assert_eq!(
-        //     querier
-        //         .query_wasm_smart::<PreviewDepositResponse>(
-        //             &vault,
-        //             &QueryMsg::PreviewDeposit {
-        //                 assets: 1000_u128.into()
-        //             }
-        //         )
-        //         .unwrap()
-        //         .shares
-        //         .u128(),
-        //     1000,
-        //     "aa"
-        // );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<PreviewDepositResponse>(
+                    &vault,
+                    &QueryMsg::PreviewDeposit {
+                        assets: 1000_u128.into()
+                    }
+                )
+                .unwrap()
+                .shares
+                .u128(),
+            1000,
+            "initial preview deposit must be 1:1"
+        );
     }
 }
