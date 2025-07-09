@@ -39,7 +39,7 @@ pub fn mint(
     receiver: Addr,
 ) -> Result<Response, ContractError> {
     let deps_ref = deps.as_ref();
-    let MaxMintResponse { max_shares } = query::max_mint(&deps_ref, receiver.clone())?;
+    let MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
     if shares > max_shares {
         return Err(ContractError::ExceededMaxMint {
             receiver: receiver.to_string(),

@@ -2,7 +2,7 @@ use crate::{
     helpers::{
         _convert_to_shares, query_cw20_balance, Rounding, Tokens, _convert_to_assets, get_tokens,
     },
-    state::{SHARE, UNDERLYING_ASSET},
+    state::UNDERLYING_ASSET,
 };
 
 use cosmwasm_std::{Addr, Deps, StdResult, Storage, Uint128};
@@ -71,13 +71,9 @@ pub fn preview_deposit(
     Ok(PreviewDepositResponse { shares })
 }
 
-pub fn max_mint(deps: &Deps, _receiver: Addr) -> StdResult<MaxMintResponse> {
-    let share = SHARE.load(deps.storage)?;
-    let cw20::MinterResponse { minter: _, cap } = deps
-        .querier
-        .query_wasm_smart(&share, &cw20::Cw20QueryMsg::Minter {})?;
+pub fn max_mint(_receiver: Addr) -> StdResult<MaxMintResponse> {
     Ok(MaxMintResponse {
-        max_shares: cap.unwrap_or(Uint128::MAX),
+        max_shares: Uint128::MAX,
     })
 }
 

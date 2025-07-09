@@ -1,8 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw4626::cw20;
 
 use crate::error::ContractError;
@@ -162,7 +160,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::PreviewDeposit { assets } => {
             to_json_binary(&query::preview_deposit(&this, &deps, assets)?)
         }
-        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(&deps, receiver)?),
+        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(receiver)?),
         QueryMsg::PreviewMint { shares } => {
             to_json_binary(&query::preview_mint(&this, &deps, shares)?)
         }
