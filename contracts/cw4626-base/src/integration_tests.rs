@@ -1,7 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::Addr;
+    use cosmwasm_std::Event;
     use cosmwasm_std::Uint128;
     use cw4626::cw20::TokenInfoResponse;
     use cw_multi_test::{App, ContractWrapper, Executor};
@@ -9,10 +12,19 @@ mod tests {
     use crate::contract;
     use crate::msg::*;
     use crate::ContractError;
-    use cw4626::*;
+    use cw4626::{cw20::*, *};
 
     const USER: &str = "user";
+    const USER_TWO: &str = "user-two";
     const ADMIN: &str = "admin";
+
+    fn attrs_to_map(event: &Event) -> HashMap<&str, &str> {
+        event
+            .attributes
+            .iter()
+            .map(|a| (a.key.as_str(), a.value.as_str()))
+            .collect()
+    }
 
     fn addr(api: &MockApi, addr: &str) -> Addr {
         api.addr_make(addr)
@@ -345,6 +357,113 @@ mod tests {
             ContractError::Ownership(cw_ownable::OwnershipError::NotOwner {}),
             err.downcast().unwrap(),
             "non owner transferring ownership must fail"
+        );
+    }
+
+    #[test]
+    fn first_deposit_should_be_one_to_one() {
+        let mut app = get_app();
+        let asset = instantitate_asset(&mut app);
+        let vault = proper_instantiate(&mut app, asset.clone());
+        let api = app.api();
+        let user = addr(api, USER);
+        let user_two = addr(api, USER_TWO);
+        let assets = Uint128::new(1000);
+        let user_assets_balance = app
+            .wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &asset,
+                &QueryMsg::Balance {
+                    address: user.to_string(),
+                },
+            )
+            .unwrap()
+            .balance;
+        app.execute_contract(
+            user.clone(),
+            asset.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: vault.to_string(),
+                amount: assets,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+        let wasm_event = app
+            .execute_contract(
+                user.clone(),
+                vault.clone(),
+                &ExecuteMsg::Deposit {
+                    assets,
+                    receiver: user_two.clone(),
+                },
+                &[],
+            )
+            .unwrap()
+            .events
+            .iter()
+            .find(|e| e.ty == "wasm")
+            .unwrap()
+            .clone();
+        let attrs = attrs_to_map(&wasm_event);
+        assert_eq!(
+            attrs["action"], "deposit",
+            "must emit the right action attribute"
+        );
+        assert_eq!(
+            attrs["depositor"],
+            user.as_str(),
+            "must emit the right depositor attribute"
+        );
+        assert_eq!(
+            attrs["receiver"],
+            user_two.as_str(),
+            "must emit the right receiver attribute"
+        );
+        assert_eq!(
+            attrs["assets_transferred"],
+            assets.to_string().as_str(),
+            "must emit the right assets_transferred attribute"
+        );
+        assert_eq!(
+            attrs["shares_minted"],
+            assets.to_string().as_str(),
+            "must emit the right shares_minted attribute"
+        );
+        assert_eq!(
+            user_assets_balance - assets,
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &asset,
+                    &QueryMsg::Balance {
+                        address: user.to_string(),
+                    },
+                )
+                .unwrap()
+                .balance,
+            "must transfer the right amount of assets from the depositor"
+        );
+        assert_eq!(
+            assets,
+            app.wrap()
+                .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
+                .unwrap()
+                .total_managed_assets,
+            "vault total assets must match the initial deposit amount"
+        );
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user_two.to_string()
+                    }
+                )
+                .unwrap()
+                .balance,
+            assets,
+            "must mint the same amount of shares to the specified receiver"
         );
     }
 }
