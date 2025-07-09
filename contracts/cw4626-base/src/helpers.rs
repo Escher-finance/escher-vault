@@ -70,7 +70,7 @@ pub fn _convert_to_shares(
     assets: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
-    let frac = (total_shares, total_assets + Uint128::one());
+    let frac = (total_shares + Uint128::one(), total_assets + Uint128::one());
     match rounding {
         Rounding::Ceil => assets.checked_mul_ceil(frac),
         Rounding::Floor => assets.checked_mul_floor(frac),
@@ -85,10 +85,7 @@ pub fn _convert_to_assets(
     shares: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
-    if total_shares.is_zero() {
-        return Ok(Uint128::zero());
-    }
-    let frac = (total_assets + Uint128::one(), total_shares);
+    let frac = (total_assets + Uint128::one(), total_shares + Uint128::one());
     match rounding {
         Rounding::Ceil => shares.checked_mul_ceil(frac),
         Rounding::Floor => shares.checked_mul_floor(frac),

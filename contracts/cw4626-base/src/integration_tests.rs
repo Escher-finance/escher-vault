@@ -129,9 +129,10 @@ mod tests {
                     }
                 )
                 .unwrap()
-                .shares,
-            Uint128::zero(),
-            "initial asset to share conversion must yield zero"
+                .shares
+                .u128(),
+            1000,
+            "initial asset to share conversion must be 1:1"
         );
         assert_eq!(
             querier
@@ -142,9 +143,10 @@ mod tests {
                     }
                 )
                 .unwrap()
-                .assets,
-            Uint128::zero(),
-            "initial share to asset conversion must yield zero"
+                .assets
+                .u128(),
+            1000,
+            "initial share to asset conversion must be 1:1"
         );
         assert_eq!(
             querier
@@ -198,5 +200,19 @@ mod tests {
             Uint128::zero(),
             "initial max redeem must be zero"
         );
+        // assert_eq!(
+        //     querier
+        //         .query_wasm_smart::<PreviewDepositResponse>(
+        //             &vault,
+        //             &QueryMsg::PreviewDeposit {
+        //                 assets: 1000_u128.into()
+        //             }
+        //         )
+        //         .unwrap()
+        //         .shares
+        //         .u128(),
+        //     1000,
+        //     "aa"
+        // );
     }
 }
