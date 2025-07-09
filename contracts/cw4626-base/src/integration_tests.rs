@@ -8,6 +8,7 @@ mod tests {
 
     use crate::contract;
     use crate::msg::*;
+    use crate::ContractError;
     use cw4626::*;
 
     const USER: &str = "user";
@@ -309,6 +310,41 @@ mod tests {
                 .unwrap(),
             user,
             "owner must be user after accepting the transfer request"
+        );
+    }
+
+    #[test]
+    fn only_owner_can_transfer_ownership() {
+        let mut app = get_app();
+        let asset = instantitate_asset(&mut app);
+        let vault = proper_instantiate(&mut app, asset.clone());
+        let api = app.api();
+        let user = addr(api, USER);
+        let admin = addr(api, ADMIN);
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<cw_ownable::Ownership<Addr>>(&vault, &QueryMsg::Ownership {})
+                .unwrap()
+                .owner
+                .unwrap(),
+            admin,
+            "initial owner must be admin"
+        );
+        let err = app
+            .execute_contract(
+                user.clone(),
+                vault.clone(),
+                &ExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+                    new_owner: user.to_string(),
+                    expiry: None,
+                }),
+                &[],
+            )
+            .unwrap_err();
+        assert_eq!(
+            ContractError::Ownership(cw_ownable::OwnershipError::NotOwner {}),
+            err.downcast().unwrap(),
+            "non owner transferring ownership must fail"
         );
     }
 }
