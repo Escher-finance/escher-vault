@@ -77,6 +77,7 @@ mod tests {
         let mut app = get_app();
         let asset = instantitate_asset(&mut app);
         let vault = proper_instantiate(&mut app, asset.clone());
+        let api = app.api();
         let querier = app.wrap();
         assert_eq!(
             querier
@@ -108,6 +109,41 @@ mod tests {
                 .total_managed_assets,
             Uint128::zero(),
             "initial total managed assets must be zero"
-        )
+        );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<cw_ownable::Ownership<Addr>>(&vault, &QueryMsg::Ownership {})
+                .unwrap()
+                .owner
+                .unwrap(),
+            addr(api, ADMIN),
+            "admin must be set"
+        );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<ConvertToSharesResponse>(
+                    &vault,
+                    &QueryMsg::ConvertToShares {
+                        assets: 1000u128.into()
+                    }
+                )
+                .unwrap()
+                .shares,
+            Uint128::zero(),
+            "initial asset to share conversion must yield zero"
+        );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<ConvertToAssetsResponse>(
+                    &vault,
+                    &QueryMsg::ConvertToAssets {
+                        shares: 1000u128.into()
+                    }
+                )
+                .unwrap()
+                .assets,
+            Uint128::zero(),
+            "initial share to asset conversion must yield zero"
+        );
     }
 }
