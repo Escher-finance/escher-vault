@@ -185,5 +185,18 @@ mod tests {
             Uint128::zero(),
             "initial max withdraw must be zero"
         );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<MaxRedeemResponse>(
+                    &vault,
+                    &QueryMsg::MaxRedeem {
+                        owner: user.clone()
+                    }
+                )
+                .unwrap()
+                .max_shares,
+            Uint128::zero(),
+            "initial max redeem must be zero"
+        );
     }
 }
