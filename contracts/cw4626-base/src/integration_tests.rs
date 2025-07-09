@@ -228,5 +228,19 @@ mod tests {
             1000,
             "initial preview mint must be 1:1"
         );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<PreviewWithdrawResponse>(
+                    &vault,
+                    &QueryMsg::PreviewWithdraw {
+                        assets: 1000_u128.into()
+                    }
+                )
+                .unwrap()
+                .shares
+                .u128(),
+            1000,
+            "initial preview withdraw must be 1:1"
+        );
     }
 }
