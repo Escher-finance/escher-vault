@@ -1,82 +1,89 @@
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn todo() {
-        assert!(true);
+    use cosmwasm_std::testing::MockApi;
+    use cosmwasm_std::Addr;
+    use cosmwasm_std::Uint128;
+    use cw_multi_test::{App, ContractWrapper, Executor};
+
+    use crate::contract;
+    use crate::msg::*;
+    use cw4626::*;
+
+    const USER: &str = "user";
+    const ADMIN: &str = "admin";
+
+    fn addr(api: &MockApi, addr: &str) -> Addr {
+        api.addr_make(addr)
     }
-    // use crate::helpers::CwTemplateContract;
-    // use crate::msg::InstantiateMsg;
-    // use cosmwasm_std::testing::MockApi;
-    // use cosmwasm_std::{Addr, Coin, Empty, Uint128};
-    // use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
-    //
-    // pub fn contract_template() -> Box<dyn Contract<Empty>> {
-    //     let contract = ContractWrapper::new(
-    //         crate::contract::execute,
-    //         crate::contract::instantiate,
-    //         crate::contract::query,
-    //     );
-    //     Box::new(contract)
-    // }
-    //
-    // const USER: &str = "USER";
-    // const ADMIN: &str = "ADMIN";
-    // const NATIVE_DENOM: &str = "denom";
-    //
-    // fn mock_app() -> App {
-    //     AppBuilder::new().build(|router, _, storage| {
-    //         router
-    //             .bank
-    //             .init_balance(
-    //                 storage,
-    //                 &MockApi::default().addr_make(USER),
-    //                 vec![Coin {
-    //                     denom: NATIVE_DENOM.to_string(),
-    //                     amount: Uint128::new(1),
-    //                 }],
-    //             )
-    //             .unwrap();
-    //     })
-    // }
-    //
-    // fn proper_instantiate() -> (App, CwTemplateContract) {
-    //     let mut app = mock_app();
-    //     let cw_template_id = app.store_code(contract_template());
-    //
-    //     let user = app.api().addr_make(USER);
-    //     assert_eq!(
-    //         app.wrap().query_balance(user, NATIVE_DENOM).unwrap().amount,
-    //         Uint128::new(1)
-    //     );
-    //
-    //     let msg = InstantiateMsg { count: 1i32 };
-    //     let cw_template_contract_addr = app
-    //         .instantiate_contract(
-    //             cw_template_id,
-    //             Addr::unchecked(ADMIN),
-    //             &msg,
-    //             &[],
-    //             "test",
-    //             None,
-    //         )
-    //         .unwrap();
-    //
-    //     let cw_template_contract = CwTemplateContract(cw_template_contract_addr);
-    //
-    //     (app, cw_template_contract)
-    // }
-    //
-    // mod count {
-    //     use super::*;
-    //     use crate::msg::ExecuteMsg;
-    //
-    //     #[test]
-    //     fn count() {
-    //         let (mut app, cw_template_contract) = proper_instantiate();
-    //
-    //         let msg = ExecuteMsg::Increment {};
-    //         let cosmos_msg = cw_template_contract.call(msg).unwrap();
-    //         app.execute(Addr::unchecked(USER), cosmos_msg).unwrap();
-    //     }
-    // }
+
+    fn get_app() -> App {
+        App::default()
+    }
+
+    fn instantitate_asset(app: &mut App) -> Addr {
+        let code = app.store_code(Box::new(ContractWrapper::new(
+            cw20_base::contract::execute,
+            cw20_base::contract::instantiate,
+            cw20_base::contract::query,
+        )));
+        let decimals = 6;
+        let amount = Uint128::from(10000 * 10_u64.pow(decimals as u32));
+        let api = app.api();
+        let admin = addr(api, ADMIN);
+        let user = addr(api, USER);
+        let msg = cw20_base::msg::InstantiateMsg {
+            name: "Token".to_string(),
+            symbol: "TKN".to_string(),
+            mint: None,
+            decimals,
+            initial_balances: Vec::from([
+                cw20::Cw20Coin {
+                    amount,
+                    address: admin.to_string(),
+                },
+                cw20::Cw20Coin {
+                    amount,
+                    address: user.to_string(),
+                },
+            ]),
+            marketing: None,
+        };
+        app.instantiate_contract(code, admin, &msg, &[], "cw20-base-asset", None)
+            .unwrap()
+    }
+
+    fn proper_instantiate(app: &mut App, underlying_token_address: Addr) -> Addr {
+        let code = app.store_code(Box::new(ContractWrapper::new(
+            contract::execute,
+            contract::instantiate,
+            contract::query,
+        )));
+        let api = app.api();
+        let admin = addr(api, ADMIN);
+        let msg = InstantiateMsg {
+            owner: Some(admin.clone()),
+            share_name: "Share Token".to_string(),
+            share_symbol: "sTKN".to_string(),
+            share_marketing: None,
+            underlying_token_address,
+        };
+        app.instantiate_contract(code, admin, &msg, &[], "cw4626-base", None)
+            .unwrap()
+    }
+
+    #[test]
+    fn instantiates_properly() {
+        let mut app = get_app();
+        let asset = instantitate_asset(&mut app);
+        let vault = proper_instantiate(&mut app, asset.clone());
+        let querier = app.wrap();
+        assert_eq!(
+            querier
+                .query_wasm_smart::<AssetResponse>(vault, &QueryMsg::Asset {})
+                .unwrap()
+                .asset_token_address,
+            asset,
+            "underlying asset address should match"
+        );
+    }
 }

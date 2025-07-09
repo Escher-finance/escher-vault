@@ -14,7 +14,6 @@ pub struct Cw4626InstantiateMsg {
     pub underlying_token_address: Addr,
     pub share_name: String,
     pub share_symbol: String,
-    pub share_decimals: u8,
     pub share_marketing: Option<InstantiateMarketingInfo>,
 }
 
