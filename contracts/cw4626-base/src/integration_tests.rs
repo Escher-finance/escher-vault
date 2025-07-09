@@ -3,6 +3,7 @@ mod tests {
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::Addr;
     use cosmwasm_std::Uint128;
+    use cw4626::cw20::TokenInfoResponse;
     use cw_multi_test::{App, ContractWrapper, Executor};
 
     use crate::contract;
@@ -79,11 +80,34 @@ mod tests {
         let querier = app.wrap();
         assert_eq!(
             querier
-                .query_wasm_smart::<AssetResponse>(vault, &QueryMsg::Asset {})
+                .query_wasm_smart::<AssetResponse>(&vault, &QueryMsg::Asset {})
                 .unwrap()
                 .asset_token_address,
             asset,
-            "underlying asset address should match"
+            "underlying asset address must match"
         );
+        let share_token_info = querier
+            .query_wasm_smart::<TokenInfoResponse>(&vault, &QueryMsg::TokenInfo {})
+            .unwrap();
+        let asset_token_info = querier
+            .query_wasm_smart::<TokenInfoResponse>(&asset, &QueryMsg::TokenInfo {})
+            .unwrap();
+        assert_eq!(
+            share_token_info.decimals, asset_token_info.decimals,
+            "asset and share must have the same decimals"
+        );
+        assert_eq!(
+            share_token_info.total_supply,
+            Uint128::zero(),
+            "initial total share supply must be zero",
+        );
+        assert_eq!(
+            querier
+                .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
+                .unwrap()
+                .total_managed_assets,
+            Uint128::zero(),
+            "initial total managed assets must be zero"
+        )
     }
 }

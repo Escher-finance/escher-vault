@@ -4,10 +4,7 @@ use cosmwasm_std::{
 };
 use cw4626::cw20;
 
-use crate::{
-    state::{SHARE, UNDERLYING_ASSET},
-    ContractError,
-};
+use crate::{state::UNDERLYING_ASSET, ContractError};
 
 pub fn validate_cw20(
     querier: &QuerierWrapper,
@@ -21,13 +18,6 @@ pub fn validate_cw20(
         .map_err(|_| ContractError::InvalidCw20 {
             addr: token_address.to_string(),
         })
-}
-
-pub fn validate_share_connected(storage: &dyn Storage) -> Result<(), ContractError> {
-    if SHARE.may_load(storage)?.is_none() {
-        return Err(ContractError::ShareTokenNotConnected {});
-    }
-    Ok(())
 }
 
 pub fn query_cw20_balance(

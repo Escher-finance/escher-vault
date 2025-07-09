@@ -7,7 +7,7 @@ use cw4626::cw20;
 
 use crate::error::ContractError;
 use crate::execute;
-use crate::helpers::{validate_cw20, validate_share_connected};
+use crate::helpers::validate_cw20;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query;
 use crate::state::{UNDERLYING_ASSET, UNDERLYING_DECIMALS};
@@ -145,9 +145,6 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    if !matches!(msg, QueryMsg::Asset {} | QueryMsg::Ownership {}) {
-        validate_share_connected(deps.storage).map_err(|e| StdError::generic_err(e.to_string()))?;
-    }
     let this = env.contract.address;
     match msg {
         //
