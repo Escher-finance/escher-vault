@@ -1,13 +1,10 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError,
+    to_json_binary, Addr, BlockInfo, Deps, DepsMut, Env, QuerierWrapper, Response, StdError,
     StdResult, Storage, Uint128, WasmMsg,
 };
 use cw4626::cw20;
 
-use crate::{
-    state::{SHARE, UNDERLYING_ASSET},
-    ContractError,
-};
+use crate::{state::UNDERLYING_ASSET, ContractError};
 
 pub fn validate_cw20(
     querier: &QuerierWrapper,
@@ -21,13 +18,6 @@ pub fn validate_cw20(
         .map_err(|_| ContractError::InvalidCw20 {
             addr: token_address.to_string(),
         })
-}
-
-pub fn validate_share_connected(storage: &dyn Storage) -> Result<(), ContractError> {
-    if SHARE.may_load(storage)?.is_none() {
-        return Err(ContractError::ShareTokenNotConnected {});
-    }
-    Ok(())
 }
 
 pub fn query_cw20_balance(
@@ -80,7 +70,7 @@ pub fn _convert_to_shares(
     assets: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
-    let frac = (total_shares, total_assets + Uint128::one());
+    let frac = (total_shares + Uint128::one(), total_assets + Uint128::one());
     match rounding {
         Rounding::Ceil => assets.checked_mul_ceil(frac),
         Rounding::Floor => assets.checked_mul_floor(frac),
@@ -95,7 +85,7 @@ pub fn _convert_to_assets(
     shares: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
-    let frac = (total_assets + Uint128::one(), total_shares);
+    let frac = (total_assets + Uint128::one(), total_shares + Uint128::one());
     match rounding {
         Rounding::Ceil => shares.checked_mul_ceil(frac),
         Rounding::Floor => shares.checked_mul_floor(frac),
@@ -107,24 +97,25 @@ pub fn _convert_to_assets(
 pub fn _deposit(
     mut deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     caller: Addr,
     receiver: Addr,
     assets: Uint128,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
     let this = env.contract.address.clone();
-    let transfer_response = cw20_base::allowances::execute_transfer_from(
-        deps.branch(),
-        env.clone(),
-        info.clone(),
-        caller.to_string(),
-        this.to_string(),
-        assets,
-    )?;
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
+    let transfer_message = WasmMsg::Execute {
+        contract_addr: asset.to_string(),
+        msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
+            owner: caller.to_string(),
+            recipient: this.to_string(),
+            amount: assets,
+        })?,
+        funds: vec![],
+    };
     _mint(deps.branch(), receiver.to_string(), shares)?;
     Ok(Response::new()
-        .add_submessages(transfer_response.messages)
+        .add_message(transfer_message)
         .add_attribute("action", "deposit")
         .add_attribute("depositor", caller)
         .add_attribute("receiver", receiver)
@@ -144,14 +135,7 @@ pub fn _withdraw(
 ) -> Result<Response, ContractError> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
     if caller != owner {
-        _decrease_allowance(
-            deps.storage,
-            env.clone(),
-            owner.clone(),
-            caller.clone(),
-            shares,
-            None,
-        )?;
+        _deduct_allowance(deps.storage, &env.block, &owner, &caller, shares)?;
     }
     _burn(deps, owner, shares)?;
     let transfer_msg = WasmMsg::Execute {
@@ -171,50 +155,22 @@ pub fn _withdraw(
         .add_attribute("shares_burned", shares))
 }
 
-// Internal unchecked `decrease_allowance`
-pub fn _decrease_allowance(
+// Internal unchecked `deduct_allowance`
+pub fn _deduct_allowance(
     storage: &mut dyn Storage,
-    env: Env,
-    owner: Addr,
-    spender: Addr,
+    block: &BlockInfo,
+    owner: &Addr,
+    spender: &Addr,
     amount: Uint128,
-    expires: Option<cw20::Expiration>,
-) -> Result<(), ContractError> {
+) -> Result<cw20::AllowanceResponse, ContractError> {
     if spender == owner {
         return Err(ContractError::ShareCw20Error(
             cw20_base::ContractError::CannotSetOwnAccount {},
         ));
     }
-
-    let key = (&owner, &spender);
-
-    fn reverse<'a>(t: (&'a Addr, &'a Addr)) -> (&'a Addr, &'a Addr) {
-        (t.1, t.0)
-    }
-
-    // load value and delete if it hits 0, or update otherwise
-    let mut allowance = cw20_base::state::ALLOWANCES.load(storage, key)?;
-    if amount < allowance.allowance {
-        // update the new amount
-        allowance.allowance = allowance
-            .allowance
-            .checked_sub(amount)
-            .map_err(StdError::overflow)?;
-        if let Some(exp) = expires {
-            if exp.is_expired(&env.block) {
-                return Err(ContractError::ShareCw20Error(
-                    cw20_base::ContractError::InvalidExpiration {},
-                ));
-            }
-            allowance.expires = exp;
-        }
-        cw20_base::state::ALLOWANCES.save(storage, key, &allowance)?;
-        cw20_base::state::ALLOWANCES_SPENDER.save(storage, reverse(key), &allowance)?;
-    } else {
-        cw20_base::state::ALLOWANCES.remove(storage, key);
-        cw20_base::state::ALLOWANCES_SPENDER.remove(storage, reverse(key));
-    }
-    Ok(())
+    Ok(cw20_base::allowances::deduct_allowance(
+        storage, owner, spender, block, amount,
+    )?)
 }
 
 // Internal unchecked `mint`

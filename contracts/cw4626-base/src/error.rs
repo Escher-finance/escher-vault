@@ -3,7 +3,7 @@ use cw20_base::ContractError as Cw20ContractError;
 use cw_ownable::OwnershipError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -53,16 +53,4 @@ pub enum ContractError {
         shares: u128,
         max_shares: u128,
     },
-
-    #[error("Cannot set withdrawal share allowance to own account")]
-    CannotSetWithdrawalShareAllowanceToOwnAccount {},
-
-    #[error("Invalid withdrawal share allowance expiration")]
-    InvalidWithdrawalShareAllowanceExpiration {},
-
-    #[error("Insufficient withdrawal share allowance")]
-    InsufficientWithdrawalShareAllowance {},
-
-    #[error("Withdrawal share allowance has expired")]
-    ExpiredWithdrawalShareAllowance {},
 }

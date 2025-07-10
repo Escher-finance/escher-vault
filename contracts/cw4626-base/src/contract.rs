@@ -1,13 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-};
+use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw4626::cw20;
 
 use crate::error::ContractError;
 use crate::execute;
-use crate::helpers::{validate_cw20, validate_share_connected};
+use crate::helpers::validate_cw20;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query;
 use crate::state::{UNDERLYING_ASSET, UNDERLYING_DECIMALS};
@@ -59,21 +57,19 @@ pub fn execute(
         // CW4626
         //
         ExecuteMsg::Deposit { assets, receiver } => {
-            execute::deposit(deps, env, info, sender, assets, receiver)
+            execute::deposit(deps, env, sender, assets, receiver)
         }
-        ExecuteMsg::Mint { shares, receiver } => {
-            execute::mint(deps, env, info, sender, shares, receiver)
-        }
+        ExecuteMsg::Mint { shares, receiver } => execute::mint(deps, env, sender, shares, receiver),
         ExecuteMsg::Withdraw {
             assets,
             receiver,
             owner,
-        } => execute::withdraw(deps, env, info, assets, receiver, owner),
+        } => execute::withdraw(deps, env, sender, assets, receiver, owner),
         ExecuteMsg::Redeem {
             shares,
             receiver,
             owner,
-        } => execute::redeem(deps, env, info, shares, receiver, owner),
+        } => execute::redeem(deps, env, sender, shares, receiver, owner),
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }
@@ -145,9 +141,6 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    if !matches!(msg, QueryMsg::Asset {} | QueryMsg::Ownership {}) {
-        validate_share_connected(deps.storage).map_err(|e| StdError::generic_err(e.to_string()))?;
-    }
     let this = env.contract.address;
     match msg {
         //
@@ -165,7 +158,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::PreviewDeposit { assets } => {
             to_json_binary(&query::preview_deposit(&this, &deps, assets)?)
         }
-        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(&deps, receiver)?),
+        QueryMsg::MaxMint { receiver } => to_json_binary(&query::max_mint(receiver)?),
         QueryMsg::PreviewMint { shares } => {
             to_json_binary(&query::preview_mint(&this, &deps, shares)?)
         }
@@ -220,79 +213,4 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&cw20_base::contract::query_download_logo(deps)?)
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn todo() {
-        assert!(true);
-    }
-    // use super::*;
-    // use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    // use cosmwasm_std::{coins, from_json};
-    //
-    // #[test]
-    // fn proper_initialization() {
-    //     let mut deps = mock_dependencies();
-    //
-    //     let msg = InstantiateMsg { count: 17 };
-    //     let info = mock_info("creator", &coins(1000, "earth"));
-    //
-    //     // we can just call .unwrap() to assert this was a success
-    //     let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //     assert_eq!(0, res.messages.len());
-    //
-    //     // it worked, let's query the state
-    //     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    //     let value: GetCountResponse = from_json(&res).unwrap();
-    //     assert_eq!(17, value.count);
-    // }
-    //
-    // #[test]
-    // fn increment() {
-    //     let mut deps = mock_dependencies();
-    //
-    //     let msg = InstantiateMsg { count: 17 };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //
-    //     // beneficiary can release it
-    //     let info = mock_info("anyone", &coins(2, "token"));
-    //     let msg = ExecuteMsg::Increment {};
-    //     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //
-    //     // should increase counter by 1
-    //     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    //     let value: GetCountResponse = from_json(&res).unwrap();
-    //     assert_eq!(18, value.count);
-    // }
-    //
-    // #[test]
-    // fn reset() {
-    //     let mut deps = mock_dependencies();
-    //
-    //     let msg = InstantiateMsg { count: 17 };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    //
-    //     // beneficiary can release it
-    //     let unauth_info = mock_info("anyone", &coins(2, "token"));
-    //     let msg = ExecuteMsg::Reset { count: 5 };
-    //     let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-    //     match res {
-    //         Err(ContractError::Unauthorized {}) => {}
-    //         _ => panic!("Must return unauthorized error"),
-    //     }
-    //
-    //     // only the original creator can reset the counter
-    //     let auth_info = mock_info("creator", &coins(2, "token"));
-    //     let msg = ExecuteMsg::Reset { count: 5 };
-    //     let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-    //
-    //     // should now be 5
-    //     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    //     let value: GetCountResponse = from_json(&res).unwrap();
-    //     assert_eq!(5, value.count);
-    // }
 }

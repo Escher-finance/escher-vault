@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, Response, Uint128};
 use cw4626::{
     MaxDepositResponse, MaxMintResponse, MaxRedeemResponse, MaxWithdrawResponse,
     PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse, PreviewWithdrawResponse,
@@ -12,7 +12,6 @@ use crate::{
 pub fn deposit(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     sender: Addr,
     assets: Uint128,
     receiver: Addr,
@@ -27,19 +26,18 @@ pub fn deposit(
     }
     let PreviewDepositResponse { shares } =
         query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
-    _deposit(deps, env, info, sender, receiver, assets, shares)
+    _deposit(deps, env, sender, receiver, assets, shares)
 }
 
 pub fn mint(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     sender: Addr,
     shares: Uint128,
     receiver: Addr,
 ) -> Result<Response, ContractError> {
     let deps_ref = deps.as_ref();
-    let MaxMintResponse { max_shares } = query::max_mint(&deps_ref, receiver.clone())?;
+    let MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
     if shares > max_shares {
         return Err(ContractError::ExceededMaxMint {
             receiver: receiver.to_string(),
@@ -49,13 +47,13 @@ pub fn mint(
     }
     let PreviewMintResponse { assets } =
         query::preview_mint(&env.contract.address, &deps_ref, shares)?;
-    _deposit(deps, env, info, sender, receiver, assets, shares)
+    _deposit(deps, env, sender, receiver, assets, shares)
 }
 
 pub fn withdraw(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     assets: Uint128,
     receiver: Addr,
     owner: Addr,
@@ -72,13 +70,13 @@ pub fn withdraw(
     }
     let PreviewWithdrawResponse { shares } =
         query::preview_withdraw(&this, &deps.as_ref(), assets)?;
-    _withdraw(deps, env, info.sender, receiver, owner, assets, shares)
+    _withdraw(deps, env, sender, receiver, owner, assets, shares)
 }
 
 pub fn redeem(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    sender: Addr,
     shares: Uint128,
     receiver: Addr,
     owner: Addr,
@@ -93,7 +91,7 @@ pub fn redeem(
     }
     let PreviewRedeemResponse { assets } =
         query::preview_redeem(&env.contract.address, &deps.as_ref(), shares)?;
-    _withdraw(deps, env, info.sender, receiver, owner, assets, shares)
+    _withdraw(deps, env, sender, receiver, owner, assets, shares)
 }
 
 pub fn update_ownership(
