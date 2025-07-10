@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use cosmwasm_std::assert_approx_eq;
 use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Event;
@@ -1126,5 +1127,77 @@ fn withdraw_from_must_deduct_allowance() {
             .balance,
         assets / Uint128::new(2),
         "must burn the same amount of shares from the user"
+    );
+}
+
+#[test]
+fn withdraw_with_yield_must_mint_less_shares() {
+    let mut app = get_app();
+    let asset = instantitate_asset(&mut app);
+    let vault = proper_instantiate(&mut app, asset.clone());
+    let api = app.api();
+    let admin = addr(api, ADMIN);
+    let user = addr(api, USER);
+    let assets = Uint128::new(1000);
+    // deposit - 1:1
+    {
+        app.execute_contract(
+            user.clone(),
+            asset.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: vault.to_string(),
+                amount: assets,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Deposit {
+                assets,
+                receiver: user.clone(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
+    // simulate yield by airdropping some assets to the vault
+    app.execute_contract(
+        admin.clone(),
+        asset.clone(),
+        &cw20::Cw20ExecuteMsg::Mint {
+            recipient: vault.to_string(),
+            amount: assets,
+        },
+        &[],
+    )
+    .unwrap();
+    // withdraw initial deposit to self - 2:1
+    app.execute_contract(
+        user.clone(),
+        vault.clone(),
+        &ExecuteMsg::Withdraw {
+            assets,
+            receiver: user.clone(),
+            owner: user.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+    assert_approx_eq!(
+        app.wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user.to_string()
+                }
+            )
+            .unwrap()
+            .balance,
+        assets / Uint128::new(2),
+        "0.01",
+        "must still have half the shares"
     );
 }
