@@ -1009,3 +1009,88 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
         "must burn the same amount of shares from the user"
     );
 }
+
+#[test]
+fn withdraw_from_must_deduct_allowance() {
+    let mut app = get_app();
+    let asset = instantitate_asset(&mut app);
+    let vault = proper_instantiate(&mut app, asset.clone());
+    let api = app.api();
+    let user = addr(api, USER);
+    let user_two = addr(api, USER_TWO);
+    let assets = Uint128::new(1000);
+    // deposit
+    {
+        app.execute_contract(
+            user.clone(),
+            asset.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: vault.to_string(),
+                amount: assets,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Deposit {
+                assets,
+                receiver: user.clone(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
+    // allow other to withdraw half
+    app.execute_contract(
+        user.clone(),
+        vault.clone(),
+        &ExecuteMsg::IncreaseAllowance {
+            spender: user_two.to_string(),
+            amount: assets / Uint128::new(2),
+            expires: None,
+        },
+        &[],
+    )
+    .unwrap();
+    // withdraw half from user
+    app.execute_contract(
+        user_two.clone(),
+        vault.clone(),
+        &ExecuteMsg::Withdraw {
+            assets: assets / Uint128::new(2),
+            receiver: user_two.clone(),
+            owner: user.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &asset,
+                &QueryMsg::Balance {
+                    address: user_two.to_string(),
+                },
+            )
+            .unwrap()
+            .balance,
+        assets / Uint128::new(2),
+        "other must receive the right amount of assets"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user.to_string()
+                }
+            )
+            .unwrap()
+            .balance,
+        assets / Uint128::new(2),
+        "must burn the same amount of shares from the user"
+    );
+}
