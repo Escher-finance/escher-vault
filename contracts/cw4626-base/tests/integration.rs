@@ -33,7 +33,7 @@ fn addr(api: &MockApi, addr: &str) -> Addr {
     api.addr_make(addr)
 }
 
-fn get_app() -> App {
+pub fn get_app() -> App {
     App::default()
 }
 
@@ -100,6 +100,7 @@ fn instantiates_properly() {
     let api = app.api();
     let querier = app.wrap();
     let user = addr(api, USER);
+    let user_two = addr(api, USER_TWO);
     assert_eq!(
         querier
             .query_wasm_smart::<AssetResponse>(&vault, &QueryMsg::Asset {})
@@ -257,6 +258,133 @@ fn instantiates_properly() {
             .assets,
         AMOUNT,
         "initial preview redeem must be 1:1"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllowanceResponse>(
+                &vault,
+                &QueryMsg::Allowance {
+                    owner: user.to_string(),
+                    spender: user_two.to_string()
+                }
+            )
+            .unwrap()
+            .allowance,
+        Uint128::zero(),
+        "can query cw20:allowance"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllAllowancesResponse>(
+                &vault,
+                &QueryMsg::AllAllowances {
+                    owner: user.to_string(),
+                    start_after: None,
+                    limit: None
+                }
+            )
+            .unwrap()
+            .allowances,
+        vec![],
+        "can query cw20:all_allowances"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllSpenderAllowancesResponse>(
+                &vault,
+                &QueryMsg::AllSpenderAllowances {
+                    spender: user.to_string(),
+                    start_after: None,
+                    limit: None
+                }
+            )
+            .unwrap()
+            .allowances,
+        vec![],
+        "can query cw20:all_spender_allowances"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllAccountsResponse>(
+                &vault,
+                &QueryMsg::AllAccounts {
+                    start_after: None,
+                    limit: None
+                }
+            )
+            .unwrap()
+            .accounts,
+        Vec::<String>::new(),
+        "can query cw20:all_accounts"
+    );
+    assert!(
+        querier
+            .query_wasm_smart::<MarketingInfoResponse>(&vault, &QueryMsg::MarketingInfo {})
+            .is_ok(),
+        "can query cw20:marketing_info"
+    );
+    assert!(
+        matches!(
+            querier
+                .query_wasm_smart::<DownloadLogoResponse>(&vault, &QueryMsg::DownloadLogo {})
+                .unwrap_err(),
+            StdError::GenericErr { .. },
+        ),
+        "must not query cw20:download_logo because it wasn't set"
+    );
+    assert_eq!(
+        ContractError::ShareCw20Error(cw20_base::ContractError::Unauthorized {}),
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::UpdateMarketing {
+                project: None,
+                description: None,
+                marketing: None
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error cw20:update_marketing with unauthorized"
+    );
+    assert_eq!(
+        ContractError::ShareCw20Error(cw20_base::ContractError::Unauthorized {}),
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::UploadLogo(Logo::Url(String::new())),
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error cw20:update_logo with unauthorized"
+    );
+}
+
+#[test]
+fn instantiate_must_fail_if_asset_not_cw20() {
+    let mut app = get_app();
+    let code = app.store_code(Box::new(ContractWrapper::new(
+        contract::execute,
+        contract::instantiate,
+        contract::query,
+    )));
+    let api = app.api();
+    let admin = addr(api, ADMIN);
+    let msg = InstantiateMsg {
+        owner: Some(admin.clone()),
+        share_name: "Share Token".to_string(),
+        share_symbol: "sTKN".to_string(),
+        share_marketing: None,
+        underlying_token_address: addr(app.api(), "not-cw20"),
+    };
+    assert!(
+        app.instantiate_contract(code, admin, &msg, &[], "cw4626-base", None)
+            .is_err(),
+        "must validate that asset is cw20"
     );
 }
 
@@ -452,6 +580,87 @@ fn deposit_no_yield_must_be_one_to_one() {
             .balance,
         AMOUNT,
         "must mint the same amount of shares to the specified receiver"
+    );
+    // this is to test whether the cw20 executes are working
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::Transfer {
+                recipient: user_two.to_string(),
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:transfer"
+    );
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::Burn {
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:burn"
+    );
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: user.to_string(),
+                amount: AMOUNT,
+                expires: None,
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:increase_allowance"
+    );
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::DecreaseAllowance {
+                spender: user.to_string(),
+                amount: Uint128::one(),
+                expires: None,
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:decrease_allowance"
+    );
+    assert!(
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::TransferFrom {
+                owner: user_two.to_string(),
+                recipient: user.to_string(),
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:transfer_from"
+    );
+    assert!(
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::BurnFrom {
+                owner: user_two.to_string(),
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:burn_from"
     );
 }
 
@@ -792,6 +1001,28 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
+    // withdraw more must fail
+    assert_eq!(
+        ContractError::ExceededMaxWithdraw {
+            owner: user.to_string(),
+            assets: (AMOUNT + Uint128::one()).u128(),
+            max_assets: AMOUNT.u128()
+        },
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Withdraw {
+                assets: AMOUNT + Uint128::one(),
+                receiver: user.clone(),
+                owner: user.clone(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error with exceeded max withdraw"
+    );
     // withdraw all to self
     let wasm_event = app
         .execute_contract(
@@ -912,6 +1143,28 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
+    // redeem more must fail
+    assert_eq!(
+        ContractError::ExceededMaxRedeem {
+            owner: user.to_string(),
+            shares: (AMOUNT + Uint128::one()).u128(),
+            max_shares: AMOUNT.u128()
+        },
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Redeem {
+                shares: AMOUNT + Uint128::one(),
+                receiver: user.clone(),
+                owner: user.clone(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error with exceeded max redeem"
+    );
     // redeem all to self
     let wasm_event = app
         .execute_contract(

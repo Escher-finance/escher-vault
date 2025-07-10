@@ -215,3 +215,51 @@ pub fn _burn(deps: DepsMut, user: Addr, amount: Uint128) -> Result<(), ContractE
     })?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env, MockStorage},
+        Addr, Uint128,
+    };
+
+    use super::*;
+
+    #[test]
+    fn internal_deduct_allowance_must_not_work_on_self() {
+        let mut storage = MockStorage::new();
+        let env = mock_env();
+        let user = Addr::unchecked("user");
+        let amount = Uint128::one();
+        assert_eq!(
+            _deduct_allowance(&mut storage, &env.block, &user, &user, amount).unwrap_err(),
+            ContractError::ShareCw20Error(cw20_base::ContractError::CannotSetOwnAccount {}),
+        );
+    }
+
+    #[test]
+    fn internal_mint_must_enforce_cap() {
+        let mut deps = mock_dependencies();
+        let deps_mut = deps.as_mut();
+        let cap = Uint128::new(10);
+        cw20_base::state::TOKEN_INFO
+            .save(
+                deps_mut.storage,
+                &cw20_base::state::TokenInfo {
+                    name: String::new(),
+                    symbol: String::new(),
+                    decimals: 6,
+                    total_supply: Uint128::zero(),
+                    mint: Some(cw20_base::state::MinterData {
+                        minter: Addr::unchecked("minter"),
+                        cap: Some(cap),
+                    }),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            _mint(deps_mut, "user".to_string(), cap + Uint128::one()).unwrap_err(),
+            ContractError::ShareCw20Error(cw20_base::ContractError::CannotExceedCap {}),
+        );
+    }
+}
