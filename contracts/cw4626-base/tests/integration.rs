@@ -810,7 +810,7 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
-    // withdraw to self
+    // withdraw all to self
     let wasm_event = app
         .execute_contract(
             user.clone(),
