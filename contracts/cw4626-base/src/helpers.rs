@@ -262,4 +262,26 @@ mod tests {
             ContractError::ShareCw20Error(cw20_base::ContractError::CannotExceedCap {}),
         );
     }
+
+    #[test]
+    fn convert_to_assets_must_error_if_overflow_occurs() {
+        assert!(_convert_to_assets(
+            Uint128::one(),
+            Uint128::MAX - Uint128::one(),
+            Uint128::MAX,
+            Rounding::Floor
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn convert_to_shares_must_error_if_overflow_occurs() {
+        assert!(_convert_to_shares(
+            Uint128::MAX - Uint128::one(),
+            Uint128::one(),
+            Uint128::MAX,
+            Rounding::Floor
+        )
+        .is_err());
+    }
 }
