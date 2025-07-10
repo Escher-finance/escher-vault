@@ -673,4 +673,100 @@ mod tests {
             "must mint shares to the user accordingly"
         );
     }
+
+    #[test]
+    fn mint_with_yield_must_mint_less_shares() {
+        let mut app = get_app();
+        let asset = instantitate_asset(&mut app);
+        let vault = proper_instantiate(&mut app, asset.clone());
+        let api = app.api();
+        let admin = addr(api, ADMIN);
+        let user = addr(api, USER);
+        let shares = Uint128::new(1000);
+        // initial mint - 1:1
+        {
+            app.execute_contract(
+                user.clone(),
+                asset.clone(),
+                &ExecuteMsg::IncreaseAllowance {
+                    spender: vault.to_string(),
+                    amount: shares,
+                    expires: None,
+                },
+                &[],
+            )
+            .unwrap();
+            app.execute_contract(
+                user.clone(),
+                vault.clone(),
+                &ExecuteMsg::Mint {
+                    shares,
+                    receiver: user.clone(),
+                },
+                &[],
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user.to_string()
+                    }
+                )
+                .unwrap()
+                .balance,
+            shares,
+            "must mint the same amount of shares to the user after initial deposit"
+        );
+        // simulate yield by airdropping some assets to the vault
+        app.execute_contract(
+            admin.clone(),
+            asset.clone(),
+            &cw20::Cw20ExecuteMsg::Mint {
+                recipient: vault.to_string(),
+                amount: shares,
+            },
+            &[],
+        )
+        .unwrap();
+        // second mint - 2:1
+        {
+            app.execute_contract(
+                user.clone(),
+                asset.clone(),
+                &ExecuteMsg::IncreaseAllowance {
+                    spender: vault.to_string(),
+                    amount: shares,
+                    expires: None,
+                },
+                &[],
+            )
+            .unwrap();
+            app.execute_contract(
+                user.clone(),
+                vault.clone(),
+                &ExecuteMsg::Mint {
+                    shares: shares / Uint128::new(2),
+                    receiver: user.clone(),
+                },
+                &[],
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user.to_string()
+                    }
+                )
+                .unwrap()
+                .balance,
+            shares + (shares / Uint128::new(2)),
+            "must mint shares to the user accordingly"
+        );
+    }
 }
