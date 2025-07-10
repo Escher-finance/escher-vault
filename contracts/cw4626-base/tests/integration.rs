@@ -767,3 +767,124 @@ fn mint_with_yield_must_mint_less_shares() {
         );
     }
 }
+
+#[test]
+fn withdraw_to_self_no_yield_must_be_one_to_one() {
+    let mut app = get_app();
+    let asset = instantitate_asset(&mut app);
+    let vault = proper_instantiate(&mut app, asset.clone());
+    let api = app.api();
+    let user = addr(api, USER);
+    let assets = Uint128::new(1000);
+    // deposit
+    {
+        app.execute_contract(
+            user.clone(),
+            asset.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: vault.to_string(),
+                amount: assets,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Deposit {
+                assets,
+                receiver: user.clone(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
+    let user_assets_balance = app
+        .wrap()
+        .query_wasm_smart::<BalanceResponse>(
+            &asset,
+            &QueryMsg::Balance {
+                address: user.to_string(),
+            },
+        )
+        .unwrap()
+        .balance;
+    // withdraw to self
+    let wasm_event = app
+        .execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Withdraw {
+                assets,
+                receiver: user.clone(),
+                owner: user.clone(),
+            },
+            &[],
+        )
+        .unwrap()
+        .events
+        .iter()
+        .find(|e| e.ty == "wasm")
+        .unwrap()
+        .clone();
+    let attrs = attrs_to_map(&wasm_event);
+    assert_eq!(
+        attrs["action"], "withdraw",
+        "must emit the right action attribute"
+    );
+    assert_eq!(
+        attrs["withdrawer"],
+        user.as_str(),
+        "must emit the right withdrawer attribute"
+    );
+    assert_eq!(
+        attrs["receiver"],
+        user.as_str(),
+        "must emit the right receiver attribute"
+    );
+    assert_eq!(
+        attrs["assets_received"],
+        assets.to_string().as_str(),
+        "must emit the right assets_received attribute"
+    );
+    assert_eq!(
+        attrs["shares_burned"],
+        assets.to_string().as_str(),
+        "must emit the right shares_burned attribute"
+    );
+    assert_eq!(
+        user_assets_balance + assets,
+        app.wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &asset,
+                &QueryMsg::Balance {
+                    address: user.to_string(),
+                },
+            )
+            .unwrap()
+            .balance,
+        "user must receive the right amount of assets"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
+            .unwrap()
+            .total_managed_assets,
+        Uint128::zero(),
+        "vault total assets must adapt after withdraw"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user.to_string()
+                }
+            )
+            .unwrap()
+            .balance,
+        Uint128::zero(),
+        "must burn the same amount of shares from the user"
+    );
+}
