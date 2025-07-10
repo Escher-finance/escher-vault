@@ -53,7 +53,11 @@ pub fn convert_to_assets(
 
 pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
     Ok(MaxDepositResponse {
-        max_assets: Uint128::MAX,
+        max_assets: if cfg!(not(test)) {
+            Uint128::MAX
+        } else {
+            Uint128::new(100_000_000)
+        },
     })
 }
 

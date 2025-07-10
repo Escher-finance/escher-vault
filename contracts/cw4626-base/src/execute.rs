@@ -103,3 +103,33 @@ pub fn update_ownership(
     cw_ownable::update_ownership(deps, &block, &new_owner, action)?;
     Ok(Response::new())
 }
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Addr, Uint128,
+    };
+
+    use super::*;
+
+    #[test]
+    fn deposit_must_not_exceed_max_assets() {
+        let mut deps = mock_dependencies();
+        let deps_mut = deps.as_mut();
+        let env = mock_env();
+        let sender = Addr::unchecked("sender");
+        let receiver = Addr::unchecked("receiver");
+        let max_assets = query::max_deposit(receiver.clone()).unwrap().max_assets;
+        let amount = max_assets + Uint128::one();
+        assert_eq!(
+            deposit(deps_mut, env, sender, amount, receiver.clone()).unwrap_err(),
+            ContractError::ExceededMaxDeposit {
+                receiver: receiver.to_string(),
+                max_assets: max_assets.u128(),
+                assets: amount.u128()
+            },
+            "must error with exceeded max deposit"
+        );
+    }
+}
