@@ -100,6 +100,7 @@ fn instantiates_properly() {
     let api = app.api();
     let querier = app.wrap();
     let user = addr(api, USER);
+    let user_two = addr(api, USER_TWO);
     assert_eq!(
         querier
             .query_wasm_smart::<AssetResponse>(&vault, &QueryMsg::Asset {})
@@ -257,6 +258,79 @@ fn instantiates_properly() {
             .assets,
         AMOUNT,
         "initial preview redeem must be 1:1"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllowanceResponse>(
+                &vault,
+                &QueryMsg::Allowance {
+                    owner: user.to_string(),
+                    spender: user_two.to_string()
+                }
+            )
+            .unwrap()
+            .allowance,
+        Uint128::zero(),
+        "can query cw20:allowance"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllAllowancesResponse>(
+                &vault,
+                &QueryMsg::AllAllowances {
+                    owner: user.to_string(),
+                    start_after: None,
+                    limit: None
+                }
+            )
+            .unwrap()
+            .allowances,
+        vec![],
+        "can query cw20:all_allowances"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllSpenderAllowancesResponse>(
+                &vault,
+                &QueryMsg::AllSpenderAllowances {
+                    spender: user.to_string(),
+                    start_after: None,
+                    limit: None
+                }
+            )
+            .unwrap()
+            .allowances,
+        vec![],
+        "can query cw20:all_spender_allowances"
+    );
+    assert_eq!(
+        querier
+            .query_wasm_smart::<AllAccountsResponse>(
+                &vault,
+                &QueryMsg::AllAccounts {
+                    start_after: None,
+                    limit: None
+                }
+            )
+            .unwrap()
+            .accounts,
+        Vec::<String>::new(),
+        "can query cw20:all_accounts"
+    );
+    assert!(
+        querier
+            .query_wasm_smart::<MarketingInfoResponse>(&vault, &QueryMsg::MarketingInfo {})
+            .is_ok(),
+        "can query cw20:marketing_info"
+    );
+    assert!(
+        matches!(
+            querier
+                .query_wasm_smart::<DownloadLogoResponse>(&vault, &QueryMsg::DownloadLogo {})
+                .unwrap_err(),
+            StdError::GenericErr { .. },
+        ),
+        "must not query cw20:download_logo because it wasn't set"
     );
 }
 
