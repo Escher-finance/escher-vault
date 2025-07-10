@@ -958,6 +958,28 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
+    // redeem more must fail
+    assert_eq!(
+        ContractError::ExceededMaxRedeem {
+            owner: user.to_string(),
+            shares: (AMOUNT + Uint128::one()).u128(),
+            max_shares: AMOUNT.u128()
+        },
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Redeem {
+                shares: AMOUNT + Uint128::one(),
+                receiver: user.clone(),
+                owner: user.clone(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error with exceeded max redeem"
+    );
     // redeem all to self
     let wasm_event = app
         .execute_contract(
