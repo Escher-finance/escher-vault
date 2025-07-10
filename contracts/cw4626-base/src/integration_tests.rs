@@ -610,20 +610,20 @@ mod tests {
                 &[],
             )
             .unwrap();
+            assert_eq!(
+                app.wrap()
+                    .query_wasm_smart::<BalanceResponse>(
+                        &vault,
+                        &QueryMsg::Balance {
+                            address: user.to_string()
+                        }
+                    )
+                    .unwrap()
+                    .balance,
+                assets,
+                "must mint the same amount of shares to the user after initial deposit"
+            );
         }
-        assert_eq!(
-            app.wrap()
-                .query_wasm_smart::<BalanceResponse>(
-                    &vault,
-                    &QueryMsg::Balance {
-                        address: user.to_string()
-                    }
-                )
-                .unwrap()
-                .balance,
-            assets,
-            "must mint the same amount of shares to the user after initial deposit"
-        );
         // simulate yield by airdropping some assets to the vault
         app.execute_contract(
             admin.clone(),
@@ -658,20 +658,20 @@ mod tests {
                 &[],
             )
             .unwrap();
+            assert_eq!(
+                app.wrap()
+                    .query_wasm_smart::<BalanceResponse>(
+                        &vault,
+                        &QueryMsg::Balance {
+                            address: user.to_string()
+                        }
+                    )
+                    .unwrap()
+                    .balance,
+                assets + (assets / Uint128::new(2)),
+                "must mint shares to the user accordingly"
+            );
         }
-        assert_eq!(
-            app.wrap()
-                .query_wasm_smart::<BalanceResponse>(
-                    &vault,
-                    &QueryMsg::Balance {
-                        address: user.to_string()
-                    }
-                )
-                .unwrap()
-                .balance,
-            assets + (assets / Uint128::new(2)),
-            "must mint shares to the user accordingly"
-        );
     }
 
     #[test]
@@ -706,20 +706,20 @@ mod tests {
                 &[],
             )
             .unwrap();
+            assert_eq!(
+                app.wrap()
+                    .query_wasm_smart::<BalanceResponse>(
+                        &vault,
+                        &QueryMsg::Balance {
+                            address: user.to_string()
+                        }
+                    )
+                    .unwrap()
+                    .balance,
+                shares,
+                "must mint the same amount of shares to the user after initial deposit"
+            );
         }
-        assert_eq!(
-            app.wrap()
-                .query_wasm_smart::<BalanceResponse>(
-                    &vault,
-                    &QueryMsg::Balance {
-                        address: user.to_string()
-                    }
-                )
-                .unwrap()
-                .balance,
-            shares,
-            "must mint the same amount of shares to the user after initial deposit"
-        );
         // simulate yield by airdropping some assets to the vault
         app.execute_contract(
             admin.clone(),
@@ -754,19 +754,19 @@ mod tests {
                 &[],
             )
             .unwrap();
+            assert_eq!(
+                app.wrap()
+                    .query_wasm_smart::<BalanceResponse>(
+                        &vault,
+                        &QueryMsg::Balance {
+                            address: user.to_string()
+                        }
+                    )
+                    .unwrap()
+                    .balance,
+                shares + (shares / Uint128::new(2)),
+                "must mint shares to the user accordingly"
+            );
         }
-        assert_eq!(
-            app.wrap()
-                .query_wasm_smart::<BalanceResponse>(
-                    &vault,
-                    &QueryMsg::Balance {
-                        address: user.to_string()
-                    }
-                )
-                .unwrap()
-                .balance,
-            shares + (shares / Uint128::new(2)),
-            "must mint shares to the user accordingly"
-        );
     }
 }
