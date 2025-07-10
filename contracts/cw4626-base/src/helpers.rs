@@ -226,7 +226,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deduct_allowance_must_not_work_on_self() {
+    fn internal_deduct_allowance_must_not_work_on_self() {
         let mut storage = MockStorage::new();
         let env = mock_env();
         let user = Addr::unchecked("user");
