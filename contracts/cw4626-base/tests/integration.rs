@@ -357,7 +357,6 @@ fn deposit_no_yield_must_be_one_to_one() {
     let api = app.api();
     let user = addr(api, USER);
     let user_two = addr(api, USER_TWO);
-    let assets = Uint128::new(1000);
     let user_assets_balance = app
         .wrap()
         .query_wasm_smart::<BalanceResponse>(
@@ -373,7 +372,7 @@ fn deposit_no_yield_must_be_one_to_one() {
         asset.clone(),
         &ExecuteMsg::IncreaseAllowance {
             spender: vault.to_string(),
-            amount: assets,
+            amount: AMOUNT,
             expires: None,
         },
         &[],
@@ -384,7 +383,7 @@ fn deposit_no_yield_must_be_one_to_one() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Deposit {
-                assets,
+                assets: AMOUNT,
                 receiver: user_two.clone(),
             },
             &[],
@@ -412,16 +411,16 @@ fn deposit_no_yield_must_be_one_to_one() {
     );
     assert_eq!(
         attrs["assets_transferred"],
-        assets.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right assets_transferred attribute"
     );
     assert_eq!(
         attrs["shares_minted"],
-        assets.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right shares_minted attribute"
     );
     assert_eq!(
-        user_assets_balance - assets,
+        user_assets_balance - AMOUNT,
         app.wrap()
             .query_wasm_smart::<BalanceResponse>(
                 &asset,
@@ -434,11 +433,11 @@ fn deposit_no_yield_must_be_one_to_one() {
         "must transfer the right amount of assets from the depositor"
     );
     assert_eq!(
-        assets,
         app.wrap()
             .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
             .unwrap()
             .total_managed_assets,
+        AMOUNT,
         "vault total assets must match the initial deposit amount"
     );
     assert_eq!(
@@ -451,7 +450,7 @@ fn deposit_no_yield_must_be_one_to_one() {
             )
             .unwrap()
             .balance,
-        assets,
+        AMOUNT,
         "must mint the same amount of shares to the specified receiver"
     );
 }
@@ -464,7 +463,6 @@ fn mint_no_yield_must_be_one_to_one() {
     let api = app.api();
     let user = addr(api, USER);
     let user_two = addr(api, USER_TWO);
-    let shares = Uint128::new(1000);
     let user_assets_balance = app
         .wrap()
         .query_wasm_smart::<BalanceResponse>(
@@ -480,7 +478,7 @@ fn mint_no_yield_must_be_one_to_one() {
         asset.clone(),
         &ExecuteMsg::IncreaseAllowance {
             spender: vault.to_string(),
-            amount: shares,
+            amount: AMOUNT,
             expires: None,
         },
         &[],
@@ -491,7 +489,7 @@ fn mint_no_yield_must_be_one_to_one() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Mint {
-                shares,
+                shares: AMOUNT,
                 receiver: user_two.clone(),
             },
             &[],
@@ -519,16 +517,16 @@ fn mint_no_yield_must_be_one_to_one() {
     );
     assert_eq!(
         attrs["assets_transferred"],
-        shares.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right assets_transferred attribute"
     );
     assert_eq!(
         attrs["shares_minted"],
-        shares.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right shares_minted attribute"
     );
     assert_eq!(
-        user_assets_balance - shares,
+        user_assets_balance - AMOUNT,
         app.wrap()
             .query_wasm_smart::<BalanceResponse>(
                 &asset,
@@ -541,7 +539,7 @@ fn mint_no_yield_must_be_one_to_one() {
         "must transfer the right amount of assets from the depositor"
     );
     assert_eq!(
-        shares,
+        AMOUNT,
         app.wrap()
             .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
             .unwrap()
@@ -558,7 +556,7 @@ fn mint_no_yield_must_be_one_to_one() {
             )
             .unwrap()
             .balance,
-        shares,
+        AMOUNT,
         "must mint the same amount of shares to the specified receiver"
     );
 }
@@ -571,7 +569,6 @@ fn deposit_with_yield_must_mint_less_shares() {
     let api = app.api();
     let admin = addr(api, ADMIN);
     let user = addr(api, USER);
-    let assets = Uint128::new(1000);
     // initial deposit - 1:1
     {
         app.execute_contract(
@@ -579,7 +576,7 @@ fn deposit_with_yield_must_mint_less_shares() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: assets,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -589,7 +586,7 @@ fn deposit_with_yield_must_mint_less_shares() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Deposit {
-                assets,
+                assets: AMOUNT,
                 receiver: user.clone(),
             },
             &[],
@@ -605,7 +602,7 @@ fn deposit_with_yield_must_mint_less_shares() {
                 )
                 .unwrap()
                 .balance,
-            assets,
+            AMOUNT,
             "must mint the same amount of shares to the user after initial deposit"
         );
     }
@@ -615,7 +612,7 @@ fn deposit_with_yield_must_mint_less_shares() {
         asset.clone(),
         &cw20::Cw20ExecuteMsg::Mint {
             recipient: vault.to_string(),
-            amount: assets,
+            amount: AMOUNT,
         },
         &[],
     )
@@ -627,7 +624,7 @@ fn deposit_with_yield_must_mint_less_shares() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: assets,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -637,7 +634,7 @@ fn deposit_with_yield_must_mint_less_shares() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Deposit {
-                assets,
+                assets: AMOUNT,
                 receiver: user.clone(),
             },
             &[],
@@ -653,7 +650,7 @@ fn deposit_with_yield_must_mint_less_shares() {
                 )
                 .unwrap()
                 .balance,
-            assets + (assets / Uint128::new(2)),
+            AMOUNT + AMOUNT.mul_floor(HALF_FRAC),
             "must mint shares to the user accordingly"
         );
     }
@@ -667,7 +664,6 @@ fn mint_with_yield_must_mint_less_shares() {
     let api = app.api();
     let admin = addr(api, ADMIN);
     let user = addr(api, USER);
-    let shares = Uint128::new(1000);
     // initial mint - 1:1
     {
         app.execute_contract(
@@ -675,7 +671,7 @@ fn mint_with_yield_must_mint_less_shares() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: shares,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -685,7 +681,7 @@ fn mint_with_yield_must_mint_less_shares() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Mint {
-                shares,
+                shares: AMOUNT,
                 receiver: user.clone(),
             },
             &[],
@@ -701,7 +697,7 @@ fn mint_with_yield_must_mint_less_shares() {
                 )
                 .unwrap()
                 .balance,
-            shares,
+            AMOUNT,
             "must mint the same amount of shares to the user after initial deposit"
         );
     }
@@ -711,7 +707,7 @@ fn mint_with_yield_must_mint_less_shares() {
         asset.clone(),
         &cw20::Cw20ExecuteMsg::Mint {
             recipient: vault.to_string(),
-            amount: shares,
+            amount: AMOUNT,
         },
         &[],
     )
@@ -723,7 +719,7 @@ fn mint_with_yield_must_mint_less_shares() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: shares,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -733,7 +729,7 @@ fn mint_with_yield_must_mint_less_shares() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Mint {
-                shares: shares / Uint128::new(2),
+                shares: AMOUNT.mul_floor(HALF_FRAC),
                 receiver: user.clone(),
             },
             &[],
@@ -749,7 +745,7 @@ fn mint_with_yield_must_mint_less_shares() {
                 )
                 .unwrap()
                 .balance,
-            shares + (shares / Uint128::new(2)),
+            AMOUNT + AMOUNT.mul_floor(HALF_FRAC),
             "must mint shares to the user accordingly"
         );
     }
