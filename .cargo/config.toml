@@ -1,4 +1,4 @@
 [alias]
 wasm = "build --release --lib --target wasm32-unknown-unknown"
 schema = "run --bin schema"
-cov = "llvm-cov"
+cov = "llvm-cov --ignore-filename-regex schema"
