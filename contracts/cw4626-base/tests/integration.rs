@@ -261,6 +261,30 @@ fn instantiates_properly() {
 }
 
 #[test]
+fn instantiate_must_fail_if_asset_not_cw20() {
+    let mut app = get_app();
+    let code = app.store_code(Box::new(ContractWrapper::new(
+        contract::execute,
+        contract::instantiate,
+        contract::query,
+    )));
+    let api = app.api();
+    let admin = addr(api, ADMIN);
+    let msg = InstantiateMsg {
+        owner: Some(admin.clone()),
+        share_name: "Share Token".to_string(),
+        share_symbol: "sTKN".to_string(),
+        share_marketing: None,
+        underlying_token_address: addr(app.api(), "not-cw20"),
+    };
+    assert!(
+        app.instantiate_contract(code, admin, &msg, &[], "cw4626-base", None)
+            .is_err(),
+        "must validate that asset is cw20"
+    );
+}
+
+#[test]
 fn can_transfer_ownership() {
     let mut app = get_app();
     let asset = instantitate_asset(&mut app);
