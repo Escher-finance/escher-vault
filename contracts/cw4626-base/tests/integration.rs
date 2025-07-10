@@ -18,6 +18,9 @@ const USER: &str = "user";
 const USER_TWO: &str = "user-two";
 const ADMIN: &str = "admin";
 
+const AMOUNT: Uint128 = Uint128::new(1000);
+const HALF_FRAC: (Uint128, Uint128) = (Uint128::one(), Uint128::new(2));
+
 fn attrs_to_map(event: &Event) -> HashMap<&str, &str> {
     event
         .attributes
@@ -141,28 +144,22 @@ fn instantiates_properly() {
         querier
             .query_wasm_smart::<ConvertToSharesResponse>(
                 &vault,
-                &QueryMsg::ConvertToShares {
-                    assets: 1000u128.into()
-                }
+                &QueryMsg::ConvertToShares { assets: AMOUNT }
             )
             .unwrap()
-            .shares
-            .u128(),
-        1000,
+            .shares,
+        AMOUNT,
         "initial asset to share conversion must be 1:1"
     );
     assert_eq!(
         querier
             .query_wasm_smart::<ConvertToAssetsResponse>(
                 &vault,
-                &QueryMsg::ConvertToAssets {
-                    shares: 1000u128.into()
-                }
+                &QueryMsg::ConvertToAssets { shares: AMOUNT }
             )
             .unwrap()
-            .assets
-            .u128(),
-        1000,
+            .assets,
+        AMOUNT,
         "initial share to asset conversion must be 1:1"
     );
     assert_eq!(
@@ -221,56 +218,44 @@ fn instantiates_properly() {
         querier
             .query_wasm_smart::<PreviewDepositResponse>(
                 &vault,
-                &QueryMsg::PreviewDeposit {
-                    assets: 1000_u128.into()
-                }
+                &QueryMsg::PreviewDeposit { assets: AMOUNT }
             )
             .unwrap()
-            .shares
-            .u128(),
-        1000,
+            .shares,
+        AMOUNT,
         "initial preview deposit must be 1:1"
     );
     assert_eq!(
         querier
             .query_wasm_smart::<PreviewMintResponse>(
                 &vault,
-                &QueryMsg::PreviewMint {
-                    shares: 1000_u128.into()
-                }
+                &QueryMsg::PreviewMint { shares: AMOUNT }
             )
             .unwrap()
-            .assets
-            .u128(),
-        1000,
+            .assets,
+        AMOUNT,
         "initial preview mint must be 1:1"
     );
     assert_eq!(
         querier
             .query_wasm_smart::<PreviewWithdrawResponse>(
                 &vault,
-                &QueryMsg::PreviewWithdraw {
-                    assets: 1000_u128.into()
-                }
+                &QueryMsg::PreviewWithdraw { assets: AMOUNT }
             )
             .unwrap()
-            .shares
-            .u128(),
-        1000,
+            .shares,
+        AMOUNT,
         "initial preview withdraw must be 1:1"
     );
     assert_eq!(
         querier
             .query_wasm_smart::<PreviewRedeemResponse>(
                 &vault,
-                &QueryMsg::PreviewRedeem {
-                    shares: 1000_u128.into()
-                }
+                &QueryMsg::PreviewRedeem { shares: AMOUNT }
             )
             .unwrap()
-            .assets
-            .u128(),
-        1000,
+            .assets,
+        AMOUNT,
         "initial preview redeem must be 1:1"
     );
 }
