@@ -120,7 +120,7 @@ mod tests {
         let env = mock_env();
         let sender = Addr::unchecked("sender");
         let receiver = Addr::unchecked("receiver");
-        let max_assets = query::max_deposit(receiver.clone()).unwrap().max_assets;
+        let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone()).unwrap();
         let amount = max_assets + Uint128::one();
         assert_eq!(
             deposit(deps_mut, env, sender, amount, receiver.clone()).unwrap_err(),
@@ -130,6 +130,26 @@ mod tests {
                 assets: amount.u128()
             },
             "must error with exceeded max deposit"
+        );
+    }
+
+    #[test]
+    fn mint_must_not_exceed_max_shares() {
+        let mut deps = mock_dependencies();
+        let deps_mut = deps.as_mut();
+        let env = mock_env();
+        let sender = Addr::unchecked("sender");
+        let receiver = Addr::unchecked("receiver");
+        let MaxMintResponse { max_shares } = query::max_mint(receiver.clone()).unwrap();
+        let amount = max_shares + Uint128::one();
+        assert_eq!(
+            mint(deps_mut, env, sender, amount, receiver.clone()).unwrap_err(),
+            ContractError::ExceededMaxMint {
+                receiver: receiver.to_string(),
+                max_shares: max_shares.u128(),
+                shares: amount.u128()
+            },
+            "must error with exceeded max mint"
         );
     }
 }
