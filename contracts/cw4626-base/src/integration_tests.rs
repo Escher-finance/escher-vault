@@ -361,7 +361,7 @@ mod tests {
     }
 
     #[test]
-    fn first_deposit_should_be_one_to_one() {
+    fn deposit_no_yield_must_be_one_to_one() {
         let mut app = get_app();
         let asset = instantitate_asset(&mut app);
         let vault = proper_instantiate(&mut app, asset.clone());
@@ -463,6 +463,112 @@ mod tests {
                 .unwrap()
                 .balance,
             assets,
+            "must mint the same amount of shares to the specified receiver"
+        );
+    }
+    #[test]
+    fn mint_no_yield_must_be_one_to_one() {
+        let mut app = get_app();
+        let asset = instantitate_asset(&mut app);
+        let vault = proper_instantiate(&mut app, asset.clone());
+        let api = app.api();
+        let user = addr(api, USER);
+        let user_two = addr(api, USER_TWO);
+        let shares = Uint128::new(1000);
+        let user_assets_balance = app
+            .wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &asset,
+                &QueryMsg::Balance {
+                    address: user.to_string(),
+                },
+            )
+            .unwrap()
+            .balance;
+        app.execute_contract(
+            user.clone(),
+            asset.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: vault.to_string(),
+                amount: shares,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+        let wasm_event = app
+            .execute_contract(
+                user.clone(),
+                vault.clone(),
+                &ExecuteMsg::Mint {
+                    shares,
+                    receiver: user_two.clone(),
+                },
+                &[],
+            )
+            .unwrap()
+            .events
+            .iter()
+            .find(|e| e.ty == "wasm")
+            .unwrap()
+            .clone();
+        let attrs = attrs_to_map(&wasm_event);
+        assert_eq!(
+            attrs["action"], "deposit",
+            "must emit the right action attribute"
+        );
+        assert_eq!(
+            attrs["depositor"],
+            user.as_str(),
+            "must emit the right depositor attribute"
+        );
+        assert_eq!(
+            attrs["receiver"],
+            user_two.as_str(),
+            "must emit the right receiver attribute"
+        );
+        assert_eq!(
+            attrs["assets_transferred"],
+            shares.to_string().as_str(),
+            "must emit the right assets_transferred attribute"
+        );
+        assert_eq!(
+            attrs["shares_minted"],
+            shares.to_string().as_str(),
+            "must emit the right shares_minted attribute"
+        );
+        assert_eq!(
+            user_assets_balance - shares,
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &asset,
+                    &QueryMsg::Balance {
+                        address: user.to_string(),
+                    },
+                )
+                .unwrap()
+                .balance,
+            "must transfer the right amount of assets from the depositor"
+        );
+        assert_eq!(
+            shares,
+            app.wrap()
+                .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
+                .unwrap()
+                .total_managed_assets,
+            "vault total assets must match the initial deposit amount"
+        );
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user_two.to_string()
+                    }
+                )
+                .unwrap()
+                .balance,
+            shares,
             "must mint the same amount of shares to the specified receiver"
         );
     }
