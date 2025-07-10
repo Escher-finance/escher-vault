@@ -332,34 +332,6 @@ fn instantiates_properly() {
         ),
         "must not query cw20:download_logo because it wasn't set"
     );
-    assert!(
-        app.execute_contract(
-            user.clone(),
-            vault.clone(),
-            &ExecuteMsg::IncreaseAllowance {
-                spender: user_two.to_string(),
-                amount: Uint128::new(5),
-                expires: None,
-            },
-            &[],
-        )
-        .is_ok(),
-        "must execute cw20:increase_allowance"
-    );
-    assert!(
-        app.execute_contract(
-            user.clone(),
-            vault.clone(),
-            &ExecuteMsg::DecreaseAllowance {
-                spender: user_two.to_string(),
-                amount: Uint128::one(),
-                expires: None,
-            },
-            &[],
-        )
-        .is_ok(),
-        "must execute cw20:decrease_allowance"
-    );
     assert_eq!(
         ContractError::ShareCw20Error(cw20_base::ContractError::Unauthorized {}),
         app.execute_contract(
@@ -608,6 +580,87 @@ fn deposit_no_yield_must_be_one_to_one() {
             .balance,
         AMOUNT,
         "must mint the same amount of shares to the specified receiver"
+    );
+    // this is to test whether the cw20 executes are working
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::Transfer {
+                recipient: user_two.to_string(),
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:transfer"
+    );
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::Burn {
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:burn"
+    );
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: user.to_string(),
+                amount: AMOUNT,
+                expires: None,
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:increase_allowance"
+    );
+    assert!(
+        app.execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::DecreaseAllowance {
+                spender: user.to_string(),
+                amount: Uint128::one(),
+                expires: None,
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:decrease_allowance"
+    );
+    assert!(
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::TransferFrom {
+                owner: user_two.to_string(),
+                recipient: user.to_string(),
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:transfer_from"
+    );
+    assert!(
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::BurnFrom {
+                owner: user_two.to_string(),
+                amount: Uint128::one()
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:burn_from"
     );
 }
 
