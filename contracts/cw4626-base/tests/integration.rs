@@ -758,7 +758,6 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
     let vault = proper_instantiate(&mut app, asset.clone());
     let api = app.api();
     let user = addr(api, USER);
-    let assets = Uint128::new(1000);
     // deposit
     {
         app.execute_contract(
@@ -766,7 +765,7 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: assets,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -776,7 +775,7 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Deposit {
-                assets,
+                assets: AMOUNT,
                 receiver: user.clone(),
             },
             &[],
@@ -799,7 +798,7 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Withdraw {
-                assets,
+                assets: AMOUNT,
                 receiver: user.clone(),
                 owner: user.clone(),
             },
@@ -828,16 +827,16 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
     );
     assert_eq!(
         attrs["assets_received"],
-        assets.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right assets_received attribute"
     );
     assert_eq!(
         attrs["shares_burned"],
-        assets.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right shares_burned attribute"
     );
     assert_eq!(
-        user_assets_balance + assets,
+        user_assets_balance + AMOUNT,
         app.wrap()
             .query_wasm_smart::<BalanceResponse>(
                 &asset,
@@ -879,7 +878,6 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
     let vault = proper_instantiate(&mut app, asset.clone());
     let api = app.api();
     let user = addr(api, USER);
-    let assets = Uint128::new(1000);
     // deposit
     {
         app.execute_contract(
@@ -887,7 +885,7 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: assets,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -897,7 +895,7 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Deposit {
-                assets,
+                assets: AMOUNT,
                 receiver: user.clone(),
             },
             &[],
@@ -920,7 +918,7 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Redeem {
-                shares: assets,
+                shares: AMOUNT,
                 receiver: user.clone(),
                 owner: user.clone(),
             },
@@ -949,16 +947,16 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
     );
     assert_eq!(
         attrs["assets_received"],
-        assets.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right assets_received attribute"
     );
     assert_eq!(
         attrs["shares_burned"],
-        assets.to_string().as_str(),
+        AMOUNT.to_string().as_str(),
         "must emit the right shares_burned attribute"
     );
     assert_eq!(
-        user_assets_balance + assets,
+        user_assets_balance + AMOUNT,
         app.wrap()
             .query_wasm_smart::<BalanceResponse>(
                 &asset,
@@ -1001,7 +999,6 @@ fn withdraw_from_must_deduct_allowance() {
     let api = app.api();
     let user = addr(api, USER);
     let user_two = addr(api, USER_TWO);
-    let assets = Uint128::new(1000);
     // deposit
     {
         app.execute_contract(
@@ -1009,7 +1006,7 @@ fn withdraw_from_must_deduct_allowance() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: assets,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -1019,7 +1016,7 @@ fn withdraw_from_must_deduct_allowance() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Deposit {
-                assets,
+                assets: AMOUNT,
                 receiver: user.clone(),
             },
             &[],
@@ -1032,7 +1029,7 @@ fn withdraw_from_must_deduct_allowance() {
         vault.clone(),
         &ExecuteMsg::IncreaseAllowance {
             spender: user_two.to_string(),
-            amount: assets / Uint128::new(2),
+            amount: AMOUNT.mul_floor(HALF_FRAC),
             expires: None,
         },
         &[],
@@ -1043,7 +1040,7 @@ fn withdraw_from_must_deduct_allowance() {
         user_two.clone(),
         vault.clone(),
         &ExecuteMsg::Withdraw {
-            assets: assets / Uint128::new(2),
+            assets: AMOUNT.mul_floor(HALF_FRAC),
             receiver: user_two.clone(),
             owner: user.clone(),
         },
@@ -1055,7 +1052,7 @@ fn withdraw_from_must_deduct_allowance() {
             user_two.clone(),
             vault.clone(),
             &ExecuteMsg::Withdraw {
-                assets: assets / Uint128::new(2),
+                assets: AMOUNT.mul_floor(HALF_FRAC),
                 receiver: user_two.clone(),
                 owner: user.clone(),
             },
@@ -1093,7 +1090,7 @@ fn withdraw_from_must_deduct_allowance() {
             )
             .unwrap()
             .balance,
-        assets / Uint128::new(2),
+        AMOUNT.mul_floor(HALF_FRAC),
         "other must receive the right amount of assets"
     );
     assert_eq!(
@@ -1106,7 +1103,7 @@ fn withdraw_from_must_deduct_allowance() {
             )
             .unwrap()
             .balance,
-        assets / Uint128::new(2),
+        AMOUNT.mul_floor(HALF_FRAC),
         "must burn the same amount of shares from the user"
     );
 }
@@ -1119,7 +1116,6 @@ fn withdraw_with_yield_must_mint_less_shares() {
     let api = app.api();
     let admin = addr(api, ADMIN);
     let user = addr(api, USER);
-    let assets = Uint128::new(1000);
     // deposit - 1:1
     {
         app.execute_contract(
@@ -1127,7 +1123,7 @@ fn withdraw_with_yield_must_mint_less_shares() {
             asset.clone(),
             &ExecuteMsg::IncreaseAllowance {
                 spender: vault.to_string(),
-                amount: assets,
+                amount: AMOUNT,
                 expires: None,
             },
             &[],
@@ -1137,7 +1133,7 @@ fn withdraw_with_yield_must_mint_less_shares() {
             user.clone(),
             vault.clone(),
             &ExecuteMsg::Deposit {
-                assets,
+                assets: AMOUNT,
                 receiver: user.clone(),
             },
             &[],
@@ -1150,7 +1146,7 @@ fn withdraw_with_yield_must_mint_less_shares() {
         asset.clone(),
         &cw20::Cw20ExecuteMsg::Mint {
             recipient: vault.to_string(),
-            amount: assets,
+            amount: AMOUNT,
         },
         &[],
     )
@@ -1160,7 +1156,7 @@ fn withdraw_with_yield_must_mint_less_shares() {
         user.clone(),
         vault.clone(),
         &ExecuteMsg::Withdraw {
-            assets,
+            assets: AMOUNT,
             receiver: user.clone(),
             owner: user.clone(),
         },
@@ -1177,7 +1173,7 @@ fn withdraw_with_yield_must_mint_less_shares() {
             )
             .unwrap()
             .balance,
-        assets / Uint128::new(2),
+        AMOUNT.mul_floor(HALF_FRAC),
         "0.01",
         "must still have half the shares"
     );
