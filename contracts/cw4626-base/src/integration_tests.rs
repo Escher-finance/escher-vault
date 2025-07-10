@@ -48,7 +48,11 @@ mod tests {
         let msg = cw20_base::msg::InstantiateMsg {
             name: "Token".to_string(),
             symbol: "TKN".to_string(),
-            mint: None,
+            // this is just to be able to airdrop assets at will in the tests
+            mint: Some(MinterResponse {
+                minter: admin.to_string(),
+                cap: None,
+            }),
             decimals,
             initial_balances: Vec::from([
                 cw20::Cw20Coin {
@@ -466,6 +470,7 @@ mod tests {
             "must mint the same amount of shares to the specified receiver"
         );
     }
+
     #[test]
     fn mint_no_yield_must_be_one_to_one() {
         let mut app = get_app();
@@ -570,6 +575,102 @@ mod tests {
                 .balance,
             shares,
             "must mint the same amount of shares to the specified receiver"
+        );
+    }
+
+    #[test]
+    fn deposit_with_yield_must_mint_less_shares() {
+        let mut app = get_app();
+        let asset = instantitate_asset(&mut app);
+        let vault = proper_instantiate(&mut app, asset.clone());
+        let api = app.api();
+        let admin = addr(api, ADMIN);
+        let user = addr(api, USER);
+        let assets = Uint128::new(1000);
+        // initial deposit - 1:1
+        {
+            app.execute_contract(
+                user.clone(),
+                asset.clone(),
+                &ExecuteMsg::IncreaseAllowance {
+                    spender: vault.to_string(),
+                    amount: assets,
+                    expires: None,
+                },
+                &[],
+            )
+            .unwrap();
+            app.execute_contract(
+                user.clone(),
+                vault.clone(),
+                &ExecuteMsg::Deposit {
+                    assets,
+                    receiver: user.clone(),
+                },
+                &[],
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user.to_string()
+                    }
+                )
+                .unwrap()
+                .balance,
+            assets,
+            "must mint the same amount of shares to the user after initial deposit"
+        );
+        // simulate yield by airdropping some assets to the vault
+        app.execute_contract(
+            admin.clone(),
+            asset.clone(),
+            &cw20::Cw20ExecuteMsg::Mint {
+                recipient: vault.to_string(),
+                amount: assets,
+            },
+            &[],
+        )
+        .unwrap();
+        // second deposit - 2:1
+        {
+            app.execute_contract(
+                user.clone(),
+                asset.clone(),
+                &ExecuteMsg::IncreaseAllowance {
+                    spender: vault.to_string(),
+                    amount: assets,
+                    expires: None,
+                },
+                &[],
+            )
+            .unwrap();
+            app.execute_contract(
+                user.clone(),
+                vault.clone(),
+                &ExecuteMsg::Deposit {
+                    assets,
+                    receiver: user.clone(),
+                },
+                &[],
+            )
+            .unwrap();
+        }
+        assert_eq!(
+            app.wrap()
+                .query_wasm_smart::<BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user.to_string()
+                    }
+                )
+                .unwrap()
+                .balance,
+            assets + (assets / Uint128::new(2)),
+            "must mint shares to the user accordingly"
         );
     }
 }
