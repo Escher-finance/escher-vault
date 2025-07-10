@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Event;
+use cosmwasm_std::StdError;
 use cosmwasm_std::Uint128;
 use cw4626::cw20::TokenInfoResponse;
 use cw_multi_test::{App, ContractWrapper, Executor};
@@ -1067,6 +1068,39 @@ fn withdraw_from_must_deduct_allowance() {
         &[],
     )
     .unwrap();
+    let err = app
+        .execute_contract(
+            user_two.clone(),
+            vault.clone(),
+            &ExecuteMsg::Withdraw {
+                assets: assets / Uint128::new(2),
+                receiver: user_two.clone(),
+                owner: user.clone(),
+            },
+            &[],
+        )
+        .unwrap_err();
+    assert!(
+        matches!(
+            err.downcast().unwrap(),
+            ContractError::ShareCw20Error(cw20_base::ContractError::Std(StdError::Overflow { .. }))
+        ),
+        "attempt to withdraw more than allowance must fail with overflow"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<AllowanceResponse>(
+                &asset,
+                &QueryMsg::Allowance {
+                    owner: user.to_string(),
+                    spender: user_two.to_string()
+                },
+            )
+            .unwrap()
+            .allowance,
+        Uint128::zero(),
+        "new allowance must be zero"
+    );
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<BalanceResponse>(
