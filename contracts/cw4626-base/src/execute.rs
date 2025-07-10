@@ -129,7 +129,6 @@ mod tests {
                 max_assets: max_assets.u128(),
                 assets: amount.u128()
             },
-            "must error with exceeded max deposit"
         );
     }
 
@@ -149,7 +148,6 @@ mod tests {
                 max_shares: max_shares.u128(),
                 shares: amount.u128()
             },
-            "must error with exceeded max mint"
         );
     }
 }

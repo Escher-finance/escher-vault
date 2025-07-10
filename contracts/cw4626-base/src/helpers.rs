@@ -234,7 +234,6 @@ mod tests {
         assert_eq!(
             _deduct_allowance(&mut storage, &env.block, &user, &user, amount).unwrap_err(),
             ContractError::ShareCw20Error(cw20_base::ContractError::CannotSetOwnAccount {}),
-            "must error with cannot set own account"
         );
     }
 
@@ -261,7 +260,6 @@ mod tests {
         assert_eq!(
             _mint(deps_mut, "user".to_string(), cap + Uint128::one()).unwrap_err(),
             ContractError::ShareCw20Error(cw20_base::ContractError::CannotExceedCap {}),
-            "must error with cannot exceed cap"
         );
     }
 }
