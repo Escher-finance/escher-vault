@@ -33,7 +33,7 @@ fn addr(api: &MockApi, addr: &str) -> Addr {
     api.addr_make(addr)
 }
 
-fn get_app() -> App {
+pub fn get_app() -> App {
     App::default()
 }
 
@@ -816,6 +816,28 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
+    // withdraw more must fail
+    assert_eq!(
+        ContractError::ExceededMaxWithdraw {
+            owner: user.to_string(),
+            assets: (AMOUNT + Uint128::one()).u128(),
+            max_assets: AMOUNT.u128()
+        },
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Withdraw {
+                assets: AMOUNT + Uint128::one(),
+                receiver: user.clone(),
+                owner: user.clone(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error with exceeded max withdraw"
+    );
     // withdraw all to self
     let wasm_event = app
         .execute_contract(
