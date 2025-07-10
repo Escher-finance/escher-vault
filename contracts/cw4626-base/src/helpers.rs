@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, Deps, DepsMut, Env, QuerierWrapper, Response, StdError, StdResult,
-    Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, BlockInfo, Deps, DepsMut, Env, QuerierWrapper, Response, StdError,
+    StdResult, Storage, Uint128, WasmMsg,
 };
 use cw4626::cw20;
 
@@ -135,14 +135,7 @@ pub fn _withdraw(
 ) -> Result<Response, ContractError> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
     if caller != owner {
-        _decrease_allowance(
-            deps.storage,
-            env.clone(),
-            owner.clone(),
-            caller.clone(),
-            shares,
-            None,
-        )?;
+        _deduct_allowance(deps.storage, &env.block, &owner, &caller, shares)?;
     }
     _burn(deps, owner, shares)?;
     let transfer_msg = WasmMsg::Execute {
@@ -162,50 +155,22 @@ pub fn _withdraw(
         .add_attribute("shares_burned", shares))
 }
 
-// Internal unchecked `decrease_allowance`
-pub fn _decrease_allowance(
+// Internal unchecked `deduct_allowance`
+pub fn _deduct_allowance(
     storage: &mut dyn Storage,
-    env: Env,
-    owner: Addr,
-    spender: Addr,
+    block: &BlockInfo,
+    owner: &Addr,
+    spender: &Addr,
     amount: Uint128,
-    expires: Option<cw20::Expiration>,
-) -> Result<(), ContractError> {
+) -> Result<cw20::AllowanceResponse, ContractError> {
     if spender == owner {
         return Err(ContractError::ShareCw20Error(
             cw20_base::ContractError::CannotSetOwnAccount {},
         ));
     }
-
-    let key = (&owner, &spender);
-
-    fn reverse<'a>(t: (&'a Addr, &'a Addr)) -> (&'a Addr, &'a Addr) {
-        (t.1, t.0)
-    }
-
-    // load value and delete if it hits 0, or update otherwise
-    let mut allowance = cw20_base::state::ALLOWANCES.load(storage, key)?;
-    if amount < allowance.allowance {
-        // update the new amount
-        allowance.allowance = allowance
-            .allowance
-            .checked_sub(amount)
-            .map_err(StdError::overflow)?;
-        if let Some(exp) = expires {
-            if exp.is_expired(&env.block) {
-                return Err(ContractError::ShareCw20Error(
-                    cw20_base::ContractError::InvalidExpiration {},
-                ));
-            }
-            allowance.expires = exp;
-        }
-        cw20_base::state::ALLOWANCES.save(storage, key, &allowance)?;
-        cw20_base::state::ALLOWANCES_SPENDER.save(storage, reverse(key), &allowance)?;
-    } else {
-        cw20_base::state::ALLOWANCES.remove(storage, key);
-        cw20_base::state::ALLOWANCES_SPENDER.remove(storage, reverse(key));
-    }
-    Ok(())
+    Ok(cw20_base::allowances::deduct_allowance(
+        storage, owner, spender, block, amount,
+    )?)
 }
 
 // Internal unchecked `mint`

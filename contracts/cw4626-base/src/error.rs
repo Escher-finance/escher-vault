@@ -53,16 +53,4 @@ pub enum ContractError {
         shares: u128,
         max_shares: u128,
     },
-
-    #[error("Cannot set withdrawal share allowance to own account")]
-    CannotSetWithdrawalShareAllowanceToOwnAccount {},
-
-    #[error("Invalid withdrawal share allowance expiration")]
-    InvalidWithdrawalShareAllowanceExpiration {},
-
-    #[error("Insufficient withdrawal share allowance")]
-    InsufficientWithdrawalShareAllowance {},
-
-    #[error("Withdrawal share allowance has expired")]
-    ExpiredWithdrawalShareAllowance {},
 }
