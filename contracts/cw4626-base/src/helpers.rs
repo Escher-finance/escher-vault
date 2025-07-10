@@ -215,3 +215,26 @@ pub fn _burn(deps: DepsMut, user: Addr, amount: Uint128) -> Result<(), ContractE
     })?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{
+        testing::{mock_env, MockStorage},
+        Addr, Uint128,
+    };
+
+    use super::*;
+
+    #[test]
+    fn deduct_allowance_must_not_work_on_self() {
+        let mut storage = MockStorage::new();
+        let env = mock_env();
+        let user = Addr::unchecked("user");
+        let amount = Uint128::new(1);
+        assert_eq!(
+            _deduct_allowance(&mut storage, &env.block, &user, &user, amount).unwrap_err(),
+            ContractError::ShareCw20Error(cw20_base::ContractError::CannotSetOwnAccount {}),
+            "must error with cannot set own account"
+        );
+    }
+}
