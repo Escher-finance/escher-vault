@@ -332,6 +332,64 @@ fn instantiates_properly() {
         ),
         "must not query cw20:download_logo because it wasn't set"
     );
+    assert!(
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::IncreaseAllowance {
+                spender: user_two.to_string(),
+                amount: Uint128::new(5),
+                expires: None,
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:increase_allowance"
+    );
+    assert!(
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::DecreaseAllowance {
+                spender: user_two.to_string(),
+                amount: Uint128::one(),
+                expires: None,
+            },
+            &[],
+        )
+        .is_ok(),
+        "must execute cw20:decrease_allowance"
+    );
+    assert_eq!(
+        ContractError::ShareCw20Error(cw20_base::ContractError::Unauthorized {}),
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::UpdateMarketing {
+                project: None,
+                description: None,
+                marketing: None
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error cw20:update_marketing with unauthorized"
+    );
+    assert_eq!(
+        ContractError::ShareCw20Error(cw20_base::ContractError::Unauthorized {}),
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::UploadLogo(Logo::Url(String::new())),
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must error cw20:update_logo with unauthorized"
+    );
 }
 
 #[test]
