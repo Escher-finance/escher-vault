@@ -6,7 +6,6 @@ use cosmwasm_std::Addr;
 use cosmwasm_std::Event;
 use cosmwasm_std::StdError;
 use cosmwasm_std::Uint128;
-use cw4626::cw20::TokenInfoResponse;
 use cw_multi_test::{App, ContractWrapper, Executor};
 
 use cw4626::{cw20::*, *};
