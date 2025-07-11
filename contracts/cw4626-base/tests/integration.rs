@@ -1003,9 +1003,9 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
     // withdraw more must fail
     assert_eq!(
         ContractError::ExceededMaxWithdraw {
-            owner: user.to_string(),
-            assets: (AMOUNT + Uint128::one()).u128(),
-            max_assets: AMOUNT.u128()
+            owner: user.clone(),
+            assets: AMOUNT + Uint128::one(),
+            max_assets: AMOUNT
         },
         app.execute_contract(
             user.clone(),
@@ -1145,9 +1145,9 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
     // redeem more must fail
     assert_eq!(
         ContractError::ExceededMaxRedeem {
-            owner: user.to_string(),
-            shares: (AMOUNT + Uint128::one()).u128(),
-            max_shares: AMOUNT.u128()
+            owner: user.clone(),
+            shares: AMOUNT + Uint128::one(),
+            max_shares: AMOUNT
         },
         app.execute_contract(
             user.clone(),
