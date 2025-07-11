@@ -39,7 +39,7 @@ Basic implementation can be found in
 | `assets_received` |     `{assets}`      |
 |  `shares_burned`  |     `{shares}`      |
 
-## `Cw4626ExecuteMsg`
+## Execute Messages `Cw4626ExecuteMsg`
 
 `Deposit { assets: Uint128, receiver: Addr }` - Mints shares to receiver by
 depositing exact amount of underlying tokens
@@ -55,7 +55,7 @@ from owner and sends assets of underlying tokens to receiver
 
 `Receive(Cw20ReceiveMsg)` - CW20 receive
 
-## `Cw4626ReceiveMsg`
+## Receive Messages `Cw4626ReceiveMsg`
 
 `Deposit { receiver: Addr }` - Mints shares to receiver by depositing exact
 amount of underlying tokens
