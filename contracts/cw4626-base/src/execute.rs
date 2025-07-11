@@ -40,16 +40,16 @@ pub fn receive_deposit(
 ) -> Result<Response, ContractError> {
     if received_balance.address != UNDERLYING_ASSET.load(deps.storage)? {
         return Err(ContractError::UnsupportedCw20Received {
-            addr: received_balance.address.to_string(),
+            addr: received_balance.address.clone(),
         });
     }
     let assets = received_balance.amount;
     let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
         return Err(ContractError::ExceededMaxDeposit {
-            receiver: receiver.to_string(),
-            assets: assets.u128(),
-            max_assets: max_assets.u128(),
+            receiver: receiver.clone(),
+            assets,
+            max_assets,
         });
     }
     let PreviewDepositResponse { shares } =
@@ -70,9 +70,9 @@ pub fn deposit(
     let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
         return Err(ContractError::ExceededMaxDeposit {
-            receiver: receiver.to_string(),
-            assets: assets.u128(),
-            max_assets: max_assets.u128(),
+            receiver: receiver.clone(),
+            assets,
+            max_assets,
         });
     }
     let PreviewDepositResponse { shares } =
@@ -91,9 +91,9 @@ pub fn mint(
     let MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
     if shares > max_shares {
         return Err(ContractError::ExceededMaxMint {
-            receiver: receiver.to_string(),
-            shares: shares.u128(),
-            max_shares: max_shares.u128(),
+            receiver: receiver.clone(),
+            shares,
+            max_shares,
         });
     }
     let PreviewMintResponse { assets } =
@@ -114,9 +114,9 @@ pub fn withdraw(
         query::max_withdraw(&this, &deps.as_ref(), owner.clone())?;
     if assets > max_assets {
         return Err(ContractError::ExceededMaxWithdraw {
-            owner: owner.to_string(),
-            assets: assets.u128(),
-            max_assets: max_assets.u128(),
+            owner: owner.clone(),
+            assets,
+            max_assets,
         });
     }
     let PreviewWithdrawResponse { shares } =
@@ -135,9 +135,9 @@ pub fn redeem(
     let MaxRedeemResponse { max_shares } = query::max_redeem(&deps.as_ref(), owner.clone())?;
     if shares > max_shares {
         return Err(ContractError::ExceededMaxRedeem {
-            owner: owner.to_string(),
-            shares: shares.u128(),
-            max_shares: max_shares.u128(),
+            owner: owner.clone(),
+            shares,
+            max_shares,
         });
     }
     let PreviewRedeemResponse { assets } =
@@ -176,9 +176,9 @@ mod tests {
         assert_eq!(
             deposit(deps_mut, env, sender, amount, receiver.clone()).unwrap_err(),
             ContractError::ExceededMaxDeposit {
-                receiver: receiver.to_string(),
-                max_assets: max_assets.u128(),
-                assets: amount.u128()
+                receiver: receiver.clone(),
+                max_assets: max_assets,
+                assets: amount
             },
         );
     }
@@ -195,9 +195,9 @@ mod tests {
         assert_eq!(
             mint(deps_mut, env, sender, amount, receiver.clone()).unwrap_err(),
             ContractError::ExceededMaxMint {
-                receiver: receiver.to_string(),
-                max_shares: max_shares.u128(),
-                shares: amount.u128()
+                receiver: receiver.clone(),
+                max_shares: max_shares,
+                shares: amount
             },
         );
     }

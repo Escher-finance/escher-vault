@@ -16,7 +16,7 @@ pub fn validate_cw20(
             &cw20::Cw20QueryMsg::TokenInfo {},
         )
         .map_err(|_| ContractError::InvalidCw20 {
-            addr: token_address.to_string(),
+            addr: token_address.clone(),
         })
 }
 
