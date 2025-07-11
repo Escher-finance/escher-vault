@@ -6,7 +6,7 @@ use cw4626::{
 };
 
 use crate::{
-    helpers::{_deposit, _mint, _withdraw, generate_deposit_response},
+    helpers::{_deposit, _mint, _preview_deposit, _withdraw, generate_deposit_response},
     query,
     state::UNDERLYING_ASSET,
     ContractError,
@@ -53,7 +53,7 @@ pub fn receive_deposit(
         });
     }
     let PreviewDepositResponse { shares } =
-        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+        _preview_deposit(&env.contract.address, &deps.as_ref(), assets, true)?;
     _mint(deps, receiver.to_string(), shares)?;
     Ok(generate_deposit_response(
         &sender, &receiver, assets, shares,

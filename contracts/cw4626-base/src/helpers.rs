@@ -2,7 +2,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, BlockInfo, Deps, DepsMut, Env, QuerierWrapper, Response, StdError,
     StdResult, Storage, Uint128, WasmMsg,
 };
-use cw4626::cw20;
+use cw4626::{cw20, PreviewDepositResponse};
 
 use crate::{state::UNDERLYING_ASSET, ContractError};
 
@@ -119,6 +119,25 @@ pub fn generate_withdraw_response(
         .add_attribute("receiver", receiver)
         .add_attribute("assets_received", assets)
         .add_attribute("shares_burned", shares)
+}
+
+/// Pass `true` in `via_receive` in order to fix calculation when using ReceiveMsg
+pub fn _preview_deposit(
+    this: &Addr,
+    deps: &Deps,
+    assets: Uint128,
+    via_receive: bool,
+) -> StdResult<PreviewDepositResponse> {
+    let Tokens {
+        total_shares,
+        mut total_assets,
+        ..
+    } = get_tokens(this, deps)?;
+    if via_receive {
+        total_assets -= assets;
+    }
+    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+    Ok(PreviewDepositResponse { shares })
 }
 
 /// Used internally in `deposit`/`mint` functionality
