@@ -20,7 +20,7 @@ pub struct Cw4626InstantiateMsg {
 #[cw_serde]
 pub enum Cw4626ReceiveMsg {
     /// Mints shares to receiver by depositing exact amount of underlying tokens
-    Deposit { assets: Uint128, receiver: Addr },
+    Deposit { receiver: Addr },
 }
 
 #[cw_ownable_execute]
