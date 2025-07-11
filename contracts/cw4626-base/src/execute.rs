@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, Response, Uint128};
+use cosmwasm_std::{Addr, DepsMut, Env, Response, Uint128};
 use cw4626::{
     cw20::Cw20ReceiveMsg, MaxDepositResponse, MaxMintResponse, MaxRedeemResponse,
     MaxWithdrawResponse, PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse,
@@ -10,7 +10,12 @@ use crate::{
     query, ContractError,
 };
 
-pub fn receive(_cw20_receive_msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
+pub fn receive(
+    _deps: DepsMut,
+    _env: Env,
+    _sender: Addr,
+    _cw20_receive_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
     todo!()
 }
 
@@ -101,11 +106,11 @@ pub fn redeem(
 
 pub fn update_ownership(
     deps: DepsMut,
-    block: BlockInfo,
+    env: Env,
     new_owner: Addr,
     action: cw_ownable::Action,
 ) -> Result<Response, ContractError> {
-    cw_ownable::update_ownership(deps, &block, &new_owner, action)?;
+    cw_ownable::update_ownership(deps, &env.block, &new_owner, action)?;
     Ok(Response::new())
 }
 

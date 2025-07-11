@@ -71,9 +71,9 @@ pub fn execute(
             owner,
         } => execute::redeem(deps, env, sender, shares, receiver, owner),
         ExecuteMsg::UpdateOwnership(action) => {
-            execute::update_ownership(deps, env.block, sender, action)
+            execute::update_ownership(deps, env, sender, action)
         }
-        ExecuteMsg::Receive(cw20_receive_msg) => execute::receive(cw20_receive_msg),
+        ExecuteMsg::Receive(cw20_receive_msg) => execute::receive(deps, env, sender, cw20_receive_msg),
         //
         // CW20
         //

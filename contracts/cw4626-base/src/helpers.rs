@@ -93,6 +93,34 @@ pub fn _convert_to_assets(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
+pub fn generate_deposit_response(
+    caller: &Addr,
+    receiver: &Addr,
+    assets: Uint128,
+    shares: Uint128,
+) -> Response {
+    Response::new()
+        .add_attribute("action", "deposit")
+        .add_attribute("depositor", caller)
+        .add_attribute("receiver", receiver)
+        .add_attribute("assets_transferred", assets)
+        .add_attribute("shares_minted", shares)
+}
+
+pub fn generate_withdraw_response(
+    caller: &Addr,
+    receiver: &Addr,
+    assets: Uint128,
+    shares: Uint128,
+) -> Response {
+    Response::new()
+        .add_attribute("action", "withdraw")
+        .add_attribute("withdrawer", caller)
+        .add_attribute("receiver", receiver)
+        .add_attribute("assets_received", assets)
+        .add_attribute("shares_burned", shares)
+}
+
 /// Used internally in `deposit`/`mint` functionality
 pub fn _deposit(
     mut deps: DepsMut,
@@ -104,7 +132,7 @@ pub fn _deposit(
 ) -> Result<Response, ContractError> {
     let this = env.contract.address.clone();
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
-    let transfer_message = WasmMsg::Execute {
+    let transfer_from_msg = WasmMsg::Execute {
         contract_addr: asset.to_string(),
         msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
             owner: caller.to_string(),
@@ -114,13 +142,10 @@ pub fn _deposit(
         funds: vec![],
     };
     _mint(deps.branch(), receiver.to_string(), shares)?;
-    Ok(Response::new()
-        .add_message(transfer_message)
-        .add_attribute("action", "deposit")
-        .add_attribute("depositor", caller)
-        .add_attribute("receiver", receiver)
-        .add_attribute("assets_transferred", assets)
-        .add_attribute("shares_minted", shares))
+    Ok(
+        generate_deposit_response(&caller, &receiver, assets, shares)
+            .add_message(transfer_from_msg),
+    )
 }
 
 /// Used internally in `withdraw`/`redeem` functionality
@@ -146,13 +171,7 @@ pub fn _withdraw(
         })?,
         funds: vec![],
     };
-    Ok(Response::new()
-        .add_message(transfer_msg)
-        .add_attribute("action", "withdraw")
-        .add_attribute("withdrawer", caller)
-        .add_attribute("receiver", receiver)
-        .add_attribute("assets_received", assets)
-        .add_attribute("shares_burned", shares))
+    Ok(generate_withdraw_response(&caller, &receiver, assets, shares).add_message(transfer_msg))
 }
 
 // Internal unchecked `deduct_allowance`
