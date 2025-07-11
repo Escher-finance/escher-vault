@@ -73,6 +73,7 @@ pub fn execute(
         ExecuteMsg::UpdateOwnership(action) => {
             execute::update_ownership(deps, env.block, sender, action)
         }
+        ExecuteMsg::Receive(cw20_receive_msg) => execute::receive(cw20_receive_msg),
         //
         // CW20
         //

@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Uint128};
 
-use cw20::{Expiration, Logo};
+use cw20::{Cw20ReceiveMsg, Expiration, Logo};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 
 pub use cw20;
@@ -15,6 +15,12 @@ pub struct Cw4626InstantiateMsg {
     pub share_name: String,
     pub share_symbol: String,
     pub share_marketing: Option<InstantiateMarketingInfo>,
+}
+
+#[cw_serde]
+pub enum Cw4626ReceiveMsg {
+    /// Mints shares to receiver by depositing exact amount of underlying tokens
+    Deposit { assets: Uint128, receiver: Addr },
 }
 
 #[cw_ownable_execute]
@@ -39,6 +45,8 @@ pub enum Cw4626ExecuteMsg {
         receiver: Addr,
         owner: Addr,
     },
+    /// CW20 receive
+    Receive(Cw20ReceiveMsg),
 
     //
     // CW20

@@ -1,13 +1,18 @@
 use cosmwasm_std::{Addr, BlockInfo, DepsMut, Env, Response, Uint128};
 use cw4626::{
-    MaxDepositResponse, MaxMintResponse, MaxRedeemResponse, MaxWithdrawResponse,
-    PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse, PreviewWithdrawResponse,
+    cw20::Cw20ReceiveMsg, MaxDepositResponse, MaxMintResponse, MaxRedeemResponse,
+    MaxWithdrawResponse, PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse,
+    PreviewWithdrawResponse,
 };
 
 use crate::{
     helpers::{_deposit, _withdraw},
     query, ContractError,
 };
+
+pub fn receive(_cw20_receive_msg: Cw20ReceiveMsg) -> Result<Response, ContractError> {
+    todo!()
+}
 
 pub fn deposit(
     deps: DepsMut,
