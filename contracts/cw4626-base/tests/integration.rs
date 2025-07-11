@@ -1362,7 +1362,7 @@ fn withdraw_from_must_deduct_allowance() {
 }
 
 #[test]
-fn withdraw_with_yield_must_mint_less_shares() {
+fn withdraw_with_yield_must_burn_less_shares() {
     let mut app = get_app();
     let asset = instantitate_asset(&mut app);
     let vault = proper_instantiate(&mut app, asset.clone());
