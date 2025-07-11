@@ -201,4 +201,64 @@ mod tests {
             },
         );
     }
+
+    #[test]
+    fn receive_deposit_must_not_exceed_max_assets() {
+        let mut deps = mock_dependencies();
+        let deps_mut = deps.as_mut();
+        let env = mock_env();
+        let sender = Addr::unchecked("sender");
+        let receiver = Addr::unchecked("receiver");
+        let asset = Addr::unchecked("asset");
+        let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone()).unwrap();
+        let received_balance = Cw20CoinVerified {
+            address: asset.clone(),
+            amount: max_assets + Uint128::one(),
+        };
+        UNDERLYING_ASSET.save(deps_mut.storage, &asset).unwrap();
+        assert_eq!(
+            receive_deposit(
+                deps_mut,
+                env,
+                sender,
+                received_balance.clone(),
+                receiver.clone()
+            )
+            .unwrap_err(),
+            ContractError::ExceededMaxDeposit {
+                receiver: receiver.clone(),
+                max_assets: max_assets,
+                assets: received_balance.amount
+            },
+        );
+    }
+
+    #[test]
+    fn receive_deposit_must_error_if_received_other_token() {
+        let mut deps = mock_dependencies();
+        let deps_mut = deps.as_mut();
+        let env = mock_env();
+        let sender = Addr::unchecked("sender");
+        let receiver = Addr::unchecked("receiver");
+        let received_balance = Cw20CoinVerified {
+            address: Addr::unchecked("other-cw20"),
+            amount: Uint128::one(),
+        };
+        UNDERLYING_ASSET
+            .save(deps_mut.storage, &Addr::unchecked("asset"))
+            .unwrap();
+        assert_eq!(
+            receive_deposit(
+                deps_mut,
+                env,
+                sender,
+                received_balance.clone(),
+                receiver.clone()
+            )
+            .unwrap_err(),
+            ContractError::UnsupportedCw20Received {
+                addr: received_balance.address.clone()
+            },
+        );
+    }
 }

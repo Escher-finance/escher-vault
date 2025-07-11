@@ -672,16 +672,6 @@ fn deposit_via_receive_msg() {
     let api = app.api();
     let user = addr(api, USER);
     let user_two = addr(api, USER_TWO);
-    let user_assets_balance = app
-        .wrap()
-        .query_wasm_smart::<BalanceResponse>(
-            &asset,
-            &QueryMsg::Balance {
-                address: user.to_string(),
-            },
-        )
-        .unwrap()
-        .balance;
     let wasm_event = app
         .execute_contract(
             user.clone(),
@@ -731,6 +721,27 @@ fn deposit_via_receive_msg() {
         attrs["shares_minted"],
         AMOUNT.to_string().as_str(),
         "must emit the right shares_minted attribute"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
+            .unwrap()
+            .total_managed_assets,
+        AMOUNT,
+        "vault total assets must match the initial deposit amount"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user_two.to_string()
+                }
+            )
+            .unwrap()
+            .balance,
+        AMOUNT,
+        "must mint the same amount of shares to the specified receiver"
     );
 }
 
