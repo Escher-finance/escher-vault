@@ -662,6 +662,28 @@ fn deposit_no_yield_must_be_one_to_one() {
         .is_ok(),
         "must execute cw20:burn_from"
     );
+    assert_eq!(
+        ContractError::UnsupportedCw20Received {
+            addr: vault.clone()
+        },
+        app.execute_contract(
+            user.clone(),
+            vault.clone(),
+            &ExecuteMsg::Send {
+                contract: vault.to_string(),
+                amount: Uint128::one(),
+                msg: to_json_binary(&Cw4626ReceiveMsg::Deposit {
+                    receiver: user.clone(),
+                })
+                .unwrap()
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap(),
+        "must execute cw20:send"
+    )
 }
 
 #[test]
