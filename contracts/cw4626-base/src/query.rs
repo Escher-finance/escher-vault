@@ -1,6 +1,7 @@
 use crate::{
     helpers::{
-        _convert_to_shares, query_cw20_balance, Rounding, Tokens, _convert_to_assets, get_tokens,
+        _convert_to_shares, query_cw20_balance, Rounding, Tokens, _convert_to_assets,
+        _preview_deposit, get_tokens,
     },
     state::UNDERLYING_ASSET,
 };
@@ -66,13 +67,7 @@ pub fn preview_deposit(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<PreviewDepositResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
-    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
-    Ok(PreviewDepositResponse { shares })
+    _preview_deposit(this, deps, assets, false)
 }
 
 pub fn max_mint(_receiver: Addr) -> StdResult<MaxMintResponse> {

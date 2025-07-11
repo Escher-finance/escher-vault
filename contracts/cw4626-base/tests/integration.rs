@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use cosmwasm_std::assert_approx_eq;
 use cosmwasm_std::testing::MockApi;
+use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Event;
 use cosmwasm_std::StdError;
@@ -664,6 +665,87 @@ fn deposit_no_yield_must_be_one_to_one() {
 }
 
 #[test]
+fn deposit_via_receive_msg() {
+    let mut app = get_app();
+    let asset = instantitate_asset(&mut app);
+    let vault = proper_instantiate(&mut app, asset.clone());
+    let api = app.api();
+    let user = addr(api, USER);
+    let user_two = addr(api, USER_TWO);
+    let wasm_event = app
+        .execute_contract(
+            user.clone(),
+            asset.clone(),
+            &ExecuteMsg::Send {
+                contract: vault.to_string(),
+                amount: AMOUNT,
+                msg: to_json_binary(&Cw4626ReceiveMsg::Deposit {
+                    receiver: user_two.clone(),
+                })
+                .unwrap(),
+            },
+            &[],
+        )
+        .unwrap()
+        .events
+        .iter()
+        .find(|e| {
+            e.ty == "wasm"
+                && e.attributes
+                    .iter()
+                    .any(|a| a.key == "action" && a.value == "deposit")
+        })
+        .unwrap()
+        .clone();
+    let attrs = attrs_to_map(&wasm_event);
+    assert_eq!(
+        attrs["action"], "deposit",
+        "must emit the right action attribute"
+    );
+    assert_eq!(
+        attrs["depositor"],
+        user.as_str(),
+        "must emit the right depositor attribute"
+    );
+    assert_eq!(
+        attrs["receiver"],
+        user_two.as_str(),
+        "must emit the right receiver attribute"
+    );
+    assert_eq!(
+        attrs["assets_transferred"],
+        AMOUNT.to_string().as_str(),
+        "must emit the right assets_transferred attribute"
+    );
+    assert_eq!(
+        attrs["shares_minted"],
+        AMOUNT.to_string().as_str(),
+        "must emit the right shares_minted attribute"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<TotalAssetsResponse>(&vault, &QueryMsg::TotalAssets {})
+            .unwrap()
+            .total_managed_assets,
+        AMOUNT,
+        "vault total assets must match the initial deposit amount"
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user_two.to_string()
+                }
+            )
+            .unwrap()
+            .balance,
+        AMOUNT,
+        "must mint the same amount of shares to the specified receiver"
+    );
+}
+
+#[test]
 fn mint_no_yield_must_be_one_to_one() {
     let mut app = get_app();
     let asset = instantitate_asset(&mut app);
@@ -1003,9 +1085,9 @@ fn withdraw_to_self_no_yield_must_be_one_to_one() {
     // withdraw more must fail
     assert_eq!(
         ContractError::ExceededMaxWithdraw {
-            owner: user.to_string(),
-            assets: (AMOUNT + Uint128::one()).u128(),
-            max_assets: AMOUNT.u128()
+            owner: user.clone(),
+            assets: AMOUNT + Uint128::one(),
+            max_assets: AMOUNT
         },
         app.execute_contract(
             user.clone(),
@@ -1145,9 +1227,9 @@ fn redeem_to_self_no_yield_must_be_one_to_one() {
     // redeem more must fail
     assert_eq!(
         ContractError::ExceededMaxRedeem {
-            owner: user.to_string(),
-            shares: (AMOUNT + Uint128::one()).u128(),
-            max_shares: AMOUNT.u128()
+            owner: user.clone(),
+            shares: AMOUNT + Uint128::one(),
+            max_shares: AMOUNT
         },
         app.execute_contract(
             user.clone(),
