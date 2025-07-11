@@ -17,6 +17,9 @@ pub enum ContractError {
     #[error("{addr} is not a cw20")]
     InvalidCw20 { addr: String },
 
+    #[error("{addr} cw20 is not supported for this receive msg")]
+    UnsupportedCw20Received { addr: String },
+
     #[error("Share must have this contract as the minter")]
     InvalidSharesMinter {},
 

@@ -1,22 +1,63 @@
-use cosmwasm_std::{Addr, DepsMut, Env, Response, Uint128};
+use cosmwasm_std::{from_json, Addr, DepsMut, Env, Response, Uint128};
 use cw4626::{
-    cw20::Cw20ReceiveMsg, MaxDepositResponse, MaxMintResponse, MaxRedeemResponse,
-    MaxWithdrawResponse, PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse,
-    PreviewWithdrawResponse,
+    cw20::{Cw20CoinVerified, Cw20ReceiveMsg},
+    Cw4626ReceiveMsg, MaxDepositResponse, MaxMintResponse, MaxRedeemResponse, MaxWithdrawResponse,
+    PreviewDepositResponse, PreviewMintResponse, PreviewRedeemResponse, PreviewWithdrawResponse,
 };
 
 use crate::{
-    helpers::{_deposit, _withdraw},
-    query, ContractError,
+    helpers::{_deposit, _mint, _withdraw, generate_deposit_response},
+    query,
+    state::UNDERLYING_ASSET,
+    ContractError,
 };
 
 pub fn receive(
-    _deps: DepsMut,
-    _env: Env,
-    _sender: Addr,
-    _cw20_receive_msg: Cw20ReceiveMsg,
+    deps: DepsMut,
+    env: Env,
+    cw20_contract: Addr,
+    cw20_receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    todo!()
+    let msg = from_json::<Cw4626ReceiveMsg>(&cw20_receive_msg.msg)?;
+    let sender = deps.api.addr_validate(&cw20_receive_msg.sender)?;
+    let received_balance = Cw20CoinVerified {
+        address: cw20_contract,
+        amount: cw20_receive_msg.amount,
+    };
+    match msg {
+        Cw4626ReceiveMsg::Deposit { receiver } => {
+            receive_deposit(deps, env, sender, received_balance, receiver)
+        }
+    }
+}
+
+pub fn receive_deposit(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    received_balance: Cw20CoinVerified,
+    receiver: Addr,
+) -> Result<Response, ContractError> {
+    if received_balance.address != UNDERLYING_ASSET.load(deps.storage)? {
+        return Err(ContractError::UnsupportedCw20Received {
+            addr: received_balance.address.to_string(),
+        });
+    }
+    let assets = received_balance.amount;
+    let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
+    if assets > max_assets {
+        return Err(ContractError::ExceededMaxDeposit {
+            receiver: receiver.to_string(),
+            assets: assets.u128(),
+            max_assets: max_assets.u128(),
+        });
+    }
+    let PreviewDepositResponse { shares } =
+        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+    _mint(deps, receiver.to_string(), shares)?;
+    Ok(generate_deposit_response(
+        &sender, &receiver, assets, shares,
+    ))
 }
 
 pub fn deposit(
