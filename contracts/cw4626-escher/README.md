@@ -1,15 +1,16 @@
 ```mermaid
 sequenceDiagram
-    box Ethereum
+    box rgb(35, 47, 48) ETHEREUM
     actor User
+    participant Router
     end
-    box Union
+    box rgb(48, 48, 48) UNION
     participant EscherHub
     end
-    box Offchain
+    box rgb(35, 36, 48) OFFCHAIN
     participant Controller
     end
-    box Babylon
+    box rgb(48, 43, 35) BABYLON
     participant Vault
     participant Tower
     end
@@ -21,7 +22,12 @@ sequenceDiagram
     Controller-->>User: Return LP ratio
     User->>EscherHub: ZKGM stake U (+ LP ratio payload)
     Note over EscherHub: Stake portion of U according to LP ratio
-    EscherHub->>Vault: ZKGM Deposit U + eU
+    critical Must have allowances set for Router
+    EscherHub->>Router: ZKGM TransferFrom U + eU
+    end
+    critical This ensures we're sending the correct version of the tokens
+    Router->>Vault: ZKGM deposit U + eU
+    end
     Vault-->>Tower: Read LP ratio
     Tower-->>Vault: Return LP ratio
     Vault->>Tower: Provide liquidity
