@@ -29,6 +29,10 @@ jobs:
           args: --locked -p cw4626-base
         env:
           RUSTFLAGS: "-C link-arg=-s"
+      - name: Clean environment
+        uses: actions-rs/cargo@v1
+        with:
+          command: clean
       - name: Compile WASM contract (cw4626-escher)
         uses: actions-rs/cargo@v1
         with:
