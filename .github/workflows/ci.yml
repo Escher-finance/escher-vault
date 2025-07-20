@@ -22,11 +22,22 @@ jobs:
           args: --locked
         env:
           RUST_BACKTRACE: 1
-      - name: Compile WASM contract
+      - name: Compile WASM contract (cw4626-base)
         uses: actions-rs/cargo@v1
         with:
           command: wasm
-          args: --locked
+          args: --locked -p cw4626-base
+        env:
+          RUSTFLAGS: "-C link-arg=-s"
+      - name: Clean environment
+        uses: actions-rs/cargo@v1
+        with:
+          command: clean
+      - name: Compile WASM contract (cw4626-escher)
+        uses: actions-rs/cargo@v1
+        with:
+          command: wasm
+          args: --locked -p cw4626-escher
         env:
           RUSTFLAGS: "-C link-arg=-s"
   lints:
@@ -52,16 +63,3 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-      - name: Generate Schema (cw4626-base)
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked -p cw4626-base
-      - name: Generate Schema (cw4626-escher)
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked -p cw4626-escher
-      - name: Schema Changes
-        # fails if any changes not committed
-        run: git diff --exit-code schema

@@ -1,7 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw4626_base::contract::instantiate as cw4626_base_instantiate;
 use cw4626_base::execute as cw4626_base_executes;
 use cw4626_base::query as cw4626_base_queries;
 
@@ -15,7 +14,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    Ok(cw4626_base_instantiate(deps, env, info, msg)?)
+    Ok(cw4626_base::contract::instantiate(deps, env, info, msg)?)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
