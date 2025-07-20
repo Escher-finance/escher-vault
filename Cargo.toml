@@ -27,6 +27,7 @@ cw-multi-test = "2.0.0"
 cw-ownable = "2.1.0"
 cw4626 = { path = "packages/cw4626", version = "0.1.0-rc.0" }
 cw4626-base = { path = "contracts/cw4626-base", version = "0.1.0-rc.0" }
+cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
 
 [profile.release]
 opt-level = 3

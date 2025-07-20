@@ -1,8 +1,8 @@
 [package]
 name = "cw4626-escher"
-version = "0.1.0"
 authors = ["Nuno David <ndavidq0@gmail.com>"]
 edition = "2021"
+version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
