@@ -22,11 +22,18 @@ jobs:
           args: --locked
         env:
           RUST_BACKTRACE: 1
-      - name: Compile WASM contract
+      - name: Compile WASM contract (cw4626-base)
         uses: actions-rs/cargo@v1
         with:
           command: wasm
-          args: --locked
+          args: --locked -p cw4626-base
+        env:
+          RUSTFLAGS: "-C link-arg=-s"
+      - name: Compile WASM contract (cw4626-escher)
+        uses: actions-rs/cargo@v1
+        with:
+          command: wasm
+          args: --locked -p cw4626-escher
         env:
           RUSTFLAGS: "-C link-arg=-s"
   lints:
