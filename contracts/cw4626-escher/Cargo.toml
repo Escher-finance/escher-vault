@@ -1,8 +1,8 @@
 [package]
-name = "cw4626-base"
+name = "cw4626-escher"
+version = "0.1.0"
 authors = ["Nuno David <ndavidq0@gmail.com>"]
 edition = "2021"
-version.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -12,6 +12,7 @@ library = []
 
 [dependencies]
 cw4626 = { workspace = true }
+cw4626-base = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
 cw-storage-plus = { workspace = true }
