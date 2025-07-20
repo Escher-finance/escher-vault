@@ -12,7 +12,7 @@
 ## Build
 
 ```bash
-cargo wasm
+cargo clean && cargo wasm -p {CONTRACT}
 ```
 
 ## Test
@@ -40,5 +40,5 @@ cargo cov --open
 ## Generate JSON schema
 
 ```bash
-cargo schema
+cargo schema -p {CONTRACT}
 ```

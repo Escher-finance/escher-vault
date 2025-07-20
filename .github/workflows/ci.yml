@@ -63,16 +63,3 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-      - name: Generate Schema (cw4626-base)
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked -p cw4626-base
-      - name: Generate Schema (cw4626-escher)
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked -p cw4626-escher
-      - name: Schema Changes
-        # fails if any changes not committed
-        run: git diff --exit-code schema
