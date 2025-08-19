@@ -4,13 +4,13 @@
 sequenceDiagram
     box rgb(35, 47, 48) ETHEREUM
     actor User
-    participant Router
-    end
-    box rgb(48, 48, 48) UNION
     participant EscherHub
     end
+    box rgb(48, 48, 48) UNION
+    participant UnionLST
+    end
     box rgb(35, 36, 48) OFFCHAIN
-    participant Controller
+    participant Oracle
     end
     box rgb(48, 43, 35) BABYLON
     participant Vault
@@ -18,21 +18,15 @@ sequenceDiagram
     end
 
     Note over User: Deposit
-    User->>Controller: Read LP ratio
-    Controller-->>Tower: Read LP ratio
-    Tower-->>Controller: Return LP ratio
-    Controller-->>User: Return LP ratio
+    User->>Oracle: Read LP ratio
+    Oracle-->>Tower: Read LP ratio
+    Tower-->>Oracle: Return LP ratio
+    Oracle-->>User: Return LP ratio
     User->>EscherHub: ZKGM stake U (+ LP ratio payload)
-    Note over EscherHub: Stake portion of U according to LP ratio
-    critical Must have allowances set for Router
-    EscherHub->>Router: ZKGM TransferFrom U + eU
-    end
-    critical This ensures we're sending the correct version of the tokens
-    Router->>Vault: ZKGM deposit U + eU
-    end
+    EscherHub->>Vault: ZKGM deposit U + eU
     Vault-->>Tower: Read LP ratio
     Tower-->>Vault: Return LP ratio
-    Vault->>Tower: Provide liquidity
+    Vault->>Tower: Provide liquidity accordingly (any U/eU dust remains in the vault)
     Tower-->>Vault: Return current position
     Note over Vault: Mint vU
     Vault->>User: ZKGM Send vU
