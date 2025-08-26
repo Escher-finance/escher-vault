@@ -162,8 +162,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "astroport-pair"
-version = "2.1.1"
+name = "astroport-factory"
+version = "1.9.0"
 source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
@@ -172,9 +172,40 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "cw2",
+ "itertools 0.14.0",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "astroport-pair-concentrated"
+version = "4.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
+dependencies = [
+ "astroport",
+ "astroport-pcl-common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
  "cw20",
  "cw20-base",
- "integer-sqrt",
+ "itertools 0.14.0",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "astroport-pcl-common"
+version = "2.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
+dependencies = [
+ "astroport",
+ "astroport-factory",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw20",
+ "itertools 0.14.0",
  "thiserror 2.0.12",
 ]
 
@@ -597,8 +628,7 @@ dependencies = [
 name = "cw4626-escher"
 version = "0.1.0"
 dependencies = [
- "astroport",
- "astroport-pair",
+ "astroport-pair-concentrated",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -814,15 +844,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest",
-]
-
-[[package]]
-name = "integer-sqrt"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]
