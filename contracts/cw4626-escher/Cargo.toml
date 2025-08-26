@@ -21,7 +21,8 @@ cw20-base = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
-cw-ownable = { workspace = true }
+astroport = { workspace = true }
+astroport-pair = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
