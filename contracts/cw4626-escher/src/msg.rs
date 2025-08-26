@@ -3,6 +3,8 @@ use cosmwasm_std::{Addr, Binary, Uint128};
 
 use cw4626::*;
 
+use crate::state::AccessControlRole;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub manager: Addr,
@@ -15,10 +17,11 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Access control: sets new manager
-    UpdateManager { address: Addr },
-    /// Access control: sets new oracle
-    UpdateOracle { address: Addr },
+    /// Access control: sets role
+    UpdateRole {
+        role: AccessControlRole,
+        address: Addr,
+    },
 
     //
     // CW4626
@@ -105,22 +108,16 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
-pub struct ManagerResponse {
-    manager: Addr,
-}
-
-#[cw_serde]
-pub struct OracleResponse {
-    oracle: Addr,
+pub struct AccessControlRoleResponse {
+    pub address: Addr,
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(ManagerResponse)]
-    Manager {},
-    #[returns(OracleResponse)]
-    OracleResponse {},
+    #[returns(AccessControlRoleResponse)]
+    Role { kind: AccessControlRole },
+
     //
     // CW4626
     //
