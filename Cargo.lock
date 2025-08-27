@@ -628,6 +628,7 @@ dependencies = [
 name = "cw4626-escher"
 version = "0.1.0"
 dependencies = [
+ "astroport",
  "astroport-pair-concentrated",
  "cosmwasm-schema",
  "cosmwasm-std",

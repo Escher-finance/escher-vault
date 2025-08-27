@@ -1,9 +1,10 @@
-mod access_control;
+pub mod access_control;
 pub mod contract;
 mod error;
-mod execute;
+pub mod execute;
 pub mod msg;
-mod query;
+pub mod query;
 pub mod state;
+pub mod tower;
 
 pub use crate::error::ContractError;

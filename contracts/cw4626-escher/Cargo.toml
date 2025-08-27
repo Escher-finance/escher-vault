@@ -21,6 +21,7 @@ cw20-base = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+astroport = { workspace = true }
 astroport-pair-concentrated = { workspace = true }
 
 [dev-dependencies]

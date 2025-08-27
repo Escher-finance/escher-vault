@@ -18,4 +18,7 @@ pub enum ContractError {
 
     #[error("only {0} role")]
     Unauthorized(AccessControlRole),
+
+    #[error("tower config is not valid")]
+    InvalidTowerConfig {},
 }
