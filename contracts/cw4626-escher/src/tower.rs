@@ -4,7 +4,10 @@ use astroport::{
 };
 use cosmwasm_std::{Addr, Decimal, DepsMut};
 
-use crate::{state::{TowerConfig, TOWER_CONFIG}, ContractError};
+use crate::{
+    state::{TowerConfig, TOWER_CONFIG},
+    ContractError,
+};
 
 pub fn update_tower_config(
     deps: DepsMut,
