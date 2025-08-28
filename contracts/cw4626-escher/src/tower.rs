@@ -4,7 +4,7 @@ use astroport::{
     asset::{AssetInfo, PairInfo},
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
-use cosmwasm_std::{Addr, Decimal, DepsMut};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Storage};
 
 use crate::{
     state::{TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
@@ -70,7 +70,7 @@ pub fn update_oracle_prices(
     prices: HashMap<String, Decimal>,
 ) -> Result<(), ContractError> {
     if !prices.values().all(|p| *p > Decimal::zero()) {
-        return Err(ContractError::InvalidPrices {});
+        return Err(ContractError::OracleZeroPrice {});
     }
     ORACLE_PRICES.update::<_, ContractError>(deps.storage, |stored_prices| {
         let mut stored_addrs = stored_prices.keys().collect::<Vec<_>>();
@@ -78,9 +78,19 @@ pub fn update_oracle_prices(
         let mut addrs = prices.keys().collect::<Vec<_>>();
         addrs.sort();
         if addrs != stored_addrs {
-            return Err(ContractError::InvalidPrices {});
+            return Err(ContractError::OracleInvalidPrices {});
         }
         Ok(prices)
     })?;
     Ok(())
+}
+
+pub fn get_and_validate_oracle_prices(
+    storage: &dyn Storage,
+) -> Result<HashMap<String, Decimal>, ContractError> {
+    let prices = ORACLE_PRICES.load(storage)?;
+    if !prices.values().all(|p| *p > Decimal::zero()) {
+        return Err(ContractError::OracleZeroPrice {});
+    }
+    Ok(prices)
 }

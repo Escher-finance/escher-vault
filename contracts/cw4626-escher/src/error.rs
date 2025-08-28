@@ -22,6 +22,9 @@ pub enum ContractError {
     #[error("tower config is not valid")]
     InvalidTowerConfig {},
 
-    #[error("prices are not valid")]
-    InvalidPrices {},
+    #[error("oracle prices must be greater than zero")]
+    OracleZeroPrice {},
+
+    #[error("oracle prices are not valid")]
+    OracleInvalidPrices {},
 }
