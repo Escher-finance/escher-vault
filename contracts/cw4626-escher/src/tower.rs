@@ -79,3 +79,23 @@ pub fn init_oracle_prices(
     ORACLE_PRICES.save(deps.storage, &prices)?;
     Ok(())
 }
+
+pub fn update_oracle_prices(
+    deps: DepsMut,
+    prices: HashMap<String, Decimal>,
+) -> Result<(), ContractError> {
+    if !prices.values().all(|p| *p > Decimal::zero()) {
+        return Err(ContractError::InvalidPrices {});
+    }
+    ORACLE_PRICES.update::<_, ContractError>(deps.storage, |stored_prices| {
+        let mut stored_addrs = stored_prices.keys().collect::<Vec<_>>();
+        stored_addrs.sort();
+        let mut addrs = prices.keys().collect::<Vec<_>>();
+        addrs.sort();
+        if addrs != stored_addrs {
+            return Err(ContractError::InvalidPrices {});
+        }
+        Ok(prices)
+    })?;
+    Ok(())
+}
