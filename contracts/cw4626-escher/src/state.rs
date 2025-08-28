@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use astroport::asset::AssetInfo;
 use cosmwasm_schema::cw_serde;
@@ -45,3 +45,6 @@ pub struct TowerConfig {
 }
 
 pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
+
+/// Prices map in terms of U
+pub const PRICES: Item<HashMap<String, Decimal>> = Item::new("prices");
