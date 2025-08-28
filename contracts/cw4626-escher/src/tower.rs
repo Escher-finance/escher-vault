@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use astroport::{
     asset::{AssetInfo, PairInfo},
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
@@ -5,7 +7,7 @@ use astroport::{
 use cosmwasm_std::{Addr, Decimal, DepsMut};
 
 use crate::{
-    state::{TowerConfig, TOWER_CONFIG},
+    state::{TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
 };
 
@@ -15,7 +17,7 @@ pub fn update_tower_config(
     slippage_tolerance: Decimal,
     incentives: Vec<AssetInfo>,
     underlying_asset: Addr,
-) -> Result<(), ContractError> {
+) -> Result<TowerConfig, ContractError> {
     let invalid_tower_config_err = Err(ContractError::InvalidTowerConfig {});
     if slippage_tolerance.is_zero() {
         return invalid_tower_config_err;
@@ -29,21 +31,51 @@ pub fn update_tower_config(
     if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&underlying_asset) {
         return invalid_tower_config_err;
     }
-    if incentives.is_empty() {
+    if incentives.is_empty()
+        || incentives
+            .iter()
+            .find(|i| pair_info.asset_infos.contains(i))
+            .is_some()
+    {
         return invalid_tower_config_err;
     }
-    TOWER_CONFIG.save(
-        deps.storage,
-        &TowerConfig {
-            lp: lp.clone(),
-            lp_assets: [
-                pair_info.asset_infos[0].clone(),
-                pair_info.asset_infos[1].clone(),
-            ],
-            lp_token: deps.api.addr_validate(&pair_info.liquidity_token)?,
-            incentives,
-            slippage_tolerance,
-        },
-    )?;
+    let config = TowerConfig {
+        lp: lp.clone(),
+        lp_assets: [
+            pair_info.asset_infos[0].clone(),
+            pair_info.asset_infos[1].clone(),
+        ],
+        lp_token: deps.api.addr_validate(&pair_info.liquidity_token)?,
+        incentives,
+        slippage_tolerance,
+    };
+    TOWER_CONFIG.save(deps.storage, &config)?;
+    Ok(config)
+}
+
+pub fn init_oracle_prices(
+    deps: DepsMut,
+    prices: HashMap<String, Decimal>,
+    tower_config: &TowerConfig,
+) -> Result<(), ContractError> {
+    let addrs: Vec<String> = {
+        let mut assets = tower_config.lp_assets.to_vec();
+        assets.extend(tower_config.incentives.clone());
+        let mut v = assets
+            .into_iter()
+            .map(|info| match info {
+                AssetInfo::NativeToken { denom } => denom,
+                AssetInfo::Token { contract_addr } => contract_addr.to_string(),
+            })
+            .collect::<Vec<_>>();
+        v.sort();
+        v
+    };
+    let mut prices_addrs = prices.clone().into_keys().collect::<Vec<_>>();
+    prices_addrs.sort();
+    if addrs != prices_addrs || !prices.values().all(|p| *p > Decimal::zero()) {
+        return Err(ContractError::InvalidPrices {});
+    }
+    ORACLE_PRICES.save(deps.storage, &prices)?;
     Ok(())
 }

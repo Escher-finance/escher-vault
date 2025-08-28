@@ -5,9 +5,6 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Decimal};
 use cw_storage_plus::{Item, Map};
 
-pub const UNDERLYING_ASSET: Item<Addr> = Item::new("asset");
-pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
-
 #[cw_serde]
 pub enum AccessControlRole {
     Manager {},
@@ -33,8 +30,6 @@ impl AccessControlRole {
     }
 }
 
-pub const ACCESS_CONTROL: Map<String, Addr> = Map::new("access-control");
-
 #[cw_serde]
 pub struct TowerConfig {
     pub lp: Addr,
@@ -44,7 +39,9 @@ pub struct TowerConfig {
     pub slippage_tolerance: Decimal,
 }
 
+pub const UNDERLYING_ASSET: Item<Addr> = Item::new("asset");
+pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
+pub const ACCESS_CONTROL: Map<String, Addr> = Map::new("access-control");
 pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
-
 /// Prices map in terms of U
-pub const PRICES: Item<HashMap<String, Decimal>> = Item::new("prices");
+pub const ORACLE_PRICES: Item<HashMap<String, Decimal>> = Item::new("oracle-prices");

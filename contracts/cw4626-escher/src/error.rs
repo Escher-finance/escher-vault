@@ -21,4 +21,7 @@ pub enum ContractError {
 
     #[error("tower config is not valid")]
     InvalidTowerConfig {},
+
+    #[error("prices are not valid")]
+    InvalidPrices {},
 }
