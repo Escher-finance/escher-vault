@@ -26,13 +26,7 @@ pub fn update_tower_config(
     let underlying_asset = AssetInfo::Token {
         contract_addr: underlying_asset,
     };
-    if pair_info.asset_infos.len() != 2
-        || pair_info
-            .asset_infos
-            .iter()
-            .find(|a| **a == underlying_asset)
-            .is_none()
-    {
+    if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&underlying_asset) {
         return invalid_tower_config_err;
     }
     if incentives.is_empty() {
@@ -48,7 +42,7 @@ pub fn update_tower_config(
             ],
             lp_token: deps.api.addr_validate(&pair_info.liquidity_token)?,
             incentives,
-            slippage_tolerance: slippage_tolerance,
+            slippage_tolerance,
         },
     )?;
     Ok(())
