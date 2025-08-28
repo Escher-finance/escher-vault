@@ -65,7 +65,7 @@ pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(
     Ok(())
 }
 
-pub fn update_oracle_prices(
+pub fn update_and_validate_prices(
     deps: DepsMut,
     prices: HashMap<String, Decimal>,
 ) -> Result<(), ContractError> {

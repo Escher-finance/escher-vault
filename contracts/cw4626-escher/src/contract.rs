@@ -70,6 +70,9 @@ pub fn execute(
         ExecuteMsg::UpdateRole { role, address } => {
             crate::execute::update_role(deps, sender, role, address)?
         }
+        ExecuteMsg::OracleUpdatePrices { prices } => {
+            crate::execute::oracle_update_prices(deps, sender, prices)?
+        }
         //
         // CW4626
         //
