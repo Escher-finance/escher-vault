@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
+use astroport::asset::AssetInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128};
+use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
 use cw4626::*;
 
@@ -13,6 +16,10 @@ pub struct InstantiateMsg {
     pub share_name: String,
     pub share_symbol: String,
     pub share_marketing: Option<InstantiateMarketingInfo>,
+    pub lp: Addr,
+    pub slippage_tolerance: Decimal,
+    pub incentives: Vec<AssetInfo>,
+    pub initial_prices: HashMap<String, Decimal>,
 }
 
 #[cw_serde]

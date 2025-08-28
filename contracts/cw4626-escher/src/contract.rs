@@ -9,6 +9,7 @@ use cw4626_base::query as cw4626_base_queries;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
+use crate::tower::{init_oracle_prices, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -46,6 +47,14 @@ pub fn instantiate(
         AccessControlRole::Oracle {}.key(),
         &msg.oracle,
     )?;
+    let tower_config = update_tower_config(
+        deps.branch(),
+        msg.lp,
+        msg.slippage_tolerance,
+        msg.incentives,
+        msg.underlying_token_address,
+    )?;
+    init_oracle_prices(deps, msg.initial_prices, &tower_config)?;
     Ok(Response::new())
 }
 
