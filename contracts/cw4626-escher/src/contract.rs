@@ -54,7 +54,7 @@ pub fn instantiate(
         msg.incentives,
         msg.underlying_token_address,
     )?;
-    init_oracle_prices(deps, msg.initial_prices, &tower_config)?;
+    init_oracle_prices(deps, &tower_config)?;
     Ok(Response::new())
 }
 

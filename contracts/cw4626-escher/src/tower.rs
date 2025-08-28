@@ -48,30 +48,20 @@ pub fn update_tower_config(
     Ok(config)
 }
 
-pub fn init_oracle_prices(
-    deps: DepsMut,
-    prices: HashMap<String, Decimal>,
-    tower_config: &TowerConfig,
-) -> Result<(), ContractError> {
-    let addrs: Vec<String> = {
-        let mut assets = tower_config.lp_assets.to_vec();
-        assets.extend(tower_config.incentives.clone());
-        let mut v = assets
-            .into_iter()
-            .map(|info| match info {
+pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(), ContractError> {
+    let mut assets = tower_config.lp_assets.to_vec();
+    assets.extend(tower_config.incentives.clone());
+    let initial_prices: HashMap<_, _> = assets
+        .into_iter()
+        .map(|info| {
+            let addr = match info {
                 AssetInfo::NativeToken { denom } => denom,
                 AssetInfo::Token { contract_addr } => contract_addr.to_string(),
-            })
-            .collect::<Vec<_>>();
-        v.sort();
-        v
-    };
-    let mut prices_addrs = prices.clone().into_keys().collect::<Vec<_>>();
-    prices_addrs.sort();
-    if addrs != prices_addrs || !prices.values().all(|p| *p > Decimal::zero()) {
-        return Err(ContractError::InvalidPrices {});
-    }
-    ORACLE_PRICES.save(deps.storage, &prices)?;
+            };
+            (addr, Decimal::zero())
+        })
+        .collect();
+    ORACLE_PRICES.save(deps.storage, &initial_prices)?;
     Ok(())
 }
 
