@@ -31,12 +31,7 @@ pub fn update_tower_config(
     if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&underlying_asset) {
         return invalid_tower_config_err;
     }
-    if incentives.is_empty()
-        || incentives
-            .iter()
-            .find(|i| pair_info.asset_infos.contains(i))
-            .is_some()
-    {
+    if incentives.is_empty() || incentives.iter().any(|i| pair_info.asset_infos.contains(i)) {
         return invalid_tower_config_err;
     }
     let config = TowerConfig {
