@@ -2,12 +2,15 @@ use std::collections::HashMap;
 
 use astroport::{
     asset::{Asset, AssetInfo, PairInfo},
-    incentives::Config as IncentivesConfig,
-    incentives::QueryMsg as IncentivesQueryMsg,
-    pair::ExecuteMsg as PairExecuteMsg,
+    incentives::{
+        Config as IncentivesConfig, ExecuteMsg as IncentivesExecuteMsg,
+        QueryMsg as IncentivesQueryMsg,
+    },
+    pair::{Cw20HookMsg, ExecuteMsg as PairExecuteMsg},
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, Storage, Uint128, WasmMsg};
+use cw4626::cw20::Cw20ExecuteMsg;
 
 use crate::{
     state::{TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
@@ -147,4 +150,34 @@ pub fn add_liquidity(
         msg: to_json_binary(&execute_msg)?,
         funds: vec![],
     }))
+}
+
+pub fn withdraw_liquidity(
+    storage: &dyn Storage,
+    lp_token_amount: Uint128,
+) -> Result<Vec<CosmosMsg>, ContractError> {
+    let tower_config = TOWER_CONFIG.load(storage)?;
+    let incentives_execute_msg = IncentivesExecuteMsg::Withdraw {
+        lp_token: tower_config.lp_token.to_string(),
+        amount: lp_token_amount,
+    };
+    let lp_token_execute_msg = Cw20ExecuteMsg::Send {
+        contract: tower_config.lp.to_string(),
+        amount: lp_token_amount,
+        msg: to_json_binary(&Cw20HookMsg::WithdrawLiquidity {
+            min_assets_to_receive: None,
+        })?,
+    };
+    Ok(Vec::from([
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: tower_config.tower_incentives.to_string(),
+            msg: to_json_binary(&incentives_execute_msg)?,
+            funds: vec![],
+        }),
+        CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: tower_config.lp_token.to_string(),
+            msg: to_json_binary(&lp_token_execute_msg)?,
+            funds: vec![],
+        }),
+    ]))
 }
