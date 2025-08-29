@@ -33,7 +33,8 @@ impl AccessControlRole {
 #[cw_serde]
 pub struct TowerConfig {
     pub lp: Addr,
-    pub lp_assets: [AssetInfo; 2],
+    pub lp_underlying_asset: AssetInfo,
+    pub lp_other_asset: AssetInfo,
     pub lp_token: Addr,
     pub incentives: Vec<AssetInfo>,
     pub slippage_tolerance: Decimal,

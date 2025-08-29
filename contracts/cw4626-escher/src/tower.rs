@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use astroport::{
-    asset::{AssetInfo, PairInfo},
+    asset::{Asset, AssetInfo, PairInfo},
+    pair::ExecuteMsg as PairExecuteMsg,
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
-use cosmwasm_std::{Addr, Decimal, DepsMut, Storage};
+use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, Storage, Uint128, WasmMsg};
 
 use crate::{
     state::{TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
@@ -25,21 +26,26 @@ pub fn update_tower_config(
     let pair_info: PairInfo = deps
         .querier
         .query_wasm_smart(lp.clone(), &PairConcentratedQueryMsg::Pair {})?;
-    let underlying_asset = AssetInfo::Token {
+    let lp_underlying_asset = AssetInfo::Token {
         contract_addr: underlying_asset,
     };
-    if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&underlying_asset) {
+    if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&lp_underlying_asset) {
         return invalid_tower_config_err;
     }
+    let Some(lp_other_asset) = pair_info
+        .asset_infos
+        .iter()
+        .find(|info| **info != lp_underlying_asset)
+    else {
+        return invalid_tower_config_err;
+    };
     if incentives.is_empty() || incentives.iter().any(|i| pair_info.asset_infos.contains(i)) {
         return invalid_tower_config_err;
     }
     let config = TowerConfig {
         lp: lp.clone(),
-        lp_assets: [
-            pair_info.asset_infos[0].clone(),
-            pair_info.asset_infos[1].clone(),
-        ],
+        lp_underlying_asset,
+        lp_other_asset: lp_other_asset.clone(),
         lp_token: deps.api.addr_validate(&pair_info.liquidity_token)?,
         incentives,
         slippage_tolerance,
@@ -49,7 +55,10 @@ pub fn update_tower_config(
 }
 
 pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(), ContractError> {
-    let mut assets = tower_config.lp_assets.to_vec();
+    let mut assets = Vec::from([
+        tower_config.lp_underlying_asset.clone(),
+        tower_config.lp_other_asset.clone(),
+    ]);
     assets.extend(tower_config.incentives.clone());
     let initial_prices: HashMap<_, _> = assets
         .into_iter()
@@ -93,4 +102,34 @@ pub fn get_and_validate_oracle_prices(
         return Err(ContractError::OracleZeroPrice {});
     }
     Ok(prices)
+}
+
+pub fn add_liquidity(
+    storage: &dyn Storage,
+    underlying_asset_amount: Uint128,
+    other_lp_asset_amount: Uint128,
+) -> Result<CosmosMsg, ContractError> {
+    let tower_config = TOWER_CONFIG.load(storage)?;
+    let assets = Vec::from([
+        Asset {
+            info: tower_config.lp_underlying_asset,
+            amount: underlying_asset_amount,
+        },
+        Asset {
+            info: tower_config.lp_other_asset,
+            amount: other_lp_asset_amount,
+        },
+    ]);
+    let execute_msg = PairExecuteMsg::ProvideLiquidity {
+        assets,
+        auto_stake: Some(true),
+        slippage_tolerance: Some(tower_config.slippage_tolerance),
+        receiver: None,
+        min_lp_to_receive: None,
+    };
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: tower_config.lp.to_string(),
+        msg: to_json_binary(&execute_msg)?,
+        funds: vec![],
+    }))
 }
