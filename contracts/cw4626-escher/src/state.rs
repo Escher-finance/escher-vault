@@ -32,11 +32,12 @@ impl AccessControlRole {
 
 #[cw_serde]
 pub struct TowerConfig {
+    pub tower_incentives: Addr,
     pub lp: Addr,
     pub lp_underlying_asset: AssetInfo,
     pub lp_other_asset: AssetInfo,
     pub lp_token: Addr,
-    pub incentives: Vec<AssetInfo>,
+    pub lp_incentives: Vec<AssetInfo>,
     pub slippage_tolerance: Decimal,
 }
 

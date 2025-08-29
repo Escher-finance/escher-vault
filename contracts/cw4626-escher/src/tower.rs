@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use astroport::{
     asset::{Asset, AssetInfo, PairInfo},
+    incentives::Config as IncentivesConfig,
+    incentives::QueryMsg as IncentivesQueryMsg,
     pair::ExecuteMsg as PairExecuteMsg,
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
@@ -14,12 +16,20 @@ use crate::{
 
 pub fn update_tower_config(
     deps: DepsMut,
+    tower_incentives: Addr,
     lp: Addr,
     slippage_tolerance: Decimal,
-    incentives: Vec<AssetInfo>,
+    lp_incentives: Vec<AssetInfo>,
     underlying_asset: Addr,
 ) -> Result<TowerConfig, ContractError> {
     let invalid_tower_config_err = Err(ContractError::InvalidTowerConfig {});
+    if deps
+        .querier
+        .query_wasm_smart::<IncentivesConfig>(&tower_incentives, &IncentivesQueryMsg::Config {})
+        .is_err()
+    {
+        return invalid_tower_config_err;
+    }
     if slippage_tolerance.is_zero() {
         return invalid_tower_config_err;
     }
@@ -39,15 +49,20 @@ pub fn update_tower_config(
     else {
         return invalid_tower_config_err;
     };
-    if incentives.is_empty() || incentives.iter().any(|i| pair_info.asset_infos.contains(i)) {
+    if lp_incentives.is_empty()
+        || lp_incentives
+            .iter()
+            .any(|i| pair_info.asset_infos.contains(i))
+    {
         return invalid_tower_config_err;
     }
     let config = TowerConfig {
+        tower_incentives,
         lp: lp.clone(),
         lp_underlying_asset,
         lp_other_asset: lp_other_asset.clone(),
         lp_token: deps.api.addr_validate(&pair_info.liquidity_token)?,
-        incentives,
+        lp_incentives,
         slippage_tolerance,
     };
     TOWER_CONFIG.save(deps.storage, &config)?;
@@ -59,7 +74,7 @@ pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(
         tower_config.lp_underlying_asset.clone(),
         tower_config.lp_other_asset.clone(),
     ]);
-    assets.extend(tower_config.incentives.clone());
+    assets.extend(tower_config.lp_incentives.clone());
     let initial_prices: HashMap<_, _> = assets
         .into_iter()
         .map(|info| {

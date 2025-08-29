@@ -16,6 +16,7 @@ pub struct InstantiateMsg {
     pub share_name: String,
     pub share_symbol: String,
     pub share_marketing: Option<InstantiateMarketingInfo>,
+    pub tower_incentives: Addr,
     pub lp: Addr,
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,

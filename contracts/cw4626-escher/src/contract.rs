@@ -49,6 +49,7 @@ pub fn instantiate(
     )?;
     let tower_config = update_tower_config(
         deps.branch(),
+        msg.tower_incentives,
         msg.lp,
         msg.slippage_tolerance,
         msg.incentives,
