@@ -148,6 +148,68 @@ dependencies = [
 ]
 
 [[package]]
+name = "astroport"
+version = "5.7.0"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-asset",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw20",
+ "itertools 0.14.0",
+]
+
+[[package]]
+name = "astroport-factory"
+version = "1.9.0"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
+dependencies = [
+ "astroport",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "itertools 0.14.0",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "astroport-pair-concentrated"
+version = "4.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
+dependencies = [
+ "astroport",
+ "astroport-pcl-common",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "itertools 0.14.0",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "astroport-pcl-common"
+version = "2.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
+dependencies = [
+ "astroport",
+ "astroport-factory",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw20",
+ "itertools 0.14.0",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -392,6 +454,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-asset"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7eaa5ed63f1d767d92c7bada3b883aa6ec90ff09e3f5bf72ff4514dcbeb9c4f2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-address-like",
+ "cw-storage-plus",
+ "cw20",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "cw-multi-test"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -438,12 +514,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-macro"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b853a2f7d85f286d099ae5b28ae4025c475d31145bf426cc6d86ec92afd215c8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
+]
+
+[[package]]
 name = "cw-storage-plus"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f13360e9007f51998d42b1bc6b7fa0141f74feae61ed5fd1e5b0a89eec7b5de1"
 dependencies = [
  "cosmwasm-std",
+ "cw-storage-macro",
  "schemars",
  "serde",
 ]
@@ -540,10 +628,11 @@ dependencies = [
 name = "cw4626-escher"
 version = "0.1.0"
 dependencies = [
+ "astroport",
+ "astroport-pair-concentrated",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-ownable",
  "cw-storage-plus",
  "cw2",
  "cw20-base",

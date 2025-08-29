@@ -1,20 +1,62 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cw4626::cw20;
 use cw4626_base::execute as cw4626_base_executes;
+use cw4626_base::helpers::validate_cw20;
 use cw4626_base::query as cw4626_base_queries;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
+use crate::tower::{init_oracle_prices, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    Ok(cw4626_base::contract::instantiate(deps, env, info, msg)?)
+    let cw20::TokenInfoResponse {
+        decimals: underlying_decimals,
+        ..
+    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
+    cw20_base::contract::instantiate(
+        deps.branch(),
+        env,
+        info,
+        cw20_base::msg::InstantiateMsg {
+            name: msg.share_name,
+            symbol: msg.share_symbol,
+            decimals: underlying_decimals,
+            initial_balances: vec![],
+            mint: None,
+            marketing: msg.share_marketing,
+        },
+    )?;
+    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
+    UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
+    ACCESS_CONTROL.save(
+        deps.storage,
+        AccessControlRole::Manager {}.key(),
+        &msg.manager,
+    )?;
+    ACCESS_CONTROL.save(
+        deps.storage,
+        AccessControlRole::Oracle {}.key(),
+        &msg.oracle,
+    )?;
+    let tower_config = update_tower_config(
+        deps.branch(),
+        msg.tower_incentives,
+        msg.lp,
+        msg.slippage_tolerance,
+        msg.incentives,
+        msg.underlying_token_address,
+    )?;
+    init_oracle_prices(deps, &tower_config)?;
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -26,6 +68,12 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let sender = info.sender.clone();
     Ok(match msg {
+        ExecuteMsg::UpdateRole { role, address } => {
+            crate::execute::update_role(deps, sender, role, address)?
+        }
+        ExecuteMsg::OracleUpdatePrices { prices } => {
+            crate::execute::oracle_update_prices(deps, sender, prices)?
+        }
         //
         // CW4626
         //
@@ -45,9 +93,6 @@ pub fn execute(
             receiver,
             owner,
         } => cw4626_base_executes::redeem(deps, env, sender, shares, receiver, owner)?,
-        ExecuteMsg::UpdateOwnership(action) => {
-            cw4626_base_executes::update_ownership(deps, env, sender, action)?
-        }
         ExecuteMsg::Receive(cw20_receive_msg) => {
             cw4626_base_executes::receive(deps, env, sender, cw20_receive_msg)?
         }
@@ -152,7 +197,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::PreviewRedeem { shares } => {
             to_json_binary(&cw4626_base_queries::preview_redeem(&this, &deps, shares)?)
         }
-        QueryMsg::Ownership {} => to_json_binary(&cw4626_base_queries::ownership(deps.storage)?),
+        QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
         //
         // CW20
         //

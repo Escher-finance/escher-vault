@@ -25,6 +25,9 @@ serde = { version = "1.0.197", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.58" }
 cw-multi-test = "2.0.0"
 cw-ownable = "2.1.0"
+astroport = { git = "https://github.com/quasar-finance/babydex.git", version = "5.7.0" }
+astroport-pair = { git = "https://github.com/quasar-finance/babydex.git", version = "2.1.1" }
+astroport-pair-concentrated = { git = "https://github.com/quasar-finance/babydex.git", version = "4.1.1" }
 cw4626 = { path = "packages/cw4626", version = "0.1.0-rc.0" }
 cw4626-base = { path = "contracts/cw4626-base", version = "0.1.0-rc.0" }
 cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
