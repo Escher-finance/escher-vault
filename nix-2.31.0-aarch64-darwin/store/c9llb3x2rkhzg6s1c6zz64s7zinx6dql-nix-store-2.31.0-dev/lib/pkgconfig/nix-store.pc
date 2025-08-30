@@ -1,0 +1,14 @@
+prefix=/nix/store/bb4zl2l2hd0piq57vg83s4zknd6i6p86-nix-store-2.31.0
+includedir=/nix/store/c9llb3x2rkhzg6s1c6zz64s7zinx6dql-nix-store-2.31.0-dev/include
+libdir=${prefix}/lib
+
+storedir=/nix/store
+
+Name: Nix
+Description: Nix Package Manager
+Version: 2.31.0
+Requires: nix-util, nlohmann_json >=  3.9
+Requires.private: libcurl, sqlite3 >= 3.6.19
+Libs: -L${libdir} -lnixstore
+Libs.private: -lsandbox /nix/store/3qm4f18mq6ni4dml1w1c6ga7jw6khjyq-boost-1.87.0/lib/libboost_container.dylib /nix/store/3qm4f18mq6ni4dml1w1c6ga7jw6khjyq-boost-1.87.0/lib/libboost_regex.dylib -L/nix/store/4lvm23p16jylsqvlhnmhyhbncdva7wll-aws-sdk-cpp-1.11.448/lib -laws-cpp-sdk-transfer -laws-cpp-sdk-s3 -laws-cpp-sdk-identity-management -laws-cpp-sdk-cognito-identity -laws-cpp-sdk-sts -laws-cpp-sdk-core -laws-crt-cpp
+Cflags: -I${includedir} -std=c++23

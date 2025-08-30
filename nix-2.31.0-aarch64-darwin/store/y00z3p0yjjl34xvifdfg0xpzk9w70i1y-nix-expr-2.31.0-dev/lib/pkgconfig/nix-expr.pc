@@ -1,0 +1,11 @@
+prefix=/nix/store/n9yn36idddgdn16hpnffvb33j1v4bm9f-nix-expr-2.31.0
+includedir=/nix/store/y00z3p0yjjl34xvifdfg0xpzk9w70i1y-nix-expr-2.31.0-dev/include
+libdir=${prefix}/lib
+
+Name: Nix
+Description: Nix Package Manager
+Version: 2.31.0
+Requires: nix-util, nix-store, nix-fetchers, nlohmann_json >=  3.9, bdw-gc
+Libs: -L${libdir} -lnixexpr
+Libs.private: /nix/store/3qm4f18mq6ni4dml1w1c6ga7jw6khjyq-boost-1.87.0/lib/libboost_container.dylib /nix/store/3qm4f18mq6ni4dml1w1c6ga7jw6khjyq-boost-1.87.0/lib/libboost_context.dylib
+Cflags: -I${includedir} -std=c++23

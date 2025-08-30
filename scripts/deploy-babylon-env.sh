@@ -32,7 +32,13 @@ print_info() {
 # Load environment variables from .env file if it exists
 if [ -f ".env" ]; then
     print_info "Loading configuration from .env file..."
-    export $(cat .env | grep -v '^#' | xargs)
+    # Load environment variables, excluding comments and empty lines
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        if [[ ! "$line" =~ ^[[:space:]]*# ]] && [[ -n "$line" ]]; then
+            export "$line"
+        fi
+    done < ".env"
 fi
 
 # Required environment variables

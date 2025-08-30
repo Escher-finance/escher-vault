@@ -1,0 +1,12 @@
+prefix="/nix/store/jispjcji4ihdlrfynh1lqbq6b0snrls1-libblake3-1.8.2"
+exec_prefix="${prefix}"
+libdir="/nix/store/jispjcji4ihdlrfynh1lqbq6b0snrls1-libblake3-1.8.2/lib"
+includedir="/nix/store/jispjcji4ihdlrfynh1lqbq6b0snrls1-libblake3-1.8.2/include"
+
+Name: libblake3
+Description: BLAKE3 C implementation
+Version: 1.8.2
+
+Requires: tbb >= 2021.11.0
+Libs: -L"${libdir}" -lblake3 -lc++
+Cflags: -I"${includedir}" -DBLAKE3_DLL -DBLAKE3_USE_TBB

@@ -1,0 +1,6 @@
+includedir=/nix/store/wmrsz37zxjpz6qj146dli1q9xspbsh22-boost-1.87.0-dev/include
+libdir=/nix/store/3qm4f18mq6ni4dml1w1c6ga7jw6khjyq-boost-1.87.0/lib
+
+Description: Pkg-config file for boost
+Name: boost
+Version: 1.87.0
