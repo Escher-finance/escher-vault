@@ -8,8 +8,11 @@ use astroport::{
     },
     pair::{Cw20HookMsg, ExecuteMsg as PairExecuteMsg},
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
+    querier::{query_balance, query_token_balance},
 };
-use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, Storage, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, Storage, Uint128, WasmMsg,
+};
 use cw4626::cw20::Cw20ExecuteMsg;
 
 use crate::{
@@ -180,4 +183,83 @@ pub fn withdraw_liquidity(
             funds: vec![],
         }),
     ]))
+}
+
+pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
+    match asset_info {
+        AssetInfo::NativeToken { denom } => denom.clone(),
+        AssetInfo::Token { contract_addr } => contract_addr.to_string(),
+    }
+}
+
+pub fn query_asset_info_balance(
+    querier: &QuerierWrapper,
+    asset_info: AssetInfo,
+    addr: Addr,
+) -> Result<Uint128, cosmwasm_std::StdError> {
+    match asset_info {
+        AssetInfo::Token { contract_addr, .. } => query_token_balance(querier, contract_addr, addr),
+        AssetInfo::NativeToken { denom } => query_balance(querier, addr, denom),
+    }
+}
+
+pub fn calculate_total_assets(
+    querier: &QuerierWrapper,
+    storage: &dyn Storage,
+    addr: Addr,
+) -> Result<Uint128, ContractError> {
+    let prices = get_and_validate_oracle_prices(storage)?;
+    let tower_config = TOWER_CONFIG.load(storage)?;
+    let mut total_balance = query_asset_info_balance(
+        querier,
+        tower_config.lp_underlying_asset.clone(),
+        addr.clone(),
+    )?;
+    let mut asset_infos = tower_config.lp_incentives.clone();
+    asset_infos.push(tower_config.lp_other_asset);
+    for asset_info in asset_infos {
+        let asset_balance = query_asset_info_balance(querier, asset_info.clone(), addr.clone())?;
+        let Some(asset_price) = prices.get(&get_asset_info_address(&asset_info)) else {
+            return Err(ContractError::OracleInvalidPrices {});
+        };
+        total_balance += asset_balance.mul_floor(*asset_price);
+    }
+    let lp_token_balance = query_asset_info_balance(
+        querier,
+        AssetInfo::Token {
+            contract_addr: tower_config.lp_token.clone(),
+        },
+        addr.clone(),
+    )?;
+    if !lp_token_balance.is_zero() {
+        let mut assets: Vec<Asset> = querier.query_wasm_smart(
+            tower_config.lp,
+            &PairConcentratedQueryMsg::SimulateWithdraw {
+                lp_amount: lp_token_balance,
+            },
+        )?;
+        assets.extend(
+            querier
+                .query_wasm_smart::<Vec<Asset>>(
+                    tower_config.tower_incentives,
+                    &IncentivesQueryMsg::PendingRewards {
+                        lp_token: tower_config.lp_token.to_string(),
+                        user: addr.to_string(),
+                    },
+                )?
+                .into_iter()
+                .filter(|a| tower_config.lp_incentives.contains(&a.info)),
+        );
+        for asset in assets {
+            if asset.info == tower_config.lp_underlying_asset {
+                total_balance += asset.amount;
+                continue;
+            }
+            let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
+                return Err(ContractError::OracleInvalidPrices {});
+            };
+            total_balance += asset.amount.mul_floor(*asset_price);
+        }
+    }
+    Ok(total_balance)
 }
