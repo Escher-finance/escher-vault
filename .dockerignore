@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Rust build artifacts
+target/
+**/target/
+
+# Cargo
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+docs/
+
+# Scripts (keep only essential ones)
+scripts/
+!scripts/dev-docker.sh

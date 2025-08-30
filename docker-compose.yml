@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  cw4626-nix:
+    build: .
+    container_name: cw4626-vault-dev
+    volumes:
+      - .:/workspace
+      - cargo-cache:/root/.cargo
+      - rustup-cache:/root/.rustup
+      - go-cache:/root/go
+    working_dir: /workspace
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TARGET_DIR=/workspace/target
+    ports:
+      - "8080:8080"  # For any web interfaces
+    stdin_open: true
+    tty: true
+    command: bash
+
+volumes:
+  cargo-cache:
+  rustup-cache:
+  go-cache:
