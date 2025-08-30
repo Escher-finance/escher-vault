@@ -1,0 +1,53 @@
+{
+  "pool_configuration": {
+    "pool_address": "bbn1hkmstu883spzwj4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
+    "pool_type": "astroport_concentrated_liquidity",
+    "total_lp_shares": "711144084",
+    "assets": [
+      {
+        "denom": "ibc/3AA6631D204C192DDB757935A4C49A0E83EEEE14AC045E8A180CCB4EE08B6196",
+        "amount": "255048460506224077801",
+        "description": "Asset 1 (IBC token)"
+      },
+      {
+        "denom": "ibc/DC9A0BC30A89A4C767CA2DA3BA1A4B1AB40F6666E720BB4F14213545216C86D8",
+        "amount": "2092025982",
+        "description": "Asset 2 (IBC token)"
+      }
+    ]
+  },
+  "vault_configuration": {
+    "underlying_token": "bbn1...",
+    "share_name": "Babylon LP Vault",
+    "share_symbol": "bLP",
+    "share_marketing": {
+      "project": "https://your-project.com",
+      "description": "Automated LP vault for Babylon testnet Astroport pool",
+      "marketing": "bbn1..."
+    },
+    "manager": "bbn1...",
+    "oracle": "bbn1...",
+    "tower_incentives": "bbn1...",
+    "lp_pair": "bbn1hkmstu883spzwj4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
+    "slippage_tolerance": "0.01",
+    "incentives": [
+      {
+        "native_token": {
+          "denom": "ubbn"
+        }
+      }
+    ]
+  },
+  "deployment_steps": [
+    "1. Deploy vault contract",
+    "2. Configure pool integration",
+    "3. Set up oracle price feeds",
+    "4. Test LP provision and withdrawal",
+    "5. Verify reward distribution"
+  ],
+  "notes": {
+    "pool_analysis": "This is a concentrated liquidity pool with significant liquidity in both assets",
+    "risk_considerations": "Ensure proper slippage protection and oracle validation",
+    "testing_recommendations": "Test with small amounts first, verify all LP operations work correctly"
+  }
+}
