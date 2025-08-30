@@ -375,8 +375,11 @@ cargo check
 # Format code
 cargo fmt
 
-# Lint code
-cargo clippy
+# Lint code with Clippy
+cargo clippy --workspace -- -D warnings
+
+# Or use the Clippy script
+./scripts/clippy.sh
 ```
 
 ## 📖 Documentation

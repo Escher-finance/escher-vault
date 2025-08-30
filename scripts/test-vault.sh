@@ -111,6 +111,24 @@ print_status "Integration tests passed!"
 print_status "Checking for warnings..."
 cargo check 2>&1 | grep -i warning || print_status "No warnings found"
 
+# Run Clippy code quality checks
+print_status "Running Clippy code quality checks..."
+echo "========================================"
+
+print_status "Checking cw4626 package with Clippy..."
+cargo clippy --package cw4626 -- -D warnings
+
+print_status "Checking cw4626-base contract with Clippy..."
+cargo clippy --package cw4626-base -- -D warnings
+
+print_status "Checking cw4626-escher contract with Clippy..."
+cargo clippy --package cw4626-escher -- -D warnings
+
+print_status "Running Clippy on all packages..."
+cargo clippy --workspace -- -D warnings
+
+print_status "Clippy checks completed"
+
 # Final status
 echo ""
 print_status "🎉 All checks completed successfully!"

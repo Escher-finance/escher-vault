@@ -37,6 +37,9 @@ docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test"
 
 # Generate schemas
 docker-compose exec cw4626-nix bash -c "cd /workspace && cargo schema"
+
+# Run Clippy
+docker-compose exec cw4626-nix bash -c "cd /workspace && cargo clippy --workspace -- -D warnings"
 ```
 
 ### **WASM Optimization**

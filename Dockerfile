@@ -5,7 +5,7 @@ FROM nixos/nix:2.31.0
 WORKDIR /workspace
 
 # Install all tools in one go using a shell.nix approach
-RUN nix-env -iA nixpkgs.bash nixpkgs.curl nixpkgs.jq nixpkgs.binaryen nixpkgs.rustc nixpkgs.cargo nixpkgs.go nixpkgs.gcc nixpkgs.pkg-config nixpkgs.openssl nixpkgs.lld
+RUN nix-env -iA nixpkgs.bash nixpkgs.curl nixpkgs.jq nixpkgs.binaryen nixpkgs.rustc nixpkgs.cargo nixpkgs.go nixpkgs.gcc nixpkgs.pkg-config nixpkgs.openssl nixpkgs.lld nixpkgs.rust-analyzer
 
 # Set up environment
 ENV PATH="/root/.cargo/bin:/root/go/bin:$PATH"
