@@ -172,9 +172,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         // CW4626
         //
         QueryMsg::Asset {} => to_json_binary(&crate::query::asset(&deps)?),
-        QueryMsg::TotalAssets {} => {
-            to_json_binary(&cw4626_base_queries::total_assets(&this, &deps)?)
-        }
+        QueryMsg::TotalAssets {} => to_json_binary(&crate::query::total_assets(&deps, this)?),
         QueryMsg::ConvertToShares { assets } => to_json_binary(
             &cw4626_base_queries::convert_to_shares(&this, &deps, assets)?,
         ),
