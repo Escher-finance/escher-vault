@@ -13,3 +13,6 @@ pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
 
 // Legacy support - keep for backward compatibility
 pub const UNDERLYING_ASSET: Item<Addr> = Item::new("asset");
+
+// Staking contract configuration
+pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");

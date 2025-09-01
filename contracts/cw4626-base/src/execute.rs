@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_json, Addr, DepsMut, Env, Response, Uint128};
+use cosmwasm_std::{from_json, Addr, DepsMut, Env, Response, Uint128, Decimal};
 use cw4626::{
     cw20::{Cw20CoinVerified, Cw20ReceiveMsg},
     Cw4626ReceiveMsg, MaxDepositResponse, MaxMintResponse, MaxRedeemResponse, MaxWithdrawResponse,
@@ -243,6 +243,48 @@ pub fn redeem_native(
     let PreviewRedeemResponse { assets } =
         query::preview_redeem(&env.contract.address, &deps_ref, shares)?;
     crate::helpers::_withdraw_native(deps, env, sender, receiver, owner, assets, shares)
+}
+
+pub fn bond(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    slippage: Option<Decimal>,
+    expected: Uint128,
+    recipient: Option<String>,
+    recipient_channel_id: Option<u32>,
+    salt: Option<String>,
+) -> Result<Response, ContractError> {
+    let staking_contract = crate::state::STAKING_CONTRACT.load(deps.storage)?;
+    
+    // Get the current total assets in the vault
+    let total_assets_response = crate::query::total_assets(&env.contract.address, &deps.as_ref())?;
+        let total_assets = total_assets_response.total_managed_assets;
+    
+    // Validate that we have enough assets to bond
+    if total_assets < expected {
+        return Err(ContractError::InsufficientFunds {});
+    }
+    
+    // Create the bond message for the staking contract
+    let bond_msg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: staking_contract.to_string(),
+        msg: cosmwasm_std::to_json_binary(&cw4626::Cw4626ExecuteMsg::Bond {
+            slippage,
+            expected,
+            recipient,
+            recipient_channel_id,
+            salt,
+        })?,
+        funds: vec![],
+    };
+    
+    Ok(Response::new()
+        .add_message(bond_msg)
+        .add_attribute("action", "bond")
+        .add_attribute("sender", sender.to_string())
+        .add_attribute("expected", expected.to_string())
+        .add_attribute("staking_contract", staking_contract.to_string()))
 }
 
 pub fn update_ownership(

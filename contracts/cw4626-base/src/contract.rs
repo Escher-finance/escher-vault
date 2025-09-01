@@ -59,6 +59,12 @@ pub fn instantiate(
         }
     }
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
+    
+    // Save staking contract address if provided
+    if let Some(staking_contract) = msg.staking_contract {
+        crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
+    }
+    
     Ok(Response::new())
 }
 
@@ -114,6 +120,15 @@ pub fn execute(
             owner,
         } => {
             execute::redeem_native(deps, env, sender, shares, receiver, owner)
+        }
+        ExecuteMsg::Bond {
+            slippage,
+            expected,
+            recipient,
+            recipient_channel_id,
+            salt,
+        } => {
+            execute::bond(deps, env, sender, slippage, expected, recipient, recipient_channel_id, salt)
         }
         //
         // CW20

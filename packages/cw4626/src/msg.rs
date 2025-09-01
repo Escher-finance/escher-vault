@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128};
+use cosmwasm_std::{Addr, Binary, Uint128, Decimal};
 
 use cw20::{Cw20ReceiveMsg, Expiration, Logo};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
@@ -21,6 +21,7 @@ pub struct Cw4626InstantiateMsg {
     pub share_name: String,
     pub share_symbol: String,
     pub share_marketing: Option<InstantiateMarketingInfo>,
+    pub staking_contract: Option<Addr>,
 }
 
 // Legacy support - keep for backward compatibility
@@ -82,6 +83,18 @@ pub enum Cw4626ExecuteMsg {
         shares: Uint128,
         receiver: Addr,
         owner: Addr,
+    },
+
+    //
+    // Staking/Bonding Operations
+    //
+    /// Bond underlying assets to staking contract
+    Bond {
+        slippage: Option<Decimal>,
+        expected: Uint128,
+        recipient: Option<String>,
+        recipient_channel_id: Option<u32>,
+        salt: Option<String>,
     },
 
     //
