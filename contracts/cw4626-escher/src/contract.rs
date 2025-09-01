@@ -164,6 +164,8 @@ pub fn execute(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let this = env.contract.address;
     match msg {
+        QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
+        QueryMsg::OracleTokensList {} => to_json_binary(&crate::query::oracle_tokens_list(&deps)?),
         //
         // CW4626
         //
@@ -199,7 +201,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::PreviewRedeem { shares } => {
             to_json_binary(&cw4626_base_queries::preview_redeem(&this, &deps, shares)?)
         }
-        QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
         //
         // CW20
         //

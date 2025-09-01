@@ -122,10 +122,18 @@ pub struct AccessControlRoleResponse {
 }
 
 #[cw_serde]
+pub struct OracleTokensListResponse {
+    pub tokens: Vec<String>,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(AccessControlRoleResponse)]
     Role { kind: AccessControlRole },
+
+    #[returns(OracleTokensListResponse)]
+    OracleTokensList {},
 
     //
     // CW4626
