@@ -51,9 +51,6 @@
             git
             pkg-config
 
-            # CosmWasm development
-            cosmwasm-check
-
             # Additional tools
             nodejs_20
             yarn
