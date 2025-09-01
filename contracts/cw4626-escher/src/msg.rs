@@ -1,18 +1,16 @@
-use std::collections::HashMap;
-
 use astroport::asset::AssetInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
 use cw4626::*;
 
-use crate::state::AccessControlRole;
+use crate::state::{AccessControlRole, PricesMap};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub manager: Addr,
     pub oracle: Addr,
-    pub underlying_token_address: Addr,
+    pub underlying_token: AssetInfo,
     pub share_name: String,
     pub share_symbol: String,
     pub share_marketing: Option<InstantiateMarketingInfo>,
@@ -20,6 +18,7 @@ pub struct InstantiateMsg {
     pub lp: Addr,
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
+    pub staking_contract: Option<Addr>,
 }
 
 #[cw_serde]
@@ -31,7 +30,7 @@ pub enum ExecuteMsg {
     },
 
     /// Update prices
-    OracleUpdatePrices { prices: HashMap<String, Decimal> },
+    OracleUpdatePrices { prices: PricesMap },
 
     //
     // CW4626

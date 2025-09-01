@@ -1,0 +1,20 @@
+# Clippy Configuration for CW4626 Vault
+# This file configures Clippy linting rules for smart contract development
+
+# Set MSRV (Minimum Supported Rust Version)
+msrv = "1.70.0"
+
+# Configure specific thresholds - higher for smart contracts
+cognitive-complexity-threshold = 100
+type-complexity-threshold = 100
+too-many-arguments-threshold = 20
+max-fn-params-bools = 15
+max-struct-bools = 15
+max-trait-bounds = 15
+
+# Allow some common patterns in smart contracts
+allow-panic-in-tests = true
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true

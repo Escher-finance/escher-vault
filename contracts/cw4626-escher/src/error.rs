@@ -27,4 +27,10 @@ pub enum ContractError {
 
     #[error("oracle prices are not valid")]
     OracleInvalidPrices {},
+
+    #[error("Insufficient funds for operation")]
+    InsufficientFunds {},
+
+    #[error("Invalid token type for this operation")]
+    InvalidTokenType {},
 }

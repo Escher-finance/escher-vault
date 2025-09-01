@@ -1,15 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw4626::cw20;
 use cw4626_base::execute as cw4626_base_executes;
-use cw4626_base::helpers::validate_cw20;
 use cw4626_base::query as cw4626_base_queries;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
-use crate::tower::{init_oracle_prices, update_tower_config};
+use crate::tower::{init_oracle_prices, query_asset_info_decimals, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -18,10 +16,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let cw20::TokenInfoResponse {
-        decimals: underlying_decimals,
-        ..
-    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
+    let underlying_decimals =
+        query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -35,8 +31,14 @@ pub fn instantiate(
             marketing: msg.share_marketing,
         },
     )?;
-    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
+    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token)?;
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
+
+    // Save staking contract address if provided
+    if let Some(staking_contract) = msg.staking_contract {
+        crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
+    }
+
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Manager {}.key(),
@@ -53,7 +55,7 @@ pub fn instantiate(
         msg.lp,
         msg.slippage_tolerance,
         msg.incentives,
-        msg.underlying_token_address,
+        msg.underlying_token,
     )?;
     init_oracle_prices(deps, &tower_config)?;
     Ok(Response::new())

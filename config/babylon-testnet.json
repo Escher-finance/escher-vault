@@ -1,0 +1,79 @@
+{
+  "network": "babylon-genesis-testnet",
+  "chain_id": "bbn-test-5",
+  "chain_name": "Babylon Testnet",
+  "binary_name": "babylond",
+  "version": "v0.5.0",
+  "genesis_date": "2025-01-09",
+  "rpc_endpoints": {
+    "polkachu": "https://babylon-testnet-rpc.polkachu.com",
+    "nodes_guru": "https://babylon-testnet-rpc.nodes.guru",
+    "imperator": "https://rpc-babylon-testnet.imperator.co",
+    "nodestake": "https://rpc-t.babylon.nodestake.org"
+  },
+  "api_endpoints": {
+    "polkachu": "https://babylon-testnet-api.polkachu.com",
+    "nodes_guru": "https://babylon-testnet-api.nodes.guru",
+    "imperator": "https://lcd-babylon-testnet.imperator.co",
+    "nodestake": "https://api-t.babylon.nodestake.org"
+  },
+  "grpc_endpoints": {
+    "polkachu": "http://babylon-testnet-grpc.polkachu.com:20690",
+    "nodes_guru": "https://babylon-testnet-grpc.nodes.guru",
+    "imperator": "grpc-babylon-testnet.imperator.co:443",
+    "nodestake": "https://grpc-t.babylon.nodestake.org:443"
+  },
+  "primary_rpc": "https://babylon-testnet-rpc.polkachu.com",
+  "primary_api": "https://babylon-testnet-api.polkachu.com",
+  "primary_grpc": "http://babylon-testnet-grpc.polkachu.com:20690",
+  "gas_prices": "0.025ubbn",
+  "gas_adjustment": "1.3",
+  "denom": "ubbn",
+  "min_balance": "1000000",
+  "explorer": "https://testnet.mintscan.io/babylon",
+  "faucet": "https://faucet.babylon-testnet.com",
+  "genesis": {
+    "github": "https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/network-artifacts/genesis.json",
+    "nodestake": "https://ss.babylon.nodestake.org/genesis.json"
+  },
+  "state_snapshot": {
+    "github": "https://github.com/babylonlabs-io/networks/blob/main/bbn-test-5/network-artifacts/bbn-test-5.tar.gz",
+    "nodestake": "https://nodestake.org/babylon"
+  },
+  "network_artifacts": {
+    "seeds": "https://github.com/babylonlabs-io/networks/tree/main/bbn-test-5/network-artifacts/seeds.txt",
+    "peers": "https://github.com/babylonlabs-io/networks/tree/main/bbn-test-5/network-artifacts/peers.txt"
+  },
+    "contracts": {
+    "astroport_factory": "babylon1...",
+    "astroport_router": "babylon1...",
+    "astroport_pool": "bbn1hkmstu883spzwj4h38yph6wqv4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
+    "pool_assets": {
+      "asset1": {
+        "denom": "ibc/3AA6631D204C192DDB757935A4C49A0E83EEEE14AC045E8A180CCB4EE08B6196",
+        "amount": "255048460506224077801"
+      },
+      "asset2": {
+        "denom": "ibc/DC9A0BC30A89A4C767CA2DA3BA1A4B1AB40F6666E720BB4F14213545216C86D8",
+        "amount": "2092025982"
+      }
+    },
+    "cw20_tokens": {
+      "usdc": "babylon1...",
+      "atom": "babylon1...",
+      "babylon": "ubbn"
+    }
+  },
+  "deployment": {
+    "base_vault": {
+      "name": "Babylon Base Vault",
+      "symbol": "bVAULT",
+      "description": "Basic vault for Babylon testnet"
+    },
+    "escher_vault": {
+      "name": "Babylon Escher Vault",
+      "symbol": "bESCHER",
+      "description": "Enhanced LP vault for Babylon testnet with Astroport integration"
+    }
+  }
+}

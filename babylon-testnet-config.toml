@@ -1,0 +1,22 @@
+# Babylon Testnet Configuration
+# Chain ID: bbn-test-5
+# RPC: https://babylon-testnet-rpc-archive-1.nodes.guru
+# API: https://babylon-testnet-rpc-archive-1.nodes.guru
+
+[chain]
+chain_id = "bbn-test-5"
+rpc_endpoint = "https://babylon-testnet-rpc-archive-1.nodes.guru"
+api_endpoint = "https://babylon-testnet-rpc-archive-1.nodes.guru"
+
+[gas]
+gas_adjustment = "1.3"
+gas_prices = "0.025ubbn"
+
+[account]
+keyring_backend = "test"
+keyring_dir = "~/.babylon/keys"
+
+[wasm]
+code_upload_access = "Everybody"
+instantiate_default_permission = "Everybody"
+

@@ -16,3 +16,28 @@
 .idea
 
 */*/target/
+
+# Nix build artifacts
+result
+result-*
+.nix-*
+.direnv
+/nix-2.31.0-aarch64-darwin/
+nix-installer
+nix-*/
+
+# Environment files
+.env
+.envrc
+
+# Rust build artifacts
+Cargo.lock
+target/
+**/target/
+
+# WASM build artifacts
+*.wasm
+!schema/*.json
+
+# Logs
+*.log
