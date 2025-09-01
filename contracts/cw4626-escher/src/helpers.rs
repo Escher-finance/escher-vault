@@ -1,7 +1,15 @@
-use astroport::asset::AssetInfo;
-use cosmwasm_std::{Addr, Deps, StdError, StdResult, Uint128};
+use astroport::asset::{Asset, AssetInfo};
+use cosmwasm_std::{
+    to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+    WasmMsg,
+};
+use cw4626::cw20;
+use cw4626_base::helpers::generate_deposit_response;
 
-use crate::{state::UNDERLYING_ASSET, tower::calculate_total_assets};
+use crate::{
+    asset_info::assert_send_asset_to_contract, state::UNDERLYING_ASSET,
+    tower::calculate_total_assets, ContractError,
+};
 
 #[derive(Debug)]
 pub struct Tokens {
@@ -82,4 +90,67 @@ pub fn _preview_deposit(
     }
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(cw4626::PreviewDepositResponse { shares })
+}
+
+// Internal unchecked `mint`
+pub fn _mint(deps: DepsMut, recipient: String, amount: Uint128) -> Result<(), ContractError> {
+    let mut config = cw20_base::state::TOKEN_INFO.load(deps.storage)?;
+
+    // update supply and enforce cap
+    config.total_supply += amount;
+    if let Some(limit) = config.get_cap() {
+        if config.total_supply > limit {
+            return Err(ContractError::ShareCw20Error(
+                cw20_base::ContractError::CannotExceedCap {},
+            ));
+        }
+    }
+    cw20_base::state::TOKEN_INFO.save(deps.storage, &config)?;
+
+    // add amount to recipient balance
+    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    cw20_base::state::BALANCES.update(
+        deps.storage,
+        &rcpt_addr,
+        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
+    )?;
+    Ok(())
+}
+
+pub fn generate_withdraw_response(
+    caller: &Addr,
+    receiver: &Addr,
+    assets: Uint128,
+    shares: Uint128,
+) -> Response {
+    Response::new()
+        .add_attribute("action", "withdraw")
+        .add_attribute("withdrawer", caller)
+        .add_attribute("receiver", receiver)
+        .add_attribute("assets_received", assets)
+        .add_attribute("shares_burned", shares)
+}
+
+/// Used internally in `deposit`/`mint` functionality
+pub fn _deposit(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    receiver: Addr,
+    assets: Uint128,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    let caller = info.sender.clone();
+    let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
+    let asset = Asset {
+        amount: assets,
+        info: asset_info,
+    };
+    let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
+    let mut res = generate_deposit_response(&caller, &receiver, assets, shares);
+    if let Some(msg) = transfer_msg {
+        res = res.add_message(msg);
+    }
+    _mint(deps.branch(), receiver.to_string(), shares)?;
+    Ok(res)
 }

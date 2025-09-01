@@ -1,10 +1,11 @@
 use astroport::{
-    asset::AssetInfo,
+    asset::{Asset, AssetInfo},
     querier::{query_balance, query_token_balance},
 };
-use cosmwasm_std::{Addr, QuerierWrapper, Uint128};
+use cosmwasm_std::{to_json_binary, Addr, Env, MessageInfo, QuerierWrapper, Uint128, WasmMsg};
 use cw4626::cw20;
 use cw4626_base::helpers::validate_cw20;
+use cw_utils::must_pay;
 
 use crate::ContractError;
 
@@ -36,5 +37,32 @@ pub fn query_asset_info_decimals(
             Ok(decimals)
         }
         AssetInfo::NativeToken { .. } => Ok(6),
+    }
+}
+
+/// Only returns `WasmMsg` if `AssetInfo::Token`
+pub fn assert_send_asset_to_contract(
+    info: MessageInfo,
+    env: Env,
+    asset: Asset,
+) -> Result<Option<WasmMsg>, ContractError> {
+    let caller = info.sender.clone();
+    let this = env.contract.address;
+    match asset.info {
+        AssetInfo::Token { contract_addr } => Ok(Some(WasmMsg::Execute {
+            contract_addr: contract_addr.to_string(),
+            msg: to_json_binary(&cw20::Cw20ExecuteMsg::TransferFrom {
+                owner: caller.to_string(),
+                recipient: this.to_string(),
+                amount: asset.amount,
+            })?,
+            funds: vec![],
+        })),
+        AssetInfo::NativeToken { denom } => {
+            if must_pay(&info, &denom)? < asset.amount {
+                return Err(ContractError::InsufficientFunds {});
+            }
+            Ok(None)
+        }
     }
 }

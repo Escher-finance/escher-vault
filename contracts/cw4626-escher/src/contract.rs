@@ -81,10 +81,10 @@ pub fn execute(
         // CW4626
         //
         ExecuteMsg::Deposit { assets, receiver } => {
-            cw4626_base_executes::deposit(deps, env, sender, assets, receiver)?
+            crate::execute::deposit(deps, env, info, assets, receiver)?
         }
         ExecuteMsg::Mint { shares, receiver } => {
-            cw4626_base_executes::mint(deps, env, sender, shares, receiver)?
+            crate::execute::mint(deps, env, info, shares, receiver)?
         }
         ExecuteMsg::Withdraw {
             assets,

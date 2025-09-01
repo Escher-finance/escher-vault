@@ -1,8 +1,9 @@
-use cosmwasm_std::{Addr, Decimal, DepsMut, Env, Response, Uint128};
-use cw4626_base::query;
+use cosmwasm_std::{Addr, Decimal, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
     access_control::only_role,
+    helpers::_deposit,
+    query,
     staking::EscherHubExecuteMsg,
     state::{AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT},
     tower::update_and_validate_prices,
@@ -43,7 +44,7 @@ pub fn bond(
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
 
     // Get the current total assets in the vault
-    let total_assets_response = query::total_assets(&env.contract.address, &deps.as_ref())?;
+    let total_assets_response = query::total_assets(&deps.as_ref(), env.contract.address)?;
     let total_assets = total_assets_response.total_managed_assets;
 
     // Validate that we have enough assets to bond
@@ -70,4 +71,47 @@ pub fn bond(
         .add_attribute("sender", sender.to_string())
         .add_attribute("expected", expected.to_string())
         .add_attribute("staking_contract", staking_contract.to_string()))
+}
+
+pub fn deposit(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    assets: Uint128,
+    receiver: Addr,
+) -> Result<Response, ContractError> {
+    let cw4626::MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
+    if assets > max_assets {
+        return Err(cw4626_base::ContractError::ExceededMaxDeposit {
+            receiver: receiver.clone(),
+            assets,
+            max_assets,
+        }
+        .into());
+    }
+    let cw4626::PreviewDepositResponse { shares } =
+        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+    _deposit(deps, env, info, receiver, assets, shares)
+}
+
+pub fn mint(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    shares: Uint128,
+    receiver: Addr,
+) -> Result<Response, ContractError> {
+    let deps_ref = deps.as_ref();
+    let cw4626::MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
+    if shares > max_shares {
+        return Err(cw4626_base::ContractError::ExceededMaxMint {
+            receiver: receiver.clone(),
+            shares,
+            max_shares,
+        }
+        .into());
+    }
+    let cw4626::PreviewMintResponse { assets } =
+        query::preview_mint(&env.contract.address, &deps_ref, shares)?;
+    _deposit(deps, env, info, receiver, assets, shares)
 }
