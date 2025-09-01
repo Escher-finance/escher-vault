@@ -164,6 +164,7 @@ pub fn execute(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let this = env.contract.address;
     match msg {
+        QueryMsg::Config {} => to_json_binary(&crate::query::config(&deps)?),
         QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
         QueryMsg::OracleTokensList {} => to_json_binary(&crate::query::oracle_tokens_list(&deps)?),
         //
