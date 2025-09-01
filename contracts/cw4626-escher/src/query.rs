@@ -75,3 +75,23 @@ pub fn convert_to_assets(
     let assets = _convert_to_shares(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(cw4626::ConvertToAssetsResponse { assets })
 }
+
+pub fn max_deposit(_receiver: Addr) -> StdResult<cw4626::MaxDepositResponse> {
+    Ok(cw4626::MaxDepositResponse {
+        max_assets: if cfg!(not(test)) {
+            Uint128::MAX
+        } else {
+            Uint128::new(100_000_000)
+        },
+    })
+}
+
+pub fn max_mint(_receiver: Addr) -> StdResult<cw4626::MaxMintResponse> {
+    Ok(cw4626::MaxMintResponse {
+        max_shares: if cfg!(not(test)) {
+            Uint128::MAX
+        } else {
+            Uint128::new(100_000_000)
+        },
+    })
+}

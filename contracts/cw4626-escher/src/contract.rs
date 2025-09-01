@@ -179,13 +179,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ConvertToAssets { shares } => {
             to_json_binary(&crate::query::convert_to_assets(&this, &deps, shares)?)
         }
-        QueryMsg::MaxDeposit { receiver } => {
-            to_json_binary(&cw4626_base_queries::max_deposit(receiver)?)
-        }
+        QueryMsg::MaxDeposit { receiver } => to_json_binary(&crate::query::max_deposit(receiver)?),
         QueryMsg::PreviewDeposit { assets } => {
             to_json_binary(&cw4626_base_queries::preview_deposit(&this, &deps, assets)?)
         }
-        QueryMsg::MaxMint { receiver } => to_json_binary(&cw4626_base_queries::max_mint(receiver)?),
+        QueryMsg::MaxMint { receiver } => to_json_binary(&crate::query::max_mint(receiver)?),
         QueryMsg::PreviewMint { shares } => {
             to_json_binary(&cw4626_base_queries::preview_mint(&this, &deps, shares)?)
         }
