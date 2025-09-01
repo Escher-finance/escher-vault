@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use cosmwasm_std::{Addr, Decimal, DepsMut, Response};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Env, Response, Uint128};
+use cw4626::*;
+use cw4626_base::query;
 
 use crate::{
     access_control::only_role,
@@ -50,11 +52,12 @@ pub fn deposit_native(
             let assets = coin.amount;
             let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
             if assets > max_assets {
-                return Err(ContractError::ExceededMaxDeposit {
+                return Err(cw4626_base::ContractError::ExceededMaxDeposit {
                     receiver: receiver.clone(),
                     assets,
                     max_assets,
-                });
+                }
+                .into());
             }
             let PreviewDepositResponse { shares } =
                 query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
@@ -97,11 +100,12 @@ pub fn withdraw_native(
     let MaxWithdrawResponse { max_assets } =
         query::max_withdraw(&env.contract.address, &deps.as_ref(), owner.clone())?;
     if assets > max_assets {
-        return Err(ContractError::ExceededMaxWithdraw {
+        return Err(cw4626_base::ContractError::ExceededMaxWithdraw {
             owner: owner.clone(),
             assets,
             max_assets,
-        });
+        }
+        .into());
     }
     let PreviewWithdrawResponse { shares } =
         query::preview_withdraw(&env.contract.address, &deps.as_ref(), assets)?;
