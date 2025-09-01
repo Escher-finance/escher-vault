@@ -1,9 +1,5 @@
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_std::{
-    to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
-    WasmMsg,
-};
-use cw4626::cw20;
+use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
 use cw4626_base::helpers::generate_deposit_response;
 
 use crate::{
