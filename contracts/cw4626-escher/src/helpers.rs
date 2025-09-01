@@ -64,3 +64,22 @@ pub fn _convert_to_assets(
     }
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
+
+/// Pass `true` in `via_receive` in order to fix calculation when using ReceiveMsg
+pub fn _preview_deposit(
+    this: &Addr,
+    deps: &Deps,
+    assets: Uint128,
+    via_receive: bool,
+) -> StdResult<cw4626::PreviewDepositResponse> {
+    let Tokens {
+        total_shares,
+        mut total_assets,
+        ..
+    } = get_tokens(this, deps)?;
+    if via_receive {
+        total_assets -= assets;
+    }
+    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+    Ok(cw4626::PreviewDepositResponse { shares })
+}

@@ -48,7 +48,7 @@ pub fn convert_to_assets(
         total_assets,
         ..
     } = get_tokens(this, deps)?;
-    let assets = _convert_to_shares(total_shares, total_assets, shares, Rounding::Floor)?;
+    let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(ConvertToAssetsResponse { assets })
 }
 

@@ -106,7 +106,7 @@ fn instantiates_properly() {
             .query_wasm_smart::<AssetResponse>(&vault, &QueryMsg::Asset {})
             .unwrap()
             .asset_token_address,
-        asset,
+        asset.to_string(),
         "underlying asset address must match"
     );
     let share_token_info = querier
