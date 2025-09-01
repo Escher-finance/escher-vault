@@ -6,12 +6,6 @@ use cosmwasm_std::{Addr, Decimal};
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
-pub enum TokenType {
-    Cw20 { address: Addr },
-    Native { denom: String },
-}
-
-#[cw_serde]
 pub enum AccessControlRole {
     Manager {},
     Oracle {},

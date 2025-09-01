@@ -4,7 +4,7 @@ use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
 use cw4626::*;
 
-use crate::state::{AccessControlRole, PricesMap};
+use crate::state::{AccessControlRole, PricesMap, TowerConfig};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -122,10 +122,25 @@ pub struct AccessControlRoleResponse {
 }
 
 #[cw_serde]
+pub struct OracleTokensListResponse {
+    pub tokens: Vec<String>,
+}
+
+#[cw_serde]
+pub struct ConfigResponse {
+    pub staking_contract: Addr,
+    pub tower_config: TowerConfig,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(ConfigResponse)]
+    Config {},
     #[returns(AccessControlRoleResponse)]
     Role { kind: AccessControlRole },
+    #[returns(OracleTokensListResponse)]
+    OracleTokensList {},
 
     //
     // CW4626

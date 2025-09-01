@@ -207,7 +207,7 @@ pub enum Cw4626QueryMsg {
 
 #[cw_serde]
 pub struct AssetResponse {
-    pub asset_token_address: Addr,
+    pub asset_token_address: String,
 }
 
 #[cw_serde]

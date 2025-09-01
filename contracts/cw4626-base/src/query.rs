@@ -12,7 +12,7 @@ use cw4626::*;
 pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
     let asset = UNDERLYING_ASSET.load(storage)?;
     Ok(AssetResponse {
-        asset_token_address: asset,
+        asset_token_address: asset.to_string(),
     })
 }
 
@@ -48,7 +48,7 @@ pub fn convert_to_assets(
         total_assets,
         ..
     } = get_tokens(this, deps)?;
-    let assets = _convert_to_shares(total_shares, total_assets, shares, Rounding::Floor)?;
+    let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(ConvertToAssetsResponse { assets })
 }
 

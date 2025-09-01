@@ -1,6 +1,7 @@
 use cosmwasm_std::StdError;
 use cw20_base::ContractError as Cw20ContractError;
 use cw4626_base::ContractError as Cw4626BaseContractError;
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 use crate::state::AccessControlRole;
@@ -15,6 +16,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     Cw4626Base(#[from] Cw4626BaseContractError),
+
+    #[error("{0}")]
+    PaymentError(#[from] PaymentError),
 
     #[error("only {0} role")]
     Unauthorized(AccessControlRole),

@@ -4,10 +4,11 @@ use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Resp
 use cw4626_base::execute as cw4626_base_executes;
 use cw4626_base::query as cw4626_base_queries;
 
+use crate::asset_info::query_asset_info_decimals;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
-use crate::tower::{init_oracle_prices, query_asset_info_decimals, update_tower_config};
+use crate::tower::{init_oracle_prices, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -80,10 +81,10 @@ pub fn execute(
         // CW4626
         //
         ExecuteMsg::Deposit { assets, receiver } => {
-            cw4626_base_executes::deposit(deps, env, sender, assets, receiver)?
+            crate::execute::deposit(deps, env, info, assets, receiver)?
         }
         ExecuteMsg::Mint { shares, receiver } => {
-            cw4626_base_executes::mint(deps, env, sender, shares, receiver)?
+            crate::execute::mint(deps, env, info, shares, receiver)?
         }
         ExecuteMsg::Withdraw {
             assets,
@@ -164,28 +165,27 @@ pub fn execute(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let this = env.contract.address;
     match msg {
+        QueryMsg::Config {} => to_json_binary(&crate::query::config(&deps)?),
+        QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
+        QueryMsg::OracleTokensList {} => to_json_binary(&crate::query::oracle_tokens_list(&deps)?),
         //
         // CW4626
         //
-        QueryMsg::Asset {} => to_json_binary(&cw4626_base_queries::asset(deps.storage)?),
-        QueryMsg::TotalAssets {} => {
-            to_json_binary(&cw4626_base_queries::total_assets(&this, &deps)?)
+        QueryMsg::Asset {} => to_json_binary(&crate::query::asset(&deps)?),
+        QueryMsg::TotalAssets {} => to_json_binary(&crate::query::total_assets(&deps, this)?),
+        QueryMsg::ConvertToShares { assets } => {
+            to_json_binary(&crate::query::convert_to_shares(&this, &deps, assets)?)
         }
-        QueryMsg::ConvertToShares { assets } => to_json_binary(
-            &cw4626_base_queries::convert_to_shares(&this, &deps, assets)?,
-        ),
-        QueryMsg::ConvertToAssets { shares } => to_json_binary(
-            &cw4626_base_queries::convert_to_assets(&this, &deps, shares)?,
-        ),
-        QueryMsg::MaxDeposit { receiver } => {
-            to_json_binary(&cw4626_base_queries::max_deposit(receiver)?)
+        QueryMsg::ConvertToAssets { shares } => {
+            to_json_binary(&crate::query::convert_to_assets(&this, &deps, shares)?)
         }
+        QueryMsg::MaxDeposit { receiver } => to_json_binary(&crate::query::max_deposit(receiver)?),
         QueryMsg::PreviewDeposit { assets } => {
-            to_json_binary(&cw4626_base_queries::preview_deposit(&this, &deps, assets)?)
+            to_json_binary(&crate::query::preview_deposit(&this, &deps, assets)?)
         }
-        QueryMsg::MaxMint { receiver } => to_json_binary(&cw4626_base_queries::max_mint(receiver)?),
+        QueryMsg::MaxMint { receiver } => to_json_binary(&crate::query::max_mint(receiver)?),
         QueryMsg::PreviewMint { shares } => {
-            to_json_binary(&cw4626_base_queries::preview_mint(&this, &deps, shares)?)
+            to_json_binary(&crate::query::preview_mint(&this, &deps, shares)?)
         }
         QueryMsg::MaxWithdraw { owner } => {
             to_json_binary(&cw4626_base_queries::max_withdraw(&this, &deps, owner)?)
@@ -199,7 +199,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::PreviewRedeem { shares } => {
             to_json_binary(&cw4626_base_queries::preview_redeem(&this, &deps, shares)?)
         }
-        QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
         //
         // CW20
         //
