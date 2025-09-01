@@ -1,9 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw4626::cw20;
 use cw4626_base::execute as cw4626_base_executes;
-use cw4626_base::helpers::validate_cw20;
 use cw4626_base::query as cw4626_base_queries;
 
 use crate::error::ContractError;
@@ -18,7 +16,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let underlying_decimals = query_asset_info_decimals(&deps.querier, msg.underlying_token)?;
+    let underlying_decimals =
+        query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
