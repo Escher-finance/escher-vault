@@ -1,7 +1,8 @@
-use cosmwasm_std::{Addr, Deps, StdError, StdResult};
+use cosmwasm_std::{Addr, Deps, StdError, StdResult, Uint128};
 
 use crate::{
     asset_info::get_asset_info_address,
+    helpers::{Rounding, Tokens, _convert_to_shares, get_tokens},
     msg::{AccessControlRoleResponse, ConfigResponse, OracleTokensListResponse},
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
@@ -45,4 +46,32 @@ pub fn total_assets(deps: &Deps, this: Addr) -> StdResult<cw4626::TotalAssetsRes
     Ok(cw4626::TotalAssetsResponse {
         total_managed_assets,
     })
+}
+
+pub fn convert_to_shares(
+    this: &Addr,
+    deps: &Deps,
+    assets: Uint128,
+) -> StdResult<cw4626::ConvertToSharesResponse> {
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
+    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+    Ok(cw4626::ConvertToSharesResponse { shares })
+}
+
+pub fn convert_to_assets(
+    this: &Addr,
+    deps: &Deps,
+    shares: Uint128,
+) -> StdResult<cw4626::ConvertToAssetsResponse> {
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
+    let assets = _convert_to_shares(total_shares, total_assets, shares, Rounding::Floor)?;
+    Ok(cw4626::ConvertToAssetsResponse { assets })
 }
