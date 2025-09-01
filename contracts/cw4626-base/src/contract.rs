@@ -8,7 +8,7 @@ use crate::execute;
 use crate::helpers::validate_cw20;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query;
-use crate::state::{TOKEN_TYPE, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
+use crate::state::{UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -41,12 +41,6 @@ pub fn instantiate(
     )?;
     UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
-
-    // Save staking contract address if provided
-    if let Some(staking_contract) = msg.staking_contract {
-        crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
-    }
-
     Ok(Response::new())
 }
 
@@ -80,41 +74,6 @@ pub fn execute(
         ExecuteMsg::Receive(cw20_receive_msg) => {
             execute::receive(deps, env, sender, cw20_receive_msg)
         }
-        //
-        // Native Token Operations
-        //
-        ExecuteMsg::DepositNative { receiver } => {
-            execute::deposit_native(deps, env, sender, receiver, info.funds)
-        }
-        ExecuteMsg::MintNative { shares, receiver } => {
-            execute::mint_native(deps, env, sender, shares, receiver, info.funds)
-        }
-        ExecuteMsg::WithdrawNative {
-            assets,
-            receiver,
-            owner,
-        } => execute::withdraw_native(deps, env, sender, assets, receiver, owner),
-        ExecuteMsg::RedeemNative {
-            shares,
-            receiver,
-            owner,
-        } => execute::redeem_native(deps, env, sender, shares, receiver, owner),
-        ExecuteMsg::Bond {
-            slippage,
-            expected,
-            recipient,
-            recipient_channel_id,
-            salt,
-        } => execute::bond(
-            deps,
-            env,
-            sender,
-            slippage,
-            expected,
-            recipient,
-            recipient_channel_id,
-            salt,
-        ),
         //
         // CW20
         //

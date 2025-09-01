@@ -1,13 +1,10 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, BlockInfo, Coin, Deps, DepsMut, Env, QuerierWrapper, Response,
-    StdError, StdResult, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, BlockInfo, Deps, DepsMut, Env, QuerierWrapper, Response, StdError,
+    StdResult, Storage, Uint128, WasmMsg,
 };
 use cw4626::{cw20, PreviewDepositResponse};
 
-use crate::{
-    state::{TokenType, TOKEN_TYPE, UNDERLYING_ASSET},
-    ContractError,
-};
+use crate::{state::UNDERLYING_ASSET, ContractError};
 
 pub fn validate_cw20(
     querier: &QuerierWrapper,
