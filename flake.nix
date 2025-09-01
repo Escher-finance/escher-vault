@@ -7,8 +7,15 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs {
@@ -17,7 +24,11 @@
 
         # Rust toolchain with specific version
         rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [ "rust-src" "rust-analyzer" "clippy" ];
+          extensions = [
+            "rust-src"
+            "rust-analyzer"
+            "clippy"
+          ];
           targets = [ "wasm32-unknown-unknown" ];
         };
 
@@ -26,23 +37,23 @@
           buildInputs = with pkgs; [
             # Rust toolchain
             rustToolchain
-            
+
             # WebAssembly tools
             binaryen
             wasm-pack
-            
+
             # Babylon CLI (if available in nixpkgs)
             # babylond
-            
+
             # Development tools
             jq
             curl
             git
             pkg-config
-            
+
             # CosmWasm development
             cosmwasm-check
-            
+
             # Additional tools
             nodejs_20
             yarn
@@ -72,15 +83,16 @@
           # Rust environment
           RUST_BACKTRACE = "1";
           RUST_LOG = "info";
-          
+
           # WebAssembly target
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER = "wasm-opt";
         };
 
-      in {
+      in
+      {
         # Development shell
         devShells.default = devEnv;
-        
+
         # Build outputs
         packages = {
           # Build base contract
