@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-
 use cosmwasm_std::{Addr, Decimal, DepsMut, Env, Response, Uint128};
 use cw4626_base::query;
 
 use crate::{
     access_control::only_role,
     staking::EscherHubExecuteMsg,
-    state::{AccessControlRole, ACCESS_CONTROL, STAKING_CONTRACT},
+    state::{AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT},
     tower::update_and_validate_prices,
     ContractError,
 };
@@ -25,7 +23,7 @@ pub fn update_role(
 pub fn oracle_update_prices(
     deps: DepsMut,
     sender: Addr,
-    prices: HashMap<String, Decimal>,
+    prices: PricesMap,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &sender, AccessControlRole::Oracle {})?;
     update_and_validate_prices(deps, prices)?;

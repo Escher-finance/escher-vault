@@ -17,7 +17,7 @@ use cw4626::cw20::{self, Cw20ExecuteMsg};
 use cw4626_base::helpers::validate_cw20;
 
 use crate::{
-    state::{TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
+    state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
 };
 
@@ -93,10 +93,7 @@ pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(
     Ok(())
 }
 
-pub fn update_and_validate_prices(
-    deps: DepsMut,
-    prices: HashMap<String, Decimal>,
-) -> Result<(), ContractError> {
+pub fn update_and_validate_prices(deps: DepsMut, prices: PricesMap) -> Result<(), ContractError> {
     if !prices.values().all(|p| *p > Decimal::zero()) {
         return Err(ContractError::OracleZeroPrice {});
     }
@@ -113,9 +110,7 @@ pub fn update_and_validate_prices(
     Ok(())
 }
 
-pub fn get_and_validate_oracle_prices(
-    storage: &dyn Storage,
-) -> Result<HashMap<String, Decimal>, ContractError> {
+pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> Result<PricesMap, ContractError> {
     let prices = ORACLE_PRICES.load(storage)?;
     if !prices.values().all(|p| *p > Decimal::zero()) {
         return Err(ContractError::OracleZeroPrice {});
@@ -207,7 +202,7 @@ pub fn query_asset_info_decimals(
 ) -> Result<u8, ContractError> {
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => {
-            let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(&querier, &contract_addr)?;
+            let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(querier, &contract_addr)?;
             Ok(decimals)
         }
         AssetInfo::NativeToken { .. } => Ok(6),

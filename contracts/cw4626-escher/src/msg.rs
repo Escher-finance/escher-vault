@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 
 use astroport::asset::AssetInfo;
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -6,7 +5,7 @@ use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
 use cw4626::*;
 
-use crate::state::AccessControlRole;
+use crate::state::{AccessControlRole, PricesMap};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -32,7 +31,7 @@ pub enum ExecuteMsg {
     },
 
     /// Update prices
-    OracleUpdatePrices { prices: HashMap<String, Decimal> },
+    OracleUpdatePrices { prices: PricesMap },
 
     //
     // CW4626
