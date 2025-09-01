@@ -23,6 +23,7 @@ result-*
 .nix-*
 .direnv
 /nix-2.31.0-aarch64-darwin/
+nix-installer
 
 # Environment files
 .env
