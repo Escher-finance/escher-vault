@@ -13,7 +13,8 @@ use astroport::{
 use cosmwasm_std::{
     to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, Storage, Uint128, WasmMsg,
 };
-use cw4626::cw20::Cw20ExecuteMsg;
+use cw4626::cw20::{self, Cw20ExecuteMsg};
+use cw4626_base::helpers::validate_cw20;
 
 use crate::{
     state::{TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
@@ -26,7 +27,7 @@ pub fn update_tower_config(
     lp: Addr,
     slippage_tolerance: Decimal,
     lp_incentives: Vec<AssetInfo>,
-    underlying_asset: Addr,
+    underlying_asset_info: AssetInfo,
 ) -> Result<TowerConfig, ContractError> {
     let invalid_tower_config_err = Err(ContractError::InvalidTowerConfig {});
     if deps
@@ -42,16 +43,13 @@ pub fn update_tower_config(
     let pair_info: PairInfo = deps
         .querier
         .query_wasm_smart(lp.clone(), &PairConcentratedQueryMsg::Pair {})?;
-    let lp_underlying_asset = AssetInfo::Token {
-        contract_addr: underlying_asset,
-    };
-    if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&lp_underlying_asset) {
+    if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&underlying_asset_info) {
         return invalid_tower_config_err;
     }
     let Some(lp_other_asset) = pair_info
         .asset_infos
         .iter()
-        .find(|info| **info != lp_underlying_asset)
+        .find(|info| **info != underlying_asset_info)
     else {
         return invalid_tower_config_err;
     };
@@ -65,7 +63,7 @@ pub fn update_tower_config(
     let config = TowerConfig {
         tower_incentives,
         lp: lp.clone(),
-        lp_underlying_asset,
+        lp_underlying_asset: underlying_asset_info,
         lp_other_asset: lp_other_asset.clone(),
         lp_token: deps.api.addr_validate(&pair_info.liquidity_token)?,
         lp_incentives,
@@ -200,6 +198,19 @@ pub fn query_asset_info_balance(
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => query_token_balance(querier, contract_addr, addr),
         AssetInfo::NativeToken { denom } => query_balance(querier, addr, denom),
+    }
+}
+
+pub fn query_asset_info_decimals(
+    querier: &QuerierWrapper,
+    asset_info: AssetInfo,
+) -> Result<u8, ContractError> {
+    match asset_info {
+        AssetInfo::Token { contract_addr, .. } => {
+            let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(&querier, &contract_addr)?;
+            Ok(decimals)
+        }
+        AssetInfo::NativeToken { .. } => Ok(6),
     }
 }
 

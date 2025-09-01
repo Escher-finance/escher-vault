@@ -12,12 +12,6 @@ pub enum TokenType {
 }
 
 #[cw_serde]
-pub enum TokenType {
-    Cw20 { address: Addr },
-    Native { denom: String },
-}
-
-#[cw_serde]
 pub enum AccessControlRole {
     Manager {},
     Oracle {},
@@ -53,7 +47,7 @@ pub struct TowerConfig {
     pub slippage_tolerance: Decimal,
 }
 
-pub const UNDERLYING_ASSET: Item<Addr> = Item::new("asset");
+pub const UNDERLYING_ASSET: Item<AssetInfo> = Item::new("asset");
 pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
 pub const ACCESS_CONTROL: Map<String, Addr> = Map::new("access-control");
 pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
@@ -61,7 +55,5 @@ pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
 /// NOTE: It's an Item of a HashMap and not a Map because it needs to be read & updated completely every time
 pub const ORACLE_PRICES: Item<HashMap<String, Decimal>> = Item::new("oracle-prices");
 pub const TOKEN_TYPE: Item<TokenType> = Item::new("token_type");
-// Legacy support - keep for backward compatibility
-pub const UNDERLYING_ASSET: Item<Addr> = Item::new("asset");
 // Staking contract configuration
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");

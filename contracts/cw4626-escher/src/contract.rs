@@ -9,7 +9,7 @@ use cw4626_base::query as cw4626_base_queries;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
-use crate::tower::{init_oracle_prices, update_tower_config};
+use crate::tower::{init_oracle_prices, query_asset_info_decimals, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -18,27 +18,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // Handle both legacy and new token types
-    let (underlying_decimals, token_type) = match &msg.underlying_token {
-        cw4626::UnderlyingToken::Cw20 { address } => {
-            let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(&deps.querier, address)?;
-            (
-                decimals,
-                crate::state::TokenType::Cw20 {
-                    address: address.clone(),
-                },
-            )
-        }
-        cw4626::UnderlyingToken::Native { denom } => {
-            // For native tokens, use 6 decimals as default (common for most native tokens)
-            (
-                6u8,
-                crate::state::TokenType::Native {
-                    denom: denom.clone(),
-                },
-            )
-        }
-    };
+    let underlying_decimals = query_asset_info_decimals(&deps.querier, msg.underlying_token)?;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -52,17 +32,7 @@ pub fn instantiate(
             marketing: msg.share_marketing,
         },
     )?;
-
-    // Save both token type and legacy support
-    TOKEN_TYPE.save(deps.storage, &token_type)?;
-    match &token_type {
-        crate::state::TokenType::Cw20 { address } => {
-            UNDERLYING_ASSET.save(deps.storage, address)?;
-        }
-        crate::state::TokenType::Native { .. } => {
-            // For native tokens, we don't save to UNDERLYING_ASSET
-        }
-    }
+    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token)?;
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
 
     // Save staking contract address if provided
@@ -86,7 +56,7 @@ pub fn instantiate(
         msg.lp,
         msg.slippage_tolerance,
         msg.incentives,
-        msg.underlying_token_address,
+        msg.underlying_token,
     )?;
     init_oracle_prices(deps, &tower_config)?;
     Ok(Response::new())

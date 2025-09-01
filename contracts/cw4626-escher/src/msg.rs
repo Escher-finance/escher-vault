@@ -12,7 +12,7 @@ use crate::state::AccessControlRole;
 pub struct InstantiateMsg {
     pub manager: Addr,
     pub oracle: Addr,
-    pub underlying_token_address: Addr,
+    pub underlying_token: AssetInfo,
     pub share_name: String,
     pub share_symbol: String,
     pub share_marketing: Option<InstantiateMarketingInfo>,
@@ -20,6 +20,7 @@ pub struct InstantiateMsg {
     pub lp: Addr,
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
+    pub staking_contract: Option<Addr>,
 }
 
 #[cw_serde]
