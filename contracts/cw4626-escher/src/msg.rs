@@ -128,8 +128,6 @@ pub struct OracleTokensListResponse {
 
 #[cw_serde]
 pub struct ConfigResponse {
-    pub underlying_asset: AssetInfo,
-    pub underlying_decimals: u8,
     pub staking_contract: Addr,
     pub tower_config: TowerConfig,
 }
