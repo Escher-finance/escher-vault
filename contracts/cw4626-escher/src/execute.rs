@@ -4,6 +4,7 @@ use crate::{
     access_control::only_role,
     helpers::_deposit,
     query,
+    responses::generate_bond_response,
     staking::EscherHubExecuteMsg,
     state::{AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT},
     tower::update_and_validate_prices,
@@ -65,12 +66,7 @@ pub fn bond(
         funds: vec![],
     };
 
-    Ok(Response::new()
-        .add_message(bond_msg)
-        .add_attribute("action", "bond")
-        .add_attribute("sender", sender.to_string())
-        .add_attribute("expected", expected.to_string())
-        .add_attribute("staking_contract", staking_contract.to_string()))
+    Ok(generate_bond_response(&sender, expected, &staking_contract).add_message(bond_msg))
 }
 
 pub fn deposit(

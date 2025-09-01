@@ -113,20 +113,6 @@ pub fn _mint(deps: DepsMut, recipient: String, amount: Uint128) -> Result<(), Co
     Ok(())
 }
 
-pub fn generate_withdraw_response(
-    caller: &Addr,
-    receiver: &Addr,
-    assets: Uint128,
-    shares: Uint128,
-) -> Response {
-    Response::new()
-        .add_attribute("action", "withdraw")
-        .add_attribute("withdrawer", caller)
-        .add_attribute("receiver", receiver)
-        .add_attribute("assets_received", assets)
-        .add_attribute("shares_burned", shares)
-}
-
 /// Used internally in `deposit`/`mint` functionality
 pub fn _deposit(
     mut deps: DepsMut,
