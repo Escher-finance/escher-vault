@@ -2,7 +2,11 @@ use cosmwasm_std::{Deps, StdResult};
 
 use crate::{
     msg::{AccessControlRoleResponse, ConfigResponse, OracleTokensListResponse},
-    state::{AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG},
+    state::{
+        AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
+        UNDERLYING_ASSET,
+    },
+    tower::get_asset_info_address,
 };
 
 pub fn role(deps: &Deps, kind: AccessControlRole) -> StdResult<AccessControlRoleResponse> {
@@ -24,5 +28,12 @@ pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
     Ok(ConfigResponse {
         staking_contract,
         tower_config,
+    })
+}
+
+pub fn asset(deps: &Deps) -> StdResult<cw4626::AssetResponse> {
+    let asset = UNDERLYING_ASSET.load(deps.storage)?;
+    Ok(cw4626::AssetResponse {
+        asset_token_address: get_asset_info_address(&asset),
     })
 }

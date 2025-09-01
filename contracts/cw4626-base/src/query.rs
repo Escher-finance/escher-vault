@@ -12,7 +12,7 @@ use cw4626::*;
 pub fn asset(storage: &dyn Storage) -> StdResult<AssetResponse> {
     let asset = UNDERLYING_ASSET.load(storage)?;
     Ok(AssetResponse {
-        asset_token_address: asset,
+        asset_token_address: asset.to_string(),
     })
 }
 
