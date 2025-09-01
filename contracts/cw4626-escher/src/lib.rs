@@ -4,6 +4,7 @@ mod error;
 pub mod execute;
 pub mod msg;
 pub mod query;
+pub mod staking;
 pub mod state;
 pub mod tower;
 
