@@ -170,7 +170,7 @@ pub fn _deposit(
 /// Used internally in `deposit_native`/`mint_native` functionality
 pub fn _deposit_native(
     mut deps: DepsMut,
-    env: Env,
+    _env: Env,
     caller: Addr,
     receiver: Addr,
     assets: Uint128,
