@@ -1,12 +1,12 @@
 use cosmwasm_std::{Deps, StdResult};
 
 use crate::{
+    asset_info::get_asset_info_address,
     msg::{AccessControlRoleResponse, ConfigResponse, OracleTokensListResponse},
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
-    tower::get_asset_info_address,
 };
 
 pub fn role(deps: &Deps, kind: AccessControlRole) -> StdResult<AccessControlRoleResponse> {

@@ -1,4 +1,5 @@
 pub mod access_control;
+pub mod asset_info;
 pub mod contract;
 mod error;
 pub mod execute;

@@ -8,15 +8,14 @@ use astroport::{
     },
     pair::{Cw20HookMsg, ExecuteMsg as PairExecuteMsg},
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
-    querier::{query_balance, query_token_balance},
 };
 use cosmwasm_std::{
     to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, Storage, Uint128, WasmMsg,
 };
-use cw4626::cw20::{self, Cw20ExecuteMsg};
-use cw4626_base::helpers::validate_cw20;
+use cw4626::cw20;
 
 use crate::{
+    asset_info::{get_asset_info_address, query_asset_info_balance},
     state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
 };
@@ -157,7 +156,7 @@ pub fn withdraw_liquidity(
         lp_token: tower_config.lp_token.to_string(),
         amount: lp_token_amount,
     };
-    let lp_token_execute_msg = Cw20ExecuteMsg::Send {
+    let lp_token_execute_msg = cw20::Cw20ExecuteMsg::Send {
         contract: tower_config.lp.to_string(),
         amount: lp_token_amount,
         msg: to_json_binary(&Cw20HookMsg::WithdrawLiquidity {
@@ -176,37 +175,6 @@ pub fn withdraw_liquidity(
             funds: vec![],
         }),
     ]))
-}
-
-pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
-    match asset_info {
-        AssetInfo::NativeToken { denom } => denom.clone(),
-        AssetInfo::Token { contract_addr } => contract_addr.to_string(),
-    }
-}
-
-pub fn query_asset_info_balance(
-    querier: &QuerierWrapper,
-    asset_info: AssetInfo,
-    addr: Addr,
-) -> Result<Uint128, cosmwasm_std::StdError> {
-    match asset_info {
-        AssetInfo::Token { contract_addr, .. } => query_token_balance(querier, contract_addr, addr),
-        AssetInfo::NativeToken { denom } => query_balance(querier, addr, denom),
-    }
-}
-
-pub fn query_asset_info_decimals(
-    querier: &QuerierWrapper,
-    asset_info: AssetInfo,
-) -> Result<u8, ContractError> {
-    match asset_info {
-        AssetInfo::Token { contract_addr, .. } => {
-            let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(querier, &contract_addr)?;
-            Ok(decimals)
-        }
-        AssetInfo::NativeToken { .. } => Ok(6),
-    }
 }
 
 pub fn calculate_total_assets(
