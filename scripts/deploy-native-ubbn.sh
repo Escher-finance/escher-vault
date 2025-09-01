@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Babylon Pool-Specific Deployment Script
-# This script deploys the Escher vault configured for your specific Astroport pool
+# Deploy Native Ubbn Vault Contract
+# This script deploys the modified base contract that supports native ubbn tokens
 
 set -e
 
@@ -29,18 +29,17 @@ print_info() {
     echo -e "${BLUE}ℹ️  $1${NC}"
 }
 
-# Configuration for your pool
-POOL_ADDRESS="bbn1hkmstu883spzwj4h38yph6wqv4k92g90fga3jv3n7ywswn6yr5nq3j4gas"
+# Configuration
 CHAIN_ID="bbn-test-5"
 NODE="https://babylon-testnet-rpc.polkachu.com"
 GAS_PRICES="0.025ubbn"
 
-echo "🚀 Deploying Escher Vault for Your Babylon Pool"
-echo "=================================================="
+echo "🚀 Deploying Native Ubbn Vault Contract"
+echo "========================================"
 echo ""
-print_info "Pool Address: $POOL_ADDRESS"
 print_info "Chain ID: $CHAIN_ID"
 print_info "RPC Node: $NODE"
+print_info "Gas Prices: $GAS_PRICES"
 echo ""
 
 # Check if we're in the right directory
@@ -50,8 +49,8 @@ if [ ! -f "Cargo.toml" ]; then
 fi
 
 # Check if WASM files exist
-if [ ! -f "target/wasm32-unknown-unknown/release/cw4626_escher.wasm" ]; then
-    print_error "Escher contract WASM file not found. Run './scripts/test-vault.sh' first."
+if [ ! -f "target/wasm32-unknown-unknown/release/cw4626_base.wasm" ]; then
+    print_error "Base contract WASM file not found. Run 'cargo wasm -p cw4626-base' first."
     exit 1
 fi
 
@@ -81,10 +80,10 @@ if [ "$BALANCE" -lt 1000000 ]; then
 fi
 
 echo ""
-print_status "Step 1: Uploading Escher contract code..."
+print_status "Step 1: Uploading modified base contract code..."
 
 # Upload contract
-UPLOAD_TX=$(babylond tx wasm store target/wasm32-unknown-unknown/release/cw4626_escher.wasm \
+UPLOAD_TX=$(babylond tx wasm store target/wasm32-unknown-unknown/release/cw4626_base.wasm \
     --from $KEY_NAME \
     --chain-id $CHAIN_ID \
     --node $NODE \
@@ -103,32 +102,26 @@ else
 fi
 
 echo ""
-print_status "Step 2: Ready to instantiate contract"
+print_status "Step 2: Ready to instantiate contract with native ubbn support"
 echo ""
-echo "📋 Instantiation Command:"
+echo "📋 Instantiation Command for Native Ubbn:"
 echo "babylond tx wasm instantiate $CODE_ID '\\"
 echo "  {"
-echo "    \"underlying_token_address\": \"<your-token-address>\","
-echo "    \"share_name\": \"Babylon LP Vault\","
-echo "    \"share_symbol\": \"bLP\","
+echo "    \"underlying_token\": {"
+echo "      \"native\": {"
+echo "        \"denom\": \"ubbn\""
+echo "      }"
+echo "    },"
+echo "    \"share_name\": \"Native Ubbn Vault\","
+echo "    \"share_symbol\": \"nUBBN\","
 echo "    \"share_marketing\": {"
 echo "      \"project\": \"https://your-project.com\","
-echo "      \"description\": \"Automated LP vault for Babylon testnet\","
-echo "      \"marketing\": \"<marketing-address>\""
-echo "    },"
-echo "    \"manager\": \"<manager-address>\","
-echo "    \"oracle\": \"<oracle-address>\","
-echo "    \"tower_incentives\": \"<tower-incentives-address>\","
-echo "    \"lp\": \"$POOL_ADDRESS\","
-echo "    \"slippage_tolerance\": \"0.01\","
-echo "    \"incentives\": ["
-echo "      {"
-echo "        \"native_token\": {"
-echo "          \"denom\": \"ubbn\""
-echo "        }"
-echo "      }"
-echo "    ]"
+echo "      \"description\": \"Vault for native ubbn tokens\","
+echo "      \"marketing\": \"$KEY_ADDRESS\""
+echo "    }"
 echo "  }' \\"
+echo "  --label \"native-ubbn-vault\" \\"
+echo "  --admin $KEY_ADDRESS \\"
 echo "  --from $KEY_NAME \\"
 echo "  --chain-id $CHAIN_ID \\"
 echo "  --node $NODE \\"
@@ -138,26 +131,41 @@ echo "  --gas-prices $GAS_PRICES \\"
 echo "  --yes"
 echo ""
 
+print_info "Key Features of Modified Contract:"
+echo "✅ Supports native ubbn tokens (no CW20 wrapper needed)"
+echo "✅ Direct deposit/withdraw of ubbn tokens"
+echo "✅ Automatic share token minting/burning"
+echo "✅ Backward compatible with CW20 tokens"
+echo "✅ Enhanced error handling for native operations"
+
+echo ""
 print_info "Next steps:"
-echo "1. Replace placeholder addresses with actual addresses"
-echo "2. Run the instantiation command"
-echo "3. Test the vault functionality"
-echo "4. Verify LP operations work correctly"
+echo "1. Run the instantiation command above"
+echo "2. Test deposit_native with ubbn tokens"
+echo "3. Test withdraw_native to receive ubbn back"
+echo "4. Verify share token operations work correctly"
 
 # Save deployment info
-DEPLOYMENT_FILE="deployment-babylon-pool-$(date +%Y%m%d-%H%M%S).json"
+DEPLOYMENT_FILE="deployment-native-ubbn-$(date +%Y%m%d-%H%M%S).json"
 cat > $DEPLOYMENT_FILE << EOF
 {
     "network": "babylon-genesis-testnet",
-    "contract_type": "escher",
+    "contract_type": "base_with_native_support",
     "code_id": "$CODE_ID",
-    "pool_address": "$POOL_ADDRESS",
+    "underlying_token": "native_ubbn",
     "deployed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
     "deployed_by": "$KEY_NAME",
     "key_address": "$KEY_ADDRESS",
     "chain_id": "$CHAIN_ID",
-    "node": "$NODE"
+    "node": "$NODE",
+    "features": [
+        "native_ubbn_support",
+        "direct_deposit_withdraw",
+        "automatic_share_minting",
+        "backward_cw20_compatibility"
+    ]
 }
 EOF
 
 print_status "Deployment info saved to: $DEPLOYMENT_FILE"
+print_status "You now have a vault contract that works directly with native ubbn tokens!"

@@ -1,6 +1,6 @@
 {
   "pool_configuration": {
-    "pool_address": "bbn1hkmstu883spzwj4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
+    "pool_address": "bbn1hkmstu883spzwj4h38yph6wqv4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
     "pool_type": "astroport_concentrated_liquidity",
     "total_lp_shares": "711144084",
     "assets": [
@@ -28,7 +28,7 @@
     "manager": "bbn1...",
     "oracle": "bbn1...",
     "tower_incentives": "bbn1...",
-    "lp_pair": "bbn1hkmstu883spzwj4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
+    "lp_pair": "bbn1hkmstu883spzwj4h38yph6wqv4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
     "slippage_tolerance": "0.01",
     "incentives": [
       {

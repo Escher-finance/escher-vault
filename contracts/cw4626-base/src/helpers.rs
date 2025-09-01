@@ -1,10 +1,10 @@
 use cosmwasm_std::{
     to_json_binary, Addr, BlockInfo, Deps, DepsMut, Env, QuerierWrapper, Response, StdError,
-    StdResult, Storage, Uint128, WasmMsg,
+    StdResult, Storage, Uint128, WasmMsg, Coin, BankMsg,
 };
 use cw4626::{cw20, PreviewDepositResponse};
 
-use crate::{state::UNDERLYING_ASSET, ContractError};
+use crate::{state::{UNDERLYING_ASSET, TOKEN_TYPE, TokenType}, ContractError};
 
 pub fn validate_cw20(
     querier: &QuerierWrapper,
@@ -167,6 +167,39 @@ pub fn _deposit(
     )
 }
 
+/// Used internally in `deposit_native`/`mint_native` functionality
+pub fn _deposit_native(
+    mut deps: DepsMut,
+    env: Env,
+    caller: Addr,
+    receiver: Addr,
+    assets: Uint128,
+    shares: Uint128,
+    funds: Vec<Coin>,
+) -> Result<Response, ContractError> {
+    let token_type = TOKEN_TYPE.load(deps.storage)?;
+    match token_type {
+        TokenType::Native { denom } => {
+            // Find the coin with the matching denom
+            let coin = funds.iter()
+                .find(|c| c.denom == denom)
+                .ok_or_else(|| ContractError::InsufficientFunds {})?;
+            
+            if coin.amount < assets {
+                return Err(ContractError::InsufficientFunds {});
+            }
+            
+            // Mint shares to receiver
+            _mint(deps.branch(), receiver.to_string(), shares)?;
+            
+            Ok(generate_deposit_response(&caller, &receiver, assets, shares))
+        },
+        TokenType::Cw20 { .. } => {
+            Err(ContractError::InvalidTokenType {})
+        }
+    }
+}
+
 /// Used internally in `withdraw`/`redeem` functionality
 pub fn _withdraw(
     deps: DepsMut,
@@ -191,6 +224,41 @@ pub fn _withdraw(
         funds: vec![],
     };
     Ok(generate_withdraw_response(&caller, &receiver, assets, shares).add_message(transfer_msg))
+}
+
+/// Used internally in `withdraw_native`/`redeem_native` functionality
+pub fn _withdraw_native(
+    deps: DepsMut,
+    env: Env,
+    caller: Addr,
+    receiver: Addr,
+    owner: Addr,
+    assets: Uint128,
+    shares: Uint128,
+) -> Result<Response, ContractError> {
+    let token_type = TOKEN_TYPE.load(deps.storage)?;
+    match token_type {
+        TokenType::Native { denom } => {
+            if caller != owner {
+                _deduct_allowance(deps.storage, &env.block, &owner, &caller, shares)?;
+            }
+            _burn(deps, owner, shares)?;
+            
+            let transfer_msg = BankMsg::Send {
+                to_address: receiver.to_string(),
+                amount: vec![Coin {
+                    denom,
+                    amount: assets,
+                }],
+            };
+            
+            Ok(generate_withdraw_response(&caller, &receiver, assets, shares)
+                .add_message(transfer_msg))
+        },
+        TokenType::Cw20 { .. } => {
+            Err(ContractError::InvalidTokenType {})
+        }
+    }
 }
 
 // Internal unchecked `deduct_allowance`

@@ -47,7 +47,7 @@
     "contracts": {
     "astroport_factory": "babylon1...",
     "astroport_router": "babylon1...",
-    "astroport_pool": "bbn1hkmstu883spzwj4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
+    "astroport_pool": "bbn1hkmstu883spzwj4h38yph6wqv4k92g90fga3jv3n7ywswn6yr5nq3j4gas",
     "pool_assets": {
       "asset1": {
         "denom": "ibc/3AA6631D204C192DDB757935A4C49A0E83EEEE14AC045E8A180CCB4EE08B6196",
