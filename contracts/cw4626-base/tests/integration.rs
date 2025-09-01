@@ -86,8 +86,7 @@ fn proper_instantiate(app: &mut App, underlying_token_address: Addr) -> Addr {
         share_name: "Share Token".to_string(),
         share_symbol: "sTKN".to_string(),
         share_marketing: None,
-        underlying_token: cw4626::UnderlyingToken::Cw20 { address: underlying_token_address },
-        staking_contract: None,
+        underlying_token_address,
     };
     app.instantiate_contract(code, admin, &msg, &[], "cw4626-base", None)
         .unwrap()
@@ -380,8 +379,7 @@ fn instantiate_must_fail_if_asset_not_cw20() {
         share_name: "Share Token".to_string(),
         share_symbol: "sTKN".to_string(),
         share_marketing: None,
-        underlying_token: cw4626::UnderlyingToken::Cw20 { address: addr(app.api(), "not-cw20") },
-        staking_contract: None,
+        underlying_token_address: addr(app.api(), "not-cw20"),
     };
     assert!(
         app.instantiate_contract(code, admin, &msg, &[], "cw4626-base", None)
