@@ -18,10 +18,27 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let cw20::TokenInfoResponse {
-        decimals: underlying_decimals,
-        ..
-    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
+    // Handle both legacy and new token types
+    let (underlying_decimals, token_type) = match &msg.underlying_token {
+        cw4626::UnderlyingToken::Cw20 { address } => {
+            let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(&deps.querier, address)?;
+            (
+                decimals,
+                crate::state::TokenType::Cw20 {
+                    address: address.clone(),
+                },
+            )
+        }
+        cw4626::UnderlyingToken::Native { denom } => {
+            // For native tokens, use 6 decimals as default (common for most native tokens)
+            (
+                6u8,
+                crate::state::TokenType::Native {
+                    denom: denom.clone(),
+                },
+            )
+        }
+    };
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -35,8 +52,24 @@ pub fn instantiate(
             marketing: msg.share_marketing,
         },
     )?;
-    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
+
+    // Save both token type and legacy support
+    TOKEN_TYPE.save(deps.storage, &token_type)?;
+    match &token_type {
+        crate::state::TokenType::Cw20 { address } => {
+            UNDERLYING_ASSET.save(deps.storage, address)?;
+        }
+        crate::state::TokenType::Native { .. } => {
+            // For native tokens, we don't save to UNDERLYING_ASSET
+        }
+    }
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
+
+    // Save staking contract address if provided
+    if let Some(staking_contract) = msg.staking_contract {
+        crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
+    }
+
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Manager {}.key(),

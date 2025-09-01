@@ -47,10 +47,4 @@ pub enum ContractError {
         shares: Uint128,
         max_shares: Uint128,
     },
-
-    #[error("Insufficient funds for operation")]
-    InsufficientFunds {},
-
-    #[error("Invalid token type for this operation")]
-    InvalidTokenType {},
 }

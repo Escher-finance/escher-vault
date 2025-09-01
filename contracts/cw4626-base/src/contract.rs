@@ -8,7 +8,7 @@ use crate::execute;
 use crate::helpers::validate_cw20;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::query;
-use crate::state::{UNDERLYING_ASSET, UNDERLYING_DECIMALS, TOKEN_TYPE};
+use crate::state::{TOKEN_TYPE, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -17,18 +17,10 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // Handle both legacy and new token types
-    let (underlying_decimals, token_type) = match &msg.underlying_token {
-        cw4626::UnderlyingToken::Cw20 { address } => {
-            let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(&deps.querier, address)?;
-            (decimals, crate::state::TokenType::Cw20 { address: address.clone() })
-        }
-        cw4626::UnderlyingToken::Native { denom } => {
-            // For native tokens, use 6 decimals as default (common for most native tokens)
-            (6u8, crate::state::TokenType::Native { denom: denom.clone() })
-        }
-    };
-    
+    let cw20::TokenInfoResponse {
+        decimals: underlying_decimals,
+        ..
+    } = validate_cw20(&deps.querier, &msg.underlying_token_address)?;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -47,24 +39,14 @@ pub fn instantiate(
         deps.api,
         msg.owner.as_ref().map(|o| o.as_str()),
     )?;
-    
-    // Save both token type and legacy support
-    TOKEN_TYPE.save(deps.storage, &token_type)?;
-    match &token_type {
-        crate::state::TokenType::Cw20 { address } => {
-            UNDERLYING_ASSET.save(deps.storage, address)?;
-        }
-        crate::state::TokenType::Native { .. } => {
-            // For native tokens, we don't save to UNDERLYING_ASSET
-        }
-    }
+    UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token_address)?;
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
-    
+
     // Save staking contract address if provided
     if let Some(staking_contract) = msg.staking_contract {
         crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
     }
-    
+
     Ok(Response::new())
 }
 
@@ -111,25 +93,28 @@ pub fn execute(
             assets,
             receiver,
             owner,
-        } => {
-            execute::withdraw_native(deps, env, sender, assets, receiver, owner)
-        }
+        } => execute::withdraw_native(deps, env, sender, assets, receiver, owner),
         ExecuteMsg::RedeemNative {
             shares,
             receiver,
             owner,
-        } => {
-            execute::redeem_native(deps, env, sender, shares, receiver, owner)
-        }
+        } => execute::redeem_native(deps, env, sender, shares, receiver, owner),
         ExecuteMsg::Bond {
             slippage,
             expected,
             recipient,
             recipient_channel_id,
             salt,
-        } => {
-            execute::bond(deps, env, sender, slippage, expected, recipient, recipient_channel_id, salt)
-        }
+        } => execute::bond(
+            deps,
+            env,
+            sender,
+            slippage,
+            expected,
+            recipient,
+            recipient_channel_id,
+            salt,
+        ),
         //
         // CW20
         //

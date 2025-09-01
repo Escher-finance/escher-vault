@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128, Decimal};
+use cosmwasm_std::{Addr, Binary, Uint128};
 
 use cw20::{Cw20ReceiveMsg, Expiration, Logo};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
@@ -9,24 +9,7 @@ pub use cw20_base::msg::InstantiateMarketingInfo;
 pub use cw_ownable;
 
 #[cw_serde]
-pub enum UnderlyingToken {
-    Cw20 { address: Addr },
-    Native { denom: String },
-}
-
-#[cw_serde]
 pub struct Cw4626InstantiateMsg {
-    pub owner: Option<Addr>,
-    pub underlying_token: UnderlyingToken,
-    pub share_name: String,
-    pub share_symbol: String,
-    pub share_marketing: Option<InstantiateMarketingInfo>,
-    pub staking_contract: Option<Addr>,
-}
-
-// Legacy support - keep for backward compatibility
-#[cw_serde]
-pub struct Cw4626InstantiateMsgLegacy {
     pub owner: Option<Addr>,
     pub underlying_token_address: Addr,
     pub share_name: String,
@@ -64,38 +47,6 @@ pub enum Cw4626ExecuteMsg {
     },
     /// CW20 receive
     Receive(Cw20ReceiveMsg),
-
-    //
-    // Native Token Operations
-    //
-    /// Mints shares to receiver by depositing exact amount of native tokens
-    DepositNative { receiver: Addr },
-    /// Mints exact shares to receiver by depositing amount of native tokens
-    MintNative { shares: Uint128, receiver: Addr },
-    /// Burns shares from owner and sends exact assets of native tokens to receiver
-    WithdrawNative {
-        assets: Uint128,
-        receiver: Addr,
-        owner: Addr,
-    },
-    /// Burns exact shares from owner and sends assets of native tokens to receiver
-    RedeemNative {
-        shares: Uint128,
-        receiver: Addr,
-        owner: Addr,
-    },
-
-    //
-    // Staking/Bonding Operations
-    //
-    /// Bond underlying assets to staking contract
-    Bond {
-        slippage: Option<Decimal>,
-        expected: Uint128,
-        recipient: Option<String>,
-        recipient_channel_id: Option<u32>,
-        salt: Option<String>,
-    },
 
     //
     // CW20

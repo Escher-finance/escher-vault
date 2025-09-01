@@ -6,6 +6,18 @@ use cosmwasm_std::{Addr, Decimal};
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
+pub enum TokenType {
+    Cw20 { address: Addr },
+    Native { denom: String },
+}
+
+#[cw_serde]
+pub enum TokenType {
+    Cw20 { address: Addr },
+    Native { denom: String },
+}
+
+#[cw_serde]
 pub enum AccessControlRole {
     Manager {},
     Oracle {},
@@ -48,3 +60,8 @@ pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
 /// Prices map in terms of the underlying asset
 /// NOTE: It's an Item of a HashMap and not a Map because it needs to be read & updated completely every time
 pub const ORACLE_PRICES: Item<HashMap<String, Decimal>> = Item::new("oracle-prices");
+pub const TOKEN_TYPE: Item<TokenType> = Item::new("token_type");
+// Legacy support - keep for backward compatibility
+pub const UNDERLYING_ASSET: Item<Addr> = Item::new("asset");
+// Staking contract configuration
+pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
