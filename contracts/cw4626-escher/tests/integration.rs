@@ -259,7 +259,7 @@ fn instantiate_incentives(app: &mut App) -> Addr {
         .unwrap()
 }
 
-fn proper_instantiate(
+fn instantiate_vault(
     app: &mut App,
     underlying_token_address: Addr,
     staking_address: Addr,
@@ -295,12 +295,16 @@ fn proper_instantiate(
         .unwrap()
 }
 
+fn proper_instantiate(app: &mut App) -> Addr {
+    let asset = instantitate_asset(app);
+    let staking = instantiate_staking(app);
+    let lp = instantiate_lp(app, asset.clone());
+    let tower_incentives = instantiate_incentives(app);
+    instantiate_vault(app, asset, staking, lp, tower_incentives)
+}
+
 #[test]
 fn instantiates_properly() {
     let mut app = get_app();
-    let asset = instantitate_asset(&mut app);
-    let staking = instantiate_staking(&mut app);
-    let lp = instantiate_lp(&mut app, asset.clone());
-    let tower_incentives = instantiate_incentives(&mut app);
-    proper_instantiate(&mut app, asset, staking, lp, tower_incentives);
+    proper_instantiate(&mut app);
 }
