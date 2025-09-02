@@ -182,6 +182,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_json_binary(&crate::query::config(&deps)?),
         QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
         QueryMsg::OracleTokensList {} => to_json_binary(&crate::query::oracle_tokens_list(&deps)?),
+        QueryMsg::OraclePrices {} => to_json_binary(&crate::query::oracle_prices(&deps)?),
         //
         // CW4626
         //
