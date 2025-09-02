@@ -45,7 +45,7 @@ pub type PricesMap = HashMap<String, Decimal>;
 
 pub const UNDERLYING_ASSET: Item<AssetInfo> = Item::new("asset");
 pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
-pub const ACCESS_CONTROL: Map<String, Addr> = Map::new("access-control");
+pub const ACCESS_CONTROL: Map<String, Vec<Addr>> = Map::new("access-control");
 pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
 /// Prices map in terms of the underlying asset
 /// NOTE: It's an Item of a HashMap and not a Map because it needs to be read & updated completely every time

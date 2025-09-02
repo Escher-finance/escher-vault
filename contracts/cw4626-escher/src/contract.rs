@@ -52,12 +52,12 @@ pub fn instantiate(
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Manager {}.key(),
-        &msg.manager,
+        &msg.managers,
     )?;
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Oracle {}.key(),
-        &msg.oracle,
+        &msg.oracles,
     )?;
     let tower_config = update_tower_config(
         deps.branch(),
@@ -80,8 +80,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     let sender = info.sender.clone();
     Ok(match msg {
-        ExecuteMsg::UpdateRole { role, address } => {
-            crate::execute::update_role(deps, sender, role, address)?
+        ExecuteMsg::AddToRole { role, address } => {
+            crate::execute::add_to_role(deps, sender, role, address)?
+        }
+        ExecuteMsg::RemoveFromRole { role, address } => {
+            crate::execute::remove_from_role(deps, sender, role, address)?
         }
         ExecuteMsg::OracleUpdatePrices { prices } => {
             crate::execute::oracle_update_prices(deps, sender, prices)?
