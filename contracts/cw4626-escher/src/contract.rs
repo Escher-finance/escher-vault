@@ -7,10 +7,12 @@ use cw4626_base::query as cw4626_base_queries;
 use crate::asset_info::query_asset_info_decimals;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::staking::EscherHubQueryMsg;
+use crate::staking::EscherHubStakingLiquidity;
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 use crate::tower::{init_oracle_prices, update_tower_config};
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+// #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
@@ -37,6 +39,13 @@ pub fn instantiate(
 
     // Save staking contract address if provided
     if let Some(staking_contract) = msg.staking_contract {
+        let _ = deps
+            .querier
+            .query_wasm_smart::<EscherHubStakingLiquidity>(
+                staking_contract.clone(),
+                &EscherHubQueryMsg::StakingLiquidity {},
+            )
+            .map_err(|_| ContractError::InvalidStakingContract {})?;
         crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
     }
 
