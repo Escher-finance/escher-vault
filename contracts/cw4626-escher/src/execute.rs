@@ -24,11 +24,9 @@ use crate::{
 };
 
 /// Validates amount parameter for security
-fn validate_amount(amount: Uint128, param_name: &str) -> Result<(), ContractError> {
+fn validate_amount(amount: Uint128, _param_name: &str) -> Result<(), ContractError> {
     if amount.is_zero() {
-        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-            format!("{} cannot be zero", param_name)
-        )));
+        return Err(ContractError::invalid_amount(amount, "cannot be zero"));
     }
     Ok(())
 }
@@ -36,20 +34,17 @@ fn validate_amount(amount: Uint128, param_name: &str) -> Result<(), ContractErro
 /// Validates salt parameter for security
 fn validate_salt(salt: &str) -> Result<(), ContractError> {
     if salt.is_empty() {
-        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-            "Salt cannot be empty"
-        )));
+        return Err(ContractError::empty_input("salt"));
     }
     if salt.len() > 100 {
-        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-            "Salt too long (max 100 characters)"
-        )));
+        return Err(ContractError::invalid_length("salt", 1, 100, salt.len() as u32));
     }
     // Check for dangerous characters
-    if salt.contains('\x00') || salt.contains('<') || salt.contains('>') {
-        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-            "Salt contains invalid characters"
-        )));
+    let invalid_chars: Vec<char> = salt.chars()
+        .filter(|&c| c == '\x00' || c == '<' || c == '>')
+        .collect();
+    if !invalid_chars.is_empty() {
+        return Err(ContractError::invalid_characters("salt", invalid_chars));
     }
     Ok(())
 }
@@ -57,15 +52,12 @@ fn validate_salt(salt: &str) -> Result<(), ContractError> {
 /// Validates slippage tolerance for security
 fn validate_slippage(slippage: Option<Decimal>) -> Result<(), ContractError> {
     if let Some(slippage) = slippage {
-        if slippage > Decimal::percent(50) {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-                "Slippage tolerance too high (max 50%)"
-            )));
-        }
-        if slippage < Decimal::percent(1) {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-                "Slippage tolerance too low (min 1%)"
-            )));
+        if slippage > Decimal::percent(50) || slippage < Decimal::percent(1) {
+            return Err(ContractError::invalid_slippage(
+                slippage,
+                Decimal::percent(1),
+                Decimal::percent(50)
+            ));
         }
     }
     Ok(())
@@ -74,9 +66,7 @@ fn validate_slippage(slippage: Option<Decimal>) -> Result<(), ContractError> {
 /// Validates receiver address for security
 fn validate_receiver(receiver: &Addr) -> Result<(), ContractError> {
     if receiver.as_str().is_empty() {
-        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-            "Receiver address cannot be empty"
-        )));
+        return Err(ContractError::empty_input("receiver"));
     }
     Ok(())
 }
