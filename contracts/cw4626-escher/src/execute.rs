@@ -1,6 +1,10 @@
-use astroport::asset::{Asset, AssetInfo};
+use astroport::{
+    asset::{Asset, AssetInfo},
+    pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
+};
 use cosmwasm_std::{
-    to_json_binary, Addr, Decimal, DepsMut, Env, MessageInfo, Response, StdError, Uint128, WasmMsg,
+    to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError,
+    Uint128, WasmMsg,
 };
 use cw4626::cw20;
 
@@ -11,8 +15,11 @@ use crate::{
     query,
     responses::generate_bond_response,
     staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
-    state::{AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, UNDERLYING_ASSET},
-    tower::update_and_validate_prices,
+    state::{
+        AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
+        UNDERLYING_ASSET,
+    },
+    tower::{add_tower_liquidity, update_and_validate_prices},
     ContractError,
 };
 
@@ -164,4 +171,52 @@ pub fn mint(
     let cw4626::PreviewMintResponse { assets } =
         query::preview_mint(&env.contract.address, &deps_ref, shares)?;
     _deposit(deps, env, info, receiver, assets, shares)
+}
+
+pub fn add_liquidity(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    underlying_token_amount: Uint128,
+) -> Result<Response, ContractError> {
+    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+
+    let tower_config = TOWER_CONFIG.load(deps.storage)?;
+    let lp_price = Decimal::try_from(deps.querier.query_wasm_smart::<Decimal256>(
+        tower_config.lp.clone(),
+        &PairConcentratedQueryMsg::LpPrice {},
+    )?)
+    .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+
+    let other_lp_token_amount = if tower_config.is_underlying_first_lp_asset {
+        underlying_token_amount.checked_div_floor(lp_price)
+    } else {
+        underlying_token_amount.checked_mul_floor(lp_price)
+    }
+    .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+
+    let this = env.contract.address;
+    let underlying_balance = query_asset_info_balance(
+        &deps.querier,
+        tower_config.lp_underlying_asset.clone(),
+        this.clone(),
+    )?;
+    let other_lp_balance =
+        query_asset_info_balance(&deps.querier, tower_config.lp_other_asset.clone(), this)?;
+
+    if underlying_token_amount.is_zero()
+        || other_lp_token_amount.is_zero()
+        || underlying_balance < underlying_token_amount
+        || other_lp_balance < other_lp_token_amount
+    {
+        return Err(ContractError::InsufficientFunds {});
+    }
+
+    let msg = add_tower_liquidity(
+        &tower_config,
+        underlying_token_amount,
+        other_lp_token_amount,
+    )?;
+
+    Ok(Response::new().add_message(msg))
 }

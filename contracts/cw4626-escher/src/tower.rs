@@ -42,9 +42,16 @@ pub fn update_tower_config(
     let pair_info: PairInfo = deps
         .querier
         .query_wasm_smart(lp.clone(), &PairConcentratedQueryMsg::Pair {})?;
-    if pair_info.asset_infos.len() != 2 || !pair_info.asset_infos.contains(&underlying_asset_info) {
+    if pair_info.asset_infos.len() != 2 {
         return invalid_tower_config_err;
     }
+    let Some(underlying_asset_position) = pair_info
+        .asset_infos
+        .iter()
+        .position(|a| *a == underlying_asset_info)
+    else {
+        return invalid_tower_config_err;
+    };
     let Some(lp_other_asset) = pair_info
         .asset_infos
         .iter()
@@ -64,6 +71,7 @@ pub fn update_tower_config(
         lp: lp.clone(),
         lp_underlying_asset: underlying_asset_info,
         lp_other_asset: lp_other_asset.clone(),
+        is_underlying_first_lp_asset: underlying_asset_position == 0,
         lp_token: deps.api.addr_validate(&pair_info.liquidity_token)?,
         lp_incentives,
         slippage_tolerance,
@@ -114,19 +122,18 @@ pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> Result<PricesMap
     Ok(prices)
 }
 
-pub fn add_liquidity(
-    storage: &dyn Storage,
+pub fn add_tower_liquidity(
+    tower_config: &TowerConfig,
     underlying_asset_amount: Uint128,
     other_lp_asset_amount: Uint128,
 ) -> Result<CosmosMsg, ContractError> {
-    let tower_config = TOWER_CONFIG.load(storage)?;
     let assets = Vec::from([
         Asset {
-            info: tower_config.lp_underlying_asset,
+            info: tower_config.lp_underlying_asset.clone(),
             amount: underlying_asset_amount,
         },
         Asset {
-            info: tower_config.lp_other_asset,
+            info: tower_config.lp_other_asset.clone(),
             amount: other_lp_asset_amount,
         },
     ]);
