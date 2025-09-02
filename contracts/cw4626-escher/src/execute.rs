@@ -1,6 +1,6 @@
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
-    to_json_binary, Addr, Decimal, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg,
+    to_json_binary, Addr, Decimal, DepsMut, Env, MessageInfo, Response, StdError, Uint128, WasmMsg,
 };
 use cw4626::cw20;
 
@@ -10,7 +10,7 @@ use crate::{
     helpers::_deposit,
     query,
     responses::generate_bond_response,
-    staking::EscherHubExecuteMsg,
+    staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
     state::{AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, UNDERLYING_ASSET},
     tower::update_and_validate_prices,
     ContractError,
@@ -43,13 +43,21 @@ pub fn bond(
     info: MessageInfo,
     slippage: Option<Decimal>,
     amount: Uint128,
-    expected: Uint128,
     salt: Option<String>,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = env.contract.address;
+
+    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
+        staking_contract.clone(),
+        &EscherHubQueryMsg::StakingLiquidity {},
+    )?;
+
+    let expected = amount
+        .checked_div_floor(exchange_rate)
+        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
 
     // Get the current asset balance in the vault
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
