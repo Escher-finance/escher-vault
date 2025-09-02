@@ -15,7 +15,7 @@ use cosmwasm_std::{
 use cw4626::cw20;
 
 use crate::{
-    asset_info::{get_asset_info_address, query_asset_info_balance},
+    asset::{get_asset_info_address, query_asset_info_balance},
     state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
 };

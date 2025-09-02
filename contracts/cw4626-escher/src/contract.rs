@@ -4,7 +4,7 @@ use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Resp
 use cw4626_base::execute as cw4626_base_executes;
 use cw4626_base::query as cw4626_base_queries;
 
-use crate::asset_info::query_asset_info_decimals;
+use crate::asset::query_asset_info_decimals;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::EscherHubQueryMsg;

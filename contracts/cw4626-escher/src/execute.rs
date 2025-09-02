@@ -10,7 +10,7 @@ use cw4626::cw20;
 
 use crate::{
     access_control::only_role,
-    asset_info::query_asset_info_balance,
+    asset::query_asset_info_balance,
     helpers::_deposit,
     query,
     responses::generate_bond_response,
