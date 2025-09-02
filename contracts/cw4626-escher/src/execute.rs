@@ -136,7 +136,7 @@ pub fn remove_from_role(
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let addrs = addrs.unwrap_or_default();
         let original_len = addrs.len();
-        let filtered_addrs: Vec<_> = addrs.into_iter().filter(|a| a != &address).collect();
+        let filtered_addrs: Vec<_> = addrs.into_iter().filter(|a| a != address).collect();
         
         // Check if the address was actually in the role
         if filtered_addrs.len() == original_len {
