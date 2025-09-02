@@ -41,9 +41,9 @@ pub fn bond(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    slippage: Option<Decimal>,
     amount: Uint128,
-    salt: Option<String>,
+    salt: String,
+    slippage: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
@@ -74,7 +74,7 @@ pub fn bond(
         expected,
         recipient: None,
         recipient_channel_id: None,
-        salt,
+        salt: Some(salt),
     };
     let bond_msg = match asset_info {
         AssetInfo::Token { contract_addr } => WasmMsg::Execute {

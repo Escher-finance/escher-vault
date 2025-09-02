@@ -28,9 +28,14 @@ pub enum ExecuteMsg {
         role: AccessControlRole,
         address: Addr,
     },
-
     /// Update prices
     OracleUpdatePrices { prices: PricesMap },
+    /// Manager bond
+    Bond {
+        amount: Uint128,
+        salt: String,
+        slippage: Option<Decimal>,
+    },
 
     //
     // CW4626

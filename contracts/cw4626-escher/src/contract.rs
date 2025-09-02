@@ -77,6 +77,11 @@ pub fn execute(
         ExecuteMsg::OracleUpdatePrices { prices } => {
             crate::execute::oracle_update_prices(deps, sender, prices)?
         }
+        ExecuteMsg::Bond {
+            amount,
+            salt,
+            slippage,
+        } => crate::execute::bond(deps, env, info, amount, salt, slippage)?,
         //
         // CW4626
         //
