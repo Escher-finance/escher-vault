@@ -14,6 +14,7 @@ use cosmwasm_std::MessageInfo;
 use cosmwasm_std::Response;
 use cosmwasm_std::StdResult;
 use cosmwasm_std::Uint128;
+use cw_multi_test::IntoAddr;
 use cw_multi_test::{App, ContractWrapper, Executor};
 
 use cw4626::{cw20::*, *};
@@ -29,7 +30,7 @@ const USER_TWO: &str = "user-two";
 const ADMIN: &str = "admin";
 const ORACLE: &str = "oracle";
 
-const AMOUNT: Uint128 = Uint128::new(1000);
+const AMOUNT: Uint128 = Uint128::new(100000000);
 const HALF_FRAC: (Uint128, Uint128) = (Uint128::one(), Uint128::new(2));
 
 fn attrs_to_map(event: &Event) -> HashMap<&str, &str> {
@@ -172,7 +173,7 @@ mod lp_mock {
                     asset_infos: Vec::from([
                         a,
                         AssetInfo::NativeToken {
-                            denom: "foo".to_string(),
+                            denom: "other_lp_tkn".to_string(),
                         },
                     ]),
                     contract_addr: make_valid_addr(),
@@ -307,4 +308,89 @@ fn proper_instantiate(app: &mut App) -> Addr {
 fn instantiates_properly() {
     let mut app = get_app();
     proper_instantiate(&mut app);
+}
+
+#[test]
+fn deposit_no_yield_must_be_one_to_one() {
+    let mut app = get_app();
+    let vault = proper_instantiate(&mut app);
+    let api = app.api();
+    let oracle_tokens = app
+        .wrap()
+        .query_wasm_smart::<OracleTokensListResponse>(&vault, &QueryMsg::OracleTokensList {})
+        .unwrap();
+    let oracle = addr(api, ORACLE);
+    let user = addr(api, USER);
+    let prices = oracle_tokens
+        .tokens
+        .into_iter()
+        .map(|t| (t, Decimal::one()))
+        .collect();
+    app.execute_contract(
+        oracle.clone(),
+        vault.clone(),
+        &ExecuteMsg::OracleUpdatePrices { prices },
+        &[],
+    )
+    .unwrap();
+    let oracle_prices = app
+        .wrap()
+        .query_wasm_smart::<OraclePricesResponse>(&vault, &QueryMsg::OraclePrices {})
+        .unwrap();
+    println!("prices after update {oracle_prices:?}");
+    let initial_share_balance = app
+        .wrap()
+        .query_wasm_smart::<cw20::BalanceResponse>(
+            &vault,
+            &QueryMsg::Balance {
+                address: user.to_string(),
+            },
+        )
+        .unwrap()
+        .balance;
+    assert!(initial_share_balance.is_zero());
+
+    let asset_deposit_amount = Uint128::from(50000_u32);
+
+    let underlying_asset = app
+        .wrap()
+        .query_wasm_smart::<AssetResponse>(vault.clone(), &QueryMsg::Asset {})
+        .unwrap()
+        .asset_token_address;
+
+    // do deposit
+    app.execute_contract(
+        user.clone(),
+        Addr::unchecked(underlying_asset),
+        &cw20::Cw20ExecuteMsg::IncreaseAllowance {
+            spender: vault.to_string(),
+            amount: asset_deposit_amount,
+            expires: None,
+        },
+        &vec![],
+    )
+    .unwrap();
+    app.execute_contract(
+        user.clone(),
+        vault.clone(),
+        &ExecuteMsg::Deposit {
+            assets: asset_deposit_amount,
+            receiver: user.clone(),
+        },
+        &vec![],
+    )
+    .unwrap();
+
+    let new_share_balance = app
+        .wrap()
+        .query_wasm_smart::<cw20::BalanceResponse>(
+            &vault,
+            &QueryMsg::Balance {
+                address: user.to_string(),
+            },
+        )
+        .unwrap()
+        .balance;
+    println!("{new_share_balance}");
+    assert_eq!(new_share_balance, asset_deposit_amount);
 }
