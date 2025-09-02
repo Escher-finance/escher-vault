@@ -6,6 +6,19 @@ use cw4626::*;
 
 use crate::state::{AccessControlRole, PricesMap, TowerConfig};
 
+// Security constants for input validation
+pub const MAX_SALT_LENGTH: usize = 100;
+pub const MAX_SHARE_NAME_LENGTH: usize = 50;
+pub const MAX_SHARE_SYMBOL_LENGTH: usize = 20;
+pub const MAX_MARKETING_PROJECT_LENGTH: usize = 100;
+pub const MAX_MARKETING_DESCRIPTION_LENGTH: usize = 500;
+pub const MAX_MARKETING_URL_LENGTH: usize = 200;
+
+/// Trait for validating message parameters
+pub trait MessageValidation {
+    fn validate(&self) -> Result<(), String>;
+}
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub managers: Vec<Addr>,
@@ -19,6 +32,45 @@ pub struct InstantiateMsg {
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
     pub staking_contract: Option<Addr>,
+}
+
+impl MessageValidation for InstantiateMsg {
+    /// Validates the instantiate message for security and correctness
+    fn validate(&self) -> Result<(), String> {
+        // Validate share name
+        if self.share_name.is_empty() {
+            return Err("Share name cannot be empty".to_string());
+        }
+        if self.share_name.len() > MAX_SHARE_NAME_LENGTH {
+            return Err(format!("Share name too long (max {} characters)", MAX_SHARE_NAME_LENGTH));
+        }
+        
+        // Validate share symbol
+        if self.share_symbol.is_empty() {
+            return Err("Share symbol cannot be empty".to_string());
+        }
+        if self.share_symbol.len() > MAX_SHARE_SYMBOL_LENGTH {
+            return Err(format!("Share symbol too long (max {} characters)", MAX_SHARE_SYMBOL_LENGTH));
+        }
+        
+        // Validate managers and oracles
+        if self.managers.is_empty() {
+            return Err("At least one manager is required".to_string());
+        }
+        if self.oracles.is_empty() {
+            return Err("At least one oracle is required".to_string());
+        }
+        
+        // Validate slippage tolerance
+        if self.slippage_tolerance > Decimal::percent(50) {
+            return Err("Slippage tolerance too high (max 50%)".to_string());
+        }
+        if self.slippage_tolerance < Decimal::percent(1) {
+            return Err("Slippage tolerance too low (min 1%)".to_string());
+        }
+        
+        Ok(())
+    }
 }
 
 #[cw_serde]
@@ -126,6 +178,145 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(cw20::Logo),
+}
+
+impl MessageValidation for ExecuteMsg {
+    /// Validates execute message parameters for security
+    fn validate(&self) -> Result<(), String> {
+        match self {
+            ExecuteMsg::Bond { amount, salt, slippage } => {
+                if amount.is_zero() {
+                    return Err("Bond amount cannot be zero".to_string());
+                }
+                if salt.is_empty() {
+                    return Err("Salt cannot be empty".to_string());
+                }
+                if salt.len() > MAX_SALT_LENGTH {
+                    return Err(format!("Salt too long (max {} characters)", MAX_SALT_LENGTH));
+                }
+                if let Some(slippage) = slippage {
+                    if *slippage > Decimal::percent(50) {
+                        return Err("Slippage tolerance too high (max 50%)".to_string());
+                    }
+                    if *slippage < Decimal::percent(1) {
+                        return Err("Slippage tolerance too low (min 1%)".to_string());
+                    }
+                }
+            }
+            ExecuteMsg::AddLiquidity { underlying_token_amount } => {
+                if underlying_token_amount.is_zero() {
+                    return Err("Underlying token amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::Deposit { assets, receiver: _ } => {
+                if assets.is_zero() {
+                    return Err("Deposit assets cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::Mint { shares, receiver: _ } => {
+                if shares.is_zero() {
+                    return Err("Mint shares cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::Withdraw { assets, receiver: _, owner: _ } => {
+                if assets.is_zero() {
+                    return Err("Withdraw assets cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::Redeem { shares, receiver: _, owner: _ } => {
+                if shares.is_zero() {
+                    return Err("Redeem shares cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::Transfer { recipient, amount } => {
+                if recipient.is_empty() {
+                    return Err("Transfer recipient cannot be empty".to_string());
+                }
+                if amount.is_zero() {
+                    return Err("Transfer amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::Burn { amount } => {
+                if amount.is_zero() {
+                    return Err("Burn amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::Send { contract, amount, msg: _ } => {
+                if contract.is_empty() {
+                    return Err("Send contract cannot be empty".to_string());
+                }
+                if amount.is_zero() {
+                    return Err("Send amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::IncreaseAllowance { spender, amount, expires: _ } => {
+                if spender.is_empty() {
+                    return Err("IncreaseAllowance spender cannot be empty".to_string());
+                }
+                if amount.is_zero() {
+                    return Err("IncreaseAllowance amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::DecreaseAllowance { spender, amount, expires: _ } => {
+                if spender.is_empty() {
+                    return Err("DecreaseAllowance spender cannot be empty".to_string());
+                }
+                if amount.is_zero() {
+                    return Err("DecreaseAllowance amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::TransferFrom { owner, recipient, amount } => {
+                if owner.is_empty() {
+                    return Err("TransferFrom owner cannot be empty".to_string());
+                }
+                if recipient.is_empty() {
+                    return Err("TransferFrom recipient cannot be empty".to_string());
+                }
+                if amount.is_zero() {
+                    return Err("TransferFrom amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::SendFrom { owner, contract, amount, msg: _ } => {
+                if owner.is_empty() {
+                    return Err("SendFrom owner cannot be empty".to_string());
+                }
+                if contract.is_empty() {
+                    return Err("SendFrom contract cannot be empty".to_string());
+                }
+                if amount.is_zero() {
+                    return Err("SendFrom amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::BurnFrom { owner, amount } => {
+                if owner.is_empty() {
+                    return Err("BurnFrom owner cannot be empty".to_string());
+                }
+                if amount.is_zero() {
+                    return Err("BurnFrom amount cannot be zero".to_string());
+                }
+            }
+            ExecuteMsg::UpdateMarketing { project, description, marketing } => {
+                if let Some(project) = project {
+                    if project.len() > MAX_MARKETING_PROJECT_LENGTH {
+                        return Err(format!("Marketing project too long (max {} characters)", MAX_MARKETING_PROJECT_LENGTH));
+                    }
+                }
+                if let Some(description) = description {
+                    if description.len() > MAX_MARKETING_DESCRIPTION_LENGTH {
+                        return Err(format!("Marketing description too long (max {} characters)", MAX_MARKETING_DESCRIPTION_LENGTH));
+                    }
+                }
+                if let Some(marketing) = marketing {
+                    if marketing.len() > MAX_MARKETING_URL_LENGTH {
+                        return Err(format!("Marketing URL too long (max {} characters)", MAX_MARKETING_URL_LENGTH));
+                    }
+                }
+            }
+            // Other messages don't need validation or are handled elsewhere
+            _ => {}
+        }
+        Ok(())
+    }
 }
 
 #[cw_serde]

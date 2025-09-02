@@ -62,18 +62,14 @@ pub fn asset(deps: &Deps) -> StdResult<cw4626::AssetResponse> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
     // Convert AssetInfo to the appropriate address format
     let asset_token_address = match &asset {
-        AssetInfo::Token { contract_addr } => contract_addr.clone(),
+        AssetInfo::Token { contract_addr } => contract_addr.to_string(),
         AssetInfo::NativeToken { denom } => {
-            // For native tokens, we need to handle this differently
-            // Since AssetResponse expects an Addr but native tokens don't have addresses,
-            // we'll use the denom as a pseudo-address (this is a design limitation)
-            deps.api.addr_validate(denom).map_err(|_| {
-                StdError::generic_err(format!("Cannot convert native token denom '{}' to address format", denom))
-            })?
+            // For native tokens, we use the denom as the address string
+            denom.clone()
         }
     };
     Ok(cw4626::AssetResponse {
-        asset_token_address: asset_token_address.to_string(),
+        asset_token_address,
     })
 }
 
