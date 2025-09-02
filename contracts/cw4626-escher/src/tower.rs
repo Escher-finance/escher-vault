@@ -73,10 +73,7 @@ pub fn update_tower_config(
 }
 
 pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(), ContractError> {
-    let mut assets = Vec::from([
-        tower_config.lp_underlying_asset.clone(),
-        tower_config.lp_other_asset.clone(),
-    ]);
+    let mut assets = Vec::from([tower_config.lp_other_asset.clone()]);
     assets.extend(tower_config.lp_incentives.clone());
     let initial_prices: HashMap<_, _> = assets
         .into_iter()
