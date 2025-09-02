@@ -20,6 +20,10 @@ use cw4626::{cw20::*, *};
 use cw4626_escher::contract;
 use cw4626_escher::msg::*;
 
+fn make_valid_addr() -> Addr {
+    Addr::unchecked("cosmos1y3u4mw39adngenlzwqm6hz60flz25gsxq5p5ev")
+}
+
 const USER: &str = "user";
 const USER_TWO: &str = "user-two";
 const ADMIN: &str = "admin";
@@ -171,8 +175,8 @@ mod lp_mock {
                             denom: "foo".to_string(),
                         },
                     ]),
-                    contract_addr: "pair".into_addr(),
-                    liquidity_token: "liqtoken".to_string(),
+                    contract_addr: make_valid_addr(),
+                    liquidity_token: make_valid_addr().to_string(),
                     pair_type: astroport::factory::PairType::Concentrated {},
                 })
             }
@@ -226,15 +230,15 @@ mod incentives_mock {
     pub fn query(_deps: Deps, _env: Env, msg: incentives::QueryMsg) -> StdResult<Binary> {
         match msg {
             incentives::QueryMsg::Config {} => to_json_binary(&incentives::Config {
-                owner: "owner".into_addr(),
-                factory: "factory".into_addr(),
+                owner: make_valid_addr(),
+                factory: make_valid_addr(),
                 generator_controller: None,
                 astro_token: AssetInfo::NativeToken {
                     denom: "astro".to_string(),
                 },
                 astro_per_second: Uint128::one(),
                 total_alloc_points: Uint128::one(),
-                vesting_contract: "vesting".into_addr(),
+                vesting_contract: make_valid_addr(),
                 guardian: None,
                 incentivization_fee_info: None,
                 token_transfer_gas_limit: None,
