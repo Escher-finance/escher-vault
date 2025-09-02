@@ -17,8 +17,8 @@ use crate::{
 };
 
 pub fn role(deps: &Deps, kind: AccessControlRole) -> StdResult<AccessControlRoleResponse> {
-    let address = ACCESS_CONTROL.load(deps.storage, kind.key())?;
-    Ok(AccessControlRoleResponse { address })
+    let addresses = ACCESS_CONTROL.load(deps.storage, kind.key())?;
+    Ok(AccessControlRoleResponse { addresses })
 }
 
 pub fn oracle_tokens_list(deps: &Deps) -> StdResult<OracleTokensListResponse> {

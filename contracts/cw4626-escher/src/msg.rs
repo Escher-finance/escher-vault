@@ -8,8 +8,8 @@ use crate::state::{AccessControlRole, PricesMap, TowerConfig};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub manager: Addr,
-    pub oracle: Addr,
+    pub managers: Vec<Addr>,
+    pub oracles: Vec<Addr>,
     pub underlying_token: AssetInfo,
     pub share_name: String,
     pub share_symbol: String,
@@ -23,12 +23,17 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Access control: sets role
-    UpdateRole {
+    /// Access control - add user to role
+    AddToRole {
         role: AccessControlRole,
         address: Addr,
     },
-    /// Update prices
+    /// Access control - remove user from role
+    RemoveFromRole {
+        role: AccessControlRole,
+        address: Addr,
+    },
+    /// Oracle update prices
     OracleUpdatePrices { prices: PricesMap },
     /// Manager bond
     Bond {
@@ -123,7 +128,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct AccessControlRoleResponse {
-    pub address: Addr,
+    pub addresses: Vec<Addr>,
 }
 
 #[cw_serde]

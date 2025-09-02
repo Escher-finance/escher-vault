@@ -16,14 +16,37 @@ use crate::{
     ContractError,
 };
 
-pub fn update_role(
+pub fn add_to_role(
     deps: DepsMut,
     sender: Addr,
     role: AccessControlRole,
     address: Addr,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
-    ACCESS_CONTROL.save(deps.storage, role.key(), &address)?;
+    ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
+        let mut addrs = addrs.unwrap_or_default();
+        if !addrs.contains(&address) {
+            addrs.push(address);
+        }
+        Ok(addrs)
+    })?;
+    Ok(Response::new())
+}
+
+pub fn remove_from_role(
+    deps: DepsMut,
+    sender: Addr,
+    role: AccessControlRole,
+    address: Addr,
+) -> Result<Response, ContractError> {
+    only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
+    ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
+        Ok(addrs
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|a| a != &address)
+            .collect())
+    })?;
     Ok(Response::new())
 }
 
