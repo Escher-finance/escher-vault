@@ -1,5 +1,5 @@
 [alias]
-wasm = "build --release --lib --target wasm32-unknown-unknown"
+wasm = "build --release --lib --target wasm32-unknown-unknown -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort"
 schema = "run --bin schema"
 cov = "llvm-cov --ignore-filename-regex schema"
 
