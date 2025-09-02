@@ -5,7 +5,9 @@ use crate::{
     helpers::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
     },
-    msg::{AccessControlRoleResponse, ConfigResponse, OracleTokensListResponse},
+    msg::{
+        AccessControlRoleResponse, ConfigResponse, OraclePricesResponse, OracleTokensListResponse,
+    },
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
@@ -24,6 +26,11 @@ pub fn oracle_tokens_list(deps: &Deps) -> StdResult<OracleTokensListResponse> {
         .into_keys()
         .collect::<Vec<_>>();
     Ok(OracleTokensListResponse { tokens })
+}
+
+pub fn oracle_prices(deps: &Deps) -> StdResult<OraclePricesResponse> {
+    let prices = ORACLE_PRICES.load(deps.storage)?;
+    Ok(OraclePricesResponse { prices })
 }
 
 pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {

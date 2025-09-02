@@ -138,6 +138,11 @@ pub struct ConfigResponse {
 }
 
 #[cw_serde]
+pub struct OraclePricesResponse {
+    pub prices: PricesMap,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
@@ -146,6 +151,9 @@ pub enum QueryMsg {
     Role { kind: AccessControlRole },
     #[returns(OracleTokensListResponse)]
     OracleTokensList {},
+    /// NOTE: We might want to keep prices "private"
+    #[returns(OracleTokensListResponse)]
+    OraclePrices {},
 
     //
     // CW4626
