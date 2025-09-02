@@ -1,3 +1,4 @@
+use astroport::asset::AssetInfo;
 use cosmwasm_std::{Addr, Deps, StdError, StdResult, Uint128};
 
 use crate::{
@@ -110,7 +111,13 @@ pub fn preview_deposit(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
-    _preview_deposit(this, deps, assets, false)
+    let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
+    _preview_deposit(
+        this,
+        deps,
+        assets,
+        matches!(asset_info, AssetInfo::NativeToken { .. }),
+    )
 }
 
 pub fn preview_mint(
