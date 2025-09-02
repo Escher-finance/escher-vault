@@ -21,7 +21,7 @@ use cw4626_escher::contract;
 use cw4626_escher::msg::*;
 
 fn make_valid_addr() -> Addr {
-    Addr::unchecked("cosmos1y3u4mw39adngenlzwqm6hz60flz25gsxq5p5ev")
+    Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd")
 }
 
 const USER: &str = "user";
