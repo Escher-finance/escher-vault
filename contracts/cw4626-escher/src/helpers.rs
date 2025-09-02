@@ -128,7 +128,7 @@ pub fn _deposit(
         amount: assets,
         info: asset_info,
     };
-    let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
+    let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone(), &deps.querier)?;
     let mut res = generate_deposit_response(&caller, &receiver, assets, shares);
     if let Some(msg) = transfer_msg {
         res = res.add_message(msg);

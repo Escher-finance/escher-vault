@@ -45,8 +45,9 @@ pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
 
 pub fn asset(deps: &Deps) -> StdResult<cw4626::AssetResponse> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
+    let asset_address_str = get_asset_info_address(&asset);
     Ok(cw4626::AssetResponse {
-        asset_token_address: get_asset_info_address(&asset),
+        asset_token_address: asset_address_str,
     })
 }
 
