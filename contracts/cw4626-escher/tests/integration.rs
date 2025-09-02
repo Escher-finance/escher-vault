@@ -279,7 +279,9 @@ fn proper_instantiate(
         underlying_token: AssetInfo::Token {
             contract_addr: underlying_token_address,
         },
-        incentives: Vec::new(),
+        incentives: Vec::from([AssetInfo::NativeToken {
+            denom: "incentive1".to_string(),
+        }]),
         slippage_tolerance: Decimal::from_ratio(1_u32, 100_u32),
         staking_contract: Some(staking_address),
         lp: lp_address,
