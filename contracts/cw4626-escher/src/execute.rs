@@ -40,20 +40,20 @@ pub fn oracle_update_prices(
 pub fn bond(
     deps: DepsMut,
     env: Env,
-    sender: Addr,
+    info: MessageInfo,
     slippage: Option<Decimal>,
     amount: Uint128,
     expected: Uint128,
-    recipient: Option<String>,
-    recipient_channel_id: Option<u32>,
     salt: Option<String>,
 ) -> Result<Response, ContractError> {
+    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+    let this = env.contract.address;
 
     // Get the current asset balance in the vault
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
-    let asset_balance =
-        query_asset_info_balance(&deps.querier, asset_info.clone(), env.contract.address)?;
+    let asset_balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
 
     // Validate that we have enough assets to bond
     if asset_balance < amount {
@@ -64,8 +64,8 @@ pub fn bond(
     let escher_bond_msg = EscherHubExecuteMsg::Bond {
         slippage,
         expected,
-        recipient,
-        recipient_channel_id,
+        recipient: None,
+        recipient_channel_id: None,
         salt,
     };
     let bond_msg = match asset_info {
@@ -89,7 +89,7 @@ pub fn bond(
         },
     };
 
-    Ok(generate_bond_response(&sender, expected, &staking_contract).add_message(bond_msg))
+    Ok(generate_bond_response(&this, expected, &staking_contract).add_message(bond_msg))
 }
 
 pub fn deposit(
