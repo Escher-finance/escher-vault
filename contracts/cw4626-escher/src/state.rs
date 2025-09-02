@@ -36,6 +36,7 @@ pub struct TowerConfig {
     pub lp: Addr,
     pub lp_underlying_asset: AssetInfo,
     pub lp_other_asset: AssetInfo,
+    pub is_underlying_first_lp_asset: bool,
     pub lp_token: Addr,
     pub lp_incentives: Vec<AssetInfo>,
     pub slippage_tolerance: Decimal,

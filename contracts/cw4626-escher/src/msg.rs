@@ -41,6 +41,8 @@ pub enum ExecuteMsg {
         salt: String,
         slippage: Option<Decimal>,
     },
+    /// Manager add liquidity
+    AddLiquidity { underlying_token_amount: Uint128 },
 
     //
     // CW4626
