@@ -15,7 +15,10 @@ use cosmwasm_std::{
 use cw4626::cw20;
 
 use crate::{
-    asset_info::{get_asset_info_address, query_asset_info_balance},
+    asset::{
+        asset_generate_increase_allowance_or_funds, get_asset_info_address,
+        query_asset_info_balance,
+    },
     state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
 };
@@ -126,29 +129,54 @@ pub fn add_tower_liquidity(
     tower_config: &TowerConfig,
     underlying_asset_amount: Uint128,
     other_lp_asset_amount: Uint128,
-) -> Result<CosmosMsg, ContractError> {
-    let assets = Vec::from([
-        Asset {
-            info: tower_config.lp_underlying_asset.clone(),
-            amount: underlying_asset_amount,
-        },
-        Asset {
-            info: tower_config.lp_other_asset.clone(),
-            amount: other_lp_asset_amount,
-        },
-    ]);
-    let execute_msg = PairExecuteMsg::ProvideLiquidity {
-        assets,
-        auto_stake: Some(true),
-        slippage_tolerance: Some(tower_config.slippage_tolerance),
-        receiver: None,
-        min_lp_to_receive: None,
+) -> Result<Vec<CosmosMsg>, ContractError> {
+    let underlying_asset = Asset {
+        info: tower_config.lp_underlying_asset.clone(),
+        amount: underlying_asset_amount,
     };
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+    let other_lp_asset = Asset {
+        info: tower_config.lp_other_asset.clone(),
+        amount: other_lp_asset_amount,
+    };
+
+    let mut msgs = Vec::new();
+    let mut funds = Vec::new();
+
+    let (underlying_increase_allowance_msg, underlying_coin) =
+        asset_generate_increase_allowance_or_funds(
+            underlying_asset.clone(),
+            tower_config.lp.clone(),
+        )?;
+    let (other_lp_increase_allowance_msg, other_lp_coin) =
+        asset_generate_increase_allowance_or_funds(
+            other_lp_asset.clone(),
+            tower_config.lp.clone(),
+        )?;
+
+    if let Some(m) = underlying_increase_allowance_msg {
+        msgs.push(m);
+    } else if let Some(c) = underlying_coin {
+        funds.push(c);
+    }
+    if let Some(m) = other_lp_increase_allowance_msg {
+        msgs.push(m);
+    } else if let Some(c) = other_lp_coin {
+        funds.push(c);
+    }
+
+    msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: tower_config.lp.to_string(),
-        msg: to_json_binary(&execute_msg)?,
-        funds: vec![],
-    }))
+        msg: to_json_binary(&PairExecuteMsg::ProvideLiquidity {
+            assets: Vec::from([underlying_asset, other_lp_asset]),
+            auto_stake: Some(true),
+            slippage_tolerance: Some(tower_config.slippage_tolerance),
+            receiver: None,
+            min_lp_to_receive: None,
+        })?,
+        funds,
+    }));
+
+    Ok(msgs)
 }
 
 pub fn withdraw_liquidity(

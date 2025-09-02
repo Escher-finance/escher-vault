@@ -2,7 +2,7 @@ use astroport::asset::AssetInfo;
 use cosmwasm_std::{Addr, Deps, StdError, StdResult, Uint128};
 
 use crate::{
-    asset_info::get_asset_info_address,
+    asset::get_asset_info_address,
     helpers::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
     },

@@ -3,8 +3,8 @@ use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, St
 use cw4626_base::helpers::generate_deposit_response;
 
 use crate::{
-    asset_info::assert_send_asset_to_contract, state::UNDERLYING_ASSET,
-    tower::calculate_total_assets, ContractError,
+    asset::assert_send_asset_to_contract, state::UNDERLYING_ASSET, tower::calculate_total_assets,
+    ContractError,
 };
 
 #[derive(Debug)]

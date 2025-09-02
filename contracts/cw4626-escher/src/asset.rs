@@ -2,7 +2,10 @@ use astroport::{
     asset::{Asset, AssetInfo},
     querier::{query_balance, query_token_balance},
 };
-use cosmwasm_std::{to_json_binary, Addr, Env, MessageInfo, QuerierWrapper, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, Addr, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper, StdResult,
+    Uint128, WasmMsg,
+};
 use cw4626::cw20;
 use cw4626_base::helpers::validate_cw20;
 use cw_utils::must_pay;
@@ -64,5 +67,55 @@ pub fn assert_send_asset_to_contract(
             }
             Ok(None)
         }
+    }
+}
+
+/// If `AssetInfo::Token` it uses cw20 Send
+/// If `AssetInfo::NativeToken` it attaches funds to msg
+pub fn asset_cw20_send_or_attach_funds(
+    asset: Asset,
+    execute_contract_addr: Addr,
+    msg: Binary,
+) -> StdResult<WasmMsg> {
+    let wasm_msg = match asset.info {
+        AssetInfo::Token { contract_addr } => WasmMsg::Execute {
+            contract_addr: contract_addr.to_string(),
+            msg: to_json_binary(&cw20::Cw20ExecuteMsg::Send {
+                contract: execute_contract_addr.to_string(),
+                amount: asset.amount,
+                msg,
+            })?,
+            funds: vec![],
+        },
+        AssetInfo::NativeToken { .. } => WasmMsg::Execute {
+            contract_addr: execute_contract_addr.to_string(),
+            msg,
+            funds: Vec::from([asset.as_coin()?]),
+        },
+    };
+    Ok(wasm_msg)
+}
+
+/// If `AssetInfo::Token` it returns `Ok(Some(msg), None)`
+/// If `AssetInfo::NativeToken` it returns `Ok(None, Some(coin))`
+#[allow(clippy::type_complexity)]
+pub fn asset_generate_increase_allowance_or_funds(
+    asset: Asset,
+    target_addr: Addr,
+) -> StdResult<(Option<CosmosMsg>, Option<Coin>)> {
+    match asset.info {
+        AssetInfo::Token { contract_addr } => {
+            let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.to_string(),
+                msg: to_json_binary(&cw20::Cw20ExecuteMsg::IncreaseAllowance {
+                    spender: target_addr.to_string(),
+                    amount: asset.amount,
+                    expires: None,
+                })?,
+                funds: vec![],
+            });
+            Ok((Some(msg), None))
+        }
+        AssetInfo::NativeToken { .. } => Ok((None, Some(asset.as_coin()?))),
     }
 }
