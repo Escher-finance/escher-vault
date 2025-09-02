@@ -12,7 +12,7 @@ use crate::staking::EscherHubStakingLiquidity;
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 use crate::tower::{init_oracle_prices, update_tower_config};
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
