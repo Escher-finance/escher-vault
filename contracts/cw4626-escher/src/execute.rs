@@ -3,7 +3,7 @@ use astroport::{
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError,
+    to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response,
     Uint128, WasmMsg,
 };
 use cw4626::cw20;
@@ -89,16 +89,18 @@ pub fn add_to_role(
         
         // Check if address already exists
         if addrs.contains(&address) {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-                format!("Address {} already has {} role", address, role)
-            )));
+            return Err(ContractError::validation_error(
+                "address",
+                &format!("Address already has {} role", role)
+            ));
         }
         
         // Check role size limit
         if addrs.len() >= 20 {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            return Err(ContractError::validation_error(
+                "role_size",
                 "Role size limit exceeded: max 20 addresses allowed"
-            )));
+            ));
         }
         
         addrs.push(address);
@@ -127,9 +129,9 @@ pub fn remove_from_role(
     if matches!(role, AccessControlRole::Manager {}) {
         let current_managers = ACCESS_CONTROL.load(deps.storage, role.key())?;
         if current_managers.len() <= 1 {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            return Err(ContractError::security_error(
                 "Cannot remove the last manager to prevent permanent lockout"
-            )));
+            ));
         }
     }
     
@@ -140,9 +142,10 @@ pub fn remove_from_role(
         
         // Check if the address was actually in the role
         if filtered_addrs.len() == original_len {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-                format!("Address {} does not have {} role", address, role)
-            )));
+            return Err(ContractError::validation_error(
+                "address",
+                &format!("Address does not have {} role", role)
+            ));
         }
         
         Ok(filtered_addrs)
@@ -162,22 +165,22 @@ pub fn oracle_update_prices(
     
     // CRITICAL: Validate prices map
     if prices.is_empty() {
-        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+        return Err(ContractError::validation_error(
+            "prices",
             "Prices map cannot be empty"
-        )));
+        ));
     }
     
     // Validate each price is positive
     for (token, price) in &prices {
         if price.is_zero() {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-                format!("Price for token {} cannot be zero", token)
-            )));
+            return Err(ContractError::validation_error(
+                "price",
+                "Price for token cannot be zero"
+            ));
         }
         if token.is_empty() {
-            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
-                "Token identifier cannot be empty"
-            )));
+            return Err(ContractError::empty_input("token_identifier"));
         }
     }
     
@@ -210,7 +213,7 @@ pub fn bond(
 
     let expected = amount
         .checked_div_floor(exchange_rate)
-        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+        .map_err(|err| ContractError::math_error("division", &err.to_string()))?;
 
     // Get the current asset balance in the vault
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
@@ -320,14 +323,14 @@ pub fn add_liquidity(
         tower_config.lp.clone(),
         &PairConcentratedQueryMsg::LpPrice {},
     )?)
-    .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+    .map_err(|err| ContractError::math_error("decimal_conversion", &err.to_string()))?;
 
     let other_lp_token_amount = if tower_config.is_underlying_first_lp_asset {
         underlying_token_amount.checked_div_floor(lp_price)
     } else {
         underlying_token_amount.checked_mul_floor(lp_price)
     }
-    .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+    .map_err(|err| ContractError::math_error("lp_calculation", &err.to_string()))?;
 
     let this = env.contract.address;
     let underlying_balance = query_asset_info_balance(
