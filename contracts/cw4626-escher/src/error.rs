@@ -37,4 +37,7 @@ pub enum ContractError {
 
     #[error("Invalid token type for this operation")]
     InvalidTokenType {},
+
+    #[error("Invalid staking contract provided")]
+    InvalidStakingContract {},
 }

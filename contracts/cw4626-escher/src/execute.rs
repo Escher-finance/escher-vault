@@ -1,12 +1,17 @@
-use cosmwasm_std::{Addr, Decimal, DepsMut, Env, MessageInfo, Response, Uint128};
+use astroport::asset::{Asset, AssetInfo};
+use cosmwasm_std::{
+    to_json_binary, Addr, Decimal, DepsMut, Env, MessageInfo, Response, StdError, Uint128, WasmMsg,
+};
+use cw4626::cw20;
 
 use crate::{
     access_control::only_role,
+    asset_info::query_asset_info_balance,
     helpers::_deposit,
     query,
     responses::generate_bond_response,
-    staking::EscherHubExecuteMsg,
-    state::{AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT},
+    staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
+    state::{AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, UNDERLYING_ASSET},
     tower::update_and_validate_prices,
     ContractError,
 };
@@ -35,38 +40,64 @@ pub fn oracle_update_prices(
 pub fn bond(
     deps: DepsMut,
     env: Env,
-    sender: Addr,
+    info: MessageInfo,
+    amount: Uint128,
+    salt: String,
     slippage: Option<Decimal>,
-    expected: Uint128,
-    recipient: Option<String>,
-    recipient_channel_id: Option<u32>,
-    salt: Option<String>,
 ) -> Result<Response, ContractError> {
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
-    // Get the current total assets in the vault
-    let total_assets_response = query::total_assets(&deps.as_ref(), env.contract.address)?;
-    let total_assets = total_assets_response.total_managed_assets;
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+    let this = env.contract.address;
+
+    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
+        staking_contract.clone(),
+        &EscherHubQueryMsg::StakingLiquidity {},
+    )?;
+
+    let expected = amount
+        .checked_div_floor(exchange_rate)
+        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+
+    // Get the current asset balance in the vault
+    let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
+    let asset_balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
 
     // Validate that we have enough assets to bond
-    if total_assets < expected {
+    if asset_balance < amount {
         return Err(ContractError::InsufficientFunds {});
     }
 
     // Create the bond message for the staking contract
-    let bond_msg = cosmwasm_std::WasmMsg::Execute {
-        contract_addr: staking_contract.to_string(),
-        msg: cosmwasm_std::to_json_binary(&EscherHubExecuteMsg::Bond {
-            slippage,
-            expected,
-            recipient,
-            recipient_channel_id,
-            salt,
-        })?,
-        funds: vec![],
+    let escher_bond_msg = EscherHubExecuteMsg::Bond {
+        slippage,
+        expected,
+        recipient: None,
+        recipient_channel_id: None,
+        salt: Some(salt),
+    };
+    let bond_msg = match asset_info {
+        AssetInfo::Token { contract_addr } => WasmMsg::Execute {
+            contract_addr: contract_addr.to_string(),
+            msg: to_json_binary(&cw20::Cw20ExecuteMsg::Send {
+                contract: staking_contract.to_string(),
+                amount,
+                msg: to_json_binary(&escher_bond_msg)?,
+            })?,
+            funds: vec![],
+        },
+        AssetInfo::NativeToken { .. } => WasmMsg::Execute {
+            contract_addr: staking_contract.to_string(),
+            msg: to_json_binary(&escher_bond_msg)?,
+            funds: Vec::from([Asset {
+                info: asset_info,
+                amount,
+            }
+            .as_coin()?]),
+        },
     };
 
-    Ok(generate_bond_response(&sender, expected, &staking_contract).add_message(bond_msg))
+    Ok(generate_bond_response(&this, expected, &staking_contract).add_message(bond_msg))
 }
 
 pub fn deposit(
