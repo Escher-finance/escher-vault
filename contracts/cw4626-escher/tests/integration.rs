@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use astroport::asset::AssetInfo;
@@ -15,7 +17,6 @@ use cosmwasm_std::MessageInfo;
 use cosmwasm_std::Response;
 use cosmwasm_std::StdResult;
 use cosmwasm_std::Uint128;
-use cw_multi_test::IntoAddr;
 use cw_multi_test::{App, ContractWrapper, Executor};
 
 use cw4626::{cw20::*, *};
@@ -29,12 +30,10 @@ fn make_valid_addr() -> Addr {
 const UNDERLYING_TOKEN: &str = "utkn";
 
 const USER: &str = "user";
-const USER_TWO: &str = "user-two";
 const ADMIN: &str = "admin";
 const ORACLE: &str = "oracle";
 
 const AMOUNT: Uint128 = Uint128::new(100000000);
-const HALF_FRAC: (Uint128, Uint128) = (Uint128::one(), Uint128::new(2));
 
 fn attrs_to_map(event: &Event) -> HashMap<&str, &str> {
     event
@@ -75,7 +74,7 @@ fn instantiate_denom_asset(app: &mut App) -> AssetInfo {
     }
 }
 
-fn instantiate_asset(app: &mut App) -> Addr {
+fn instantiate_cw20_asset(app: &mut App) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
@@ -157,8 +156,6 @@ mod lp_mock {
     use astroport::{asset::PairInfo, pair_concentrated};
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::to_json_binary;
-    use cw20_base::state::TokenInfo;
-    use cw_multi_test::IntoAddr;
     use cw_storage_plus::Item;
 
     use super::*;
@@ -231,7 +228,6 @@ fn instantiate_lp(app: &mut App, underlying_token: AssetInfo) -> Addr {
 mod incentives_mock {
     use astroport::incentives;
     use cosmwasm_std::to_json_binary;
-    use cw_multi_test::IntoAddr;
 
     use super::*;
     pub fn instantiate(
@@ -298,8 +294,8 @@ fn instantiate_vault(
     let admin = addr(api, ADMIN);
     let oracle = addr(api, ORACLE);
     let msg = InstantiateMsg {
-        manager: admin.clone(),
-        oracle: oracle.clone(),
+        managers: Vec::from([admin.clone()]),
+        oracles: Vec::from([oracle.clone()]),
         share_name: "Share Token".to_string(),
         share_symbol: "sTKN".to_string(),
         share_marketing: None,
