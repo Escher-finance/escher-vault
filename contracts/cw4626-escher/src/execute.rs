@@ -44,7 +44,7 @@ pub fn remove_from_role(
         Ok(addrs
             .unwrap_or_default()
             .into_iter()
-            .filter(|a| a != &address)
+            .filter(|a| a != address)
             .collect())
     })?;
     Ok(Response::new())
