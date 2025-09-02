@@ -2,6 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Timestamp, Uint128};
 
 #[cw_serde]
+#[derive(Default)]
 pub struct EscherHubStakingLiquidity {
     pub amount: Uint128,
     pub delegated: Uint128,

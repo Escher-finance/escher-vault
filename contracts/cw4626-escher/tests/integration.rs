@@ -1,24 +1,39 @@
 use std::collections::HashMap;
 
-use cosmwasm_std::assert_approx_eq;
+use astroport::asset::AssetInfo;
 use cosmwasm_std::testing::MockApi;
-use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Addr;
+use cosmwasm_std::Binary;
+use cosmwasm_std::Coin;
+use cosmwasm_std::Decimal;
+use cosmwasm_std::Deps;
+use cosmwasm_std::DepsMut;
+use cosmwasm_std::Empty;
+use cosmwasm_std::Env;
 use cosmwasm_std::Event;
-use cosmwasm_std::StdError;
+use cosmwasm_std::MessageInfo;
+use cosmwasm_std::Response;
+use cosmwasm_std::StdResult;
 use cosmwasm_std::Uint128;
+use cw_multi_test::IntoAddr;
 use cw_multi_test::{App, ContractWrapper, Executor};
 
 use cw4626::{cw20::*, *};
-use cw4626_base::contract;
-use cw4626_base::msg::*;
-use cw4626_base::ContractError;
+use cw4626_escher::contract;
+use cw4626_escher::msg::*;
+
+fn make_valid_addr() -> Addr {
+    Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd")
+}
+
+const UNDERLYING_TOKEN: &str = "utkn";
 
 const USER: &str = "user";
 const USER_TWO: &str = "user-two";
 const ADMIN: &str = "admin";
+const ORACLE: &str = "oracle";
 
-const AMOUNT: Uint128 = Uint128::new(1000);
+const AMOUNT: Uint128 = Uint128::new(100000000);
 const HALF_FRAC: (Uint128, Uint128) = (Uint128::one(), Uint128::new(2));
 
 fn attrs_to_map(event: &Event) -> HashMap<&str, &str> {
@@ -37,7 +52,30 @@ pub fn get_app() -> App {
     App::default()
 }
 
-fn instantitate_asset(app: &mut App) -> Addr {
+fn instantiate_denom_asset(app: &mut App) -> AssetInfo {
+    let api = app.api();
+    let admin = addr(api, ADMIN);
+    let user = addr(api, USER);
+    app.sudo(cw_multi_test::SudoMsg::Bank(
+        cw_multi_test::BankSudo::Mint {
+            to_address: admin.to_string(),
+            amount: Vec::from([Coin::new(AMOUNT, UNDERLYING_TOKEN)]),
+        },
+    ))
+    .unwrap();
+    app.sudo(cw_multi_test::SudoMsg::Bank(
+        cw_multi_test::BankSudo::Mint {
+            to_address: user.to_string(),
+            amount: Vec::from([Coin::new(AMOUNT, UNDERLYING_TOKEN)]),
+        },
+    ))
+    .unwrap();
+    AssetInfo::NativeToken {
+        denom: UNDERLYING_TOKEN.to_string(),
+    }
+}
+
+fn instantiate_asset(app: &mut App) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
@@ -73,7 +111,184 @@ fn instantitate_asset(app: &mut App) -> Addr {
         .unwrap()
 }
 
-fn proper_instantiate(app: &mut App, underlying_token_address: Addr) -> Addr {
+mod staking_mock {
+    use cosmwasm_std::to_json_binary;
+    use cw4626_escher::staking::{EscherHubQueryMsg, EscherHubStakingLiquidity};
+
+    use super::*;
+    pub fn instantiate(
+        _deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        _msg: Empty,
+    ) -> StdResult<Response> {
+        Ok(Response::default())
+    }
+    pub fn execute(
+        _deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        _msg: Empty,
+    ) -> StdResult<Response> {
+        Ok(Response::default())
+    }
+    pub fn query(_deps: Deps, _env: Env, msg: EscherHubQueryMsg) -> StdResult<Binary> {
+        match msg {
+            EscherHubQueryMsg::StakingLiquidity {} => to_json_binary(&EscherHubStakingLiquidity {
+                exchange_rate: Decimal::one(),
+                ..Default::default()
+            }),
+        }
+    }
+}
+
+fn instantiate_staking(app: &mut App) -> Addr {
+    let code = app.store_code(Box::new(ContractWrapper::new(
+        staking_mock::execute,
+        staking_mock::instantiate,
+        staking_mock::query,
+    )));
+    let api = app.api();
+    app.instantiate_contract(code, addr(api, ADMIN), &Empty {}, &[], "staking", None)
+        .unwrap()
+}
+
+mod lp_mock {
+    use astroport::{asset::PairInfo, pair_concentrated};
+    use cosmwasm_schema::cw_serde;
+    use cosmwasm_std::to_json_binary;
+    use cw20_base::state::TokenInfo;
+    use cw_multi_test::IntoAddr;
+    use cw_storage_plus::Item;
+
+    use super::*;
+
+    const A: Item<AssetInfo> = Item::new("asset");
+
+    #[cw_serde]
+    pub struct InstantiateMsg {
+        pub underlying: AssetInfo,
+    }
+
+    pub fn instantiate(
+        deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        msg: InstantiateMsg,
+    ) -> StdResult<Response> {
+        A.save(deps.storage, &msg.underlying)?;
+        Ok(Response::default())
+    }
+    pub fn execute(
+        _deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        _msg: Empty,
+    ) -> StdResult<Response> {
+        Ok(Response::default())
+    }
+    pub fn query(deps: Deps, _env: Env, msg: pair_concentrated::QueryMsg) -> StdResult<Binary> {
+        match msg {
+            pair_concentrated::QueryMsg::Pair {} => {
+                let a = A.load(deps.storage)?;
+                to_json_binary(&PairInfo {
+                    asset_infos: Vec::from([
+                        a,
+                        AssetInfo::NativeToken {
+                            denom: "other_lp_tkn".to_string(),
+                        },
+                    ]),
+                    contract_addr: make_valid_addr(),
+                    liquidity_token: make_valid_addr().to_string(),
+                    pair_type: astroport::factory::PairType::Concentrated {},
+                })
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+fn instantiate_lp(app: &mut App, underlying_token: AssetInfo) -> Addr {
+    let code = app.store_code(Box::new(ContractWrapper::new(
+        lp_mock::execute,
+        lp_mock::instantiate,
+        lp_mock::query,
+    )));
+    let api = app.api();
+    app.instantiate_contract(
+        code,
+        addr(api, ADMIN),
+        &lp_mock::InstantiateMsg {
+            underlying: underlying_token,
+        },
+        &[],
+        "lp",
+        None,
+    )
+    .unwrap()
+}
+
+mod incentives_mock {
+    use astroport::incentives;
+    use cosmwasm_std::to_json_binary;
+    use cw_multi_test::IntoAddr;
+
+    use super::*;
+    pub fn instantiate(
+        _deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        _msg: Empty,
+    ) -> StdResult<Response> {
+        Ok(Response::default())
+    }
+    pub fn execute(
+        _deps: DepsMut,
+        _env: Env,
+        _info: MessageInfo,
+        _msg: Empty,
+    ) -> StdResult<Response> {
+        Ok(Response::default())
+    }
+    pub fn query(_deps: Deps, _env: Env, msg: incentives::QueryMsg) -> StdResult<Binary> {
+        match msg {
+            incentives::QueryMsg::Config {} => to_json_binary(&incentives::Config {
+                owner: make_valid_addr(),
+                factory: make_valid_addr(),
+                generator_controller: None,
+                astro_token: AssetInfo::NativeToken {
+                    denom: "astro".to_string(),
+                },
+                astro_per_second: Uint128::one(),
+                total_alloc_points: Uint128::one(),
+                vesting_contract: make_valid_addr(),
+                guardian: None,
+                incentivization_fee_info: None,
+                token_transfer_gas_limit: None,
+            }),
+            _ => unimplemented!(),
+        }
+    }
+}
+
+fn instantiate_incentives(app: &mut App) -> Addr {
+    let code = app.store_code(Box::new(ContractWrapper::new(
+        incentives_mock::execute,
+        incentives_mock::instantiate,
+        incentives_mock::query,
+    )));
+    let api = app.api();
+    app.instantiate_contract(code, addr(api, ADMIN), &Empty {}, &[], "incentives", None)
+        .unwrap()
+}
+
+fn instantiate_vault(
+    app: &mut App,
+    underlying_token: AssetInfo,
+    staking_address: Addr,
+    lp_address: Addr,
+    incentives_address: Addr,
+) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         contract::execute,
         contract::instantiate,
@@ -81,18 +296,104 @@ fn proper_instantiate(app: &mut App, underlying_token_address: Addr) -> Addr {
     )));
     let api = app.api();
     let admin = addr(api, ADMIN);
+    let oracle = addr(api, ORACLE);
     let msg = InstantiateMsg {
-        owner: Some(admin.clone()),
+        manager: admin.clone(),
+        oracle: oracle.clone(),
         share_name: "Share Token".to_string(),
         share_symbol: "sTKN".to_string(),
         share_marketing: None,
-        underlying_token_address,
+        underlying_token,
+        incentives: Vec::from([AssetInfo::NativeToken {
+            denom: "incentive1".to_string(),
+        }]),
+        slippage_tolerance: Decimal::from_ratio(1_u32, 100_u32),
+        staking_contract: Some(staking_address),
+        lp: lp_address,
+        tower_incentives: incentives_address,
     };
-    app.instantiate_contract(code, admin, &msg, &[], "cw4626-base", None)
+    app.instantiate_contract(code, admin, &msg, &[], "cw4626-escher", None)
         .unwrap()
 }
 
+fn proper_instantiate(app: &mut App) -> Addr {
+    let asset = instantiate_denom_asset(app);
+    let staking = instantiate_staking(app);
+    let lp = instantiate_lp(app, asset.clone());
+    let tower_incentives = instantiate_incentives(app);
+    instantiate_vault(app, asset, staking, lp, tower_incentives)
+}
+
 #[test]
-fn test_todo() {
-    assert!(true);
+fn instantiates_properly() {
+    let mut app = get_app();
+    proper_instantiate(&mut app);
+}
+
+#[test]
+fn deposit_no_yield_must_be_one_to_one() {
+    let mut app = get_app();
+    let vault = proper_instantiate(&mut app);
+    let api = app.api();
+    let oracle_tokens = app
+        .wrap()
+        .query_wasm_smart::<OracleTokensListResponse>(&vault, &QueryMsg::OracleTokensList {})
+        .unwrap();
+    let oracle = addr(api, ORACLE);
+    let user = addr(api, USER);
+    let prices = oracle_tokens
+        .tokens
+        .into_iter()
+        .map(|t| (t, Decimal::one()))
+        .collect();
+    app.execute_contract(
+        oracle.clone(),
+        vault.clone(),
+        &ExecuteMsg::OracleUpdatePrices { prices },
+        &[],
+    )
+    .unwrap();
+    let oracle_prices = app
+        .wrap()
+        .query_wasm_smart::<OraclePricesResponse>(&vault, &QueryMsg::OraclePrices {})
+        .unwrap();
+    println!("prices after update {oracle_prices:?}");
+    let initial_share_balance = app
+        .wrap()
+        .query_wasm_smart::<cw20::BalanceResponse>(
+            &vault,
+            &QueryMsg::Balance {
+                address: user.to_string(),
+            },
+        )
+        .unwrap()
+        .balance;
+    assert!(initial_share_balance.is_zero());
+
+    let asset_deposit_amount = Uint128::from(50000_u32);
+
+    // do deposit
+    app.execute_contract(
+        user.clone(),
+        vault.clone(),
+        &ExecuteMsg::Deposit {
+            assets: asset_deposit_amount,
+            receiver: user.clone(),
+        },
+        &Vec::from([Coin::new(asset_deposit_amount, UNDERLYING_TOKEN)]),
+    )
+    .unwrap();
+
+    let new_share_balance = app
+        .wrap()
+        .query_wasm_smart::<cw20::BalanceResponse>(
+            &vault,
+            &QueryMsg::Balance {
+                address: user.to_string(),
+            },
+        )
+        .unwrap()
+        .balance;
+    println!("{new_share_balance}");
+    assert_eq!(new_share_balance, asset_deposit_amount);
 }
