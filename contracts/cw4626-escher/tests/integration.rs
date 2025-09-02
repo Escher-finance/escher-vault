@@ -4,6 +4,7 @@ use astroport::asset::AssetInfo;
 use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
+use cosmwasm_std::Coin;
 use cosmwasm_std::Decimal;
 use cosmwasm_std::Deps;
 use cosmwasm_std::DepsMut;
@@ -24,6 +25,8 @@ use cw4626_escher::msg::*;
 fn make_valid_addr() -> Addr {
     Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd")
 }
+
+const UNDERLYING_TOKEN: &str = "utkn";
 
 const USER: &str = "user";
 const USER_TWO: &str = "user-two";
@@ -49,7 +52,30 @@ pub fn get_app() -> App {
     App::default()
 }
 
-fn instantitate_asset(app: &mut App) -> Addr {
+fn instantiate_denom_asset(app: &mut App) -> AssetInfo {
+    let api = app.api();
+    let admin = addr(api, ADMIN);
+    let user = addr(api, USER);
+    app.sudo(cw_multi_test::SudoMsg::Bank(
+        cw_multi_test::BankSudo::Mint {
+            to_address: admin.to_string(),
+            amount: Vec::from([Coin::new(AMOUNT, UNDERLYING_TOKEN)]),
+        },
+    ))
+    .unwrap();
+    app.sudo(cw_multi_test::SudoMsg::Bank(
+        cw_multi_test::BankSudo::Mint {
+            to_address: user.to_string(),
+            amount: Vec::from([Coin::new(AMOUNT, UNDERLYING_TOKEN)]),
+        },
+    ))
+    .unwrap();
+    AssetInfo::NativeToken {
+        denom: UNDERLYING_TOKEN.to_string(),
+    }
+}
+
+fn instantiate_asset(app: &mut App) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
@@ -131,6 +157,7 @@ mod lp_mock {
     use astroport::{asset::PairInfo, pair_concentrated};
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::to_json_binary;
+    use cw20_base::state::TokenInfo;
     use cw_multi_test::IntoAddr;
     use cw_storage_plus::Item;
 
@@ -140,7 +167,7 @@ mod lp_mock {
 
     #[cw_serde]
     pub struct InstantiateMsg {
-        pub underlying: Addr,
+        pub underlying: AssetInfo,
     }
 
     pub fn instantiate(
@@ -149,12 +176,7 @@ mod lp_mock {
         _info: MessageInfo,
         msg: InstantiateMsg,
     ) -> StdResult<Response> {
-        A.save(
-            deps.storage,
-            &AssetInfo::Token {
-                contract_addr: msg.underlying,
-            },
-        )?;
+        A.save(deps.storage, &msg.underlying)?;
         Ok(Response::default())
     }
     pub fn execute(
@@ -186,7 +208,7 @@ mod lp_mock {
     }
 }
 
-fn instantiate_lp(app: &mut App, underlying_token_address: Addr) -> Addr {
+fn instantiate_lp(app: &mut App, underlying_token: AssetInfo) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         lp_mock::execute,
         lp_mock::instantiate,
@@ -197,7 +219,7 @@ fn instantiate_lp(app: &mut App, underlying_token_address: Addr) -> Addr {
         code,
         addr(api, ADMIN),
         &lp_mock::InstantiateMsg {
-            underlying: underlying_token_address,
+            underlying: underlying_token,
         },
         &[],
         "lp",
@@ -262,7 +284,7 @@ fn instantiate_incentives(app: &mut App) -> Addr {
 
 fn instantiate_vault(
     app: &mut App,
-    underlying_token_address: Addr,
+    underlying_token: AssetInfo,
     staking_address: Addr,
     lp_address: Addr,
     incentives_address: Addr,
@@ -281,9 +303,7 @@ fn instantiate_vault(
         share_name: "Share Token".to_string(),
         share_symbol: "sTKN".to_string(),
         share_marketing: None,
-        underlying_token: AssetInfo::Token {
-            contract_addr: underlying_token_address,
-        },
+        underlying_token,
         incentives: Vec::from([AssetInfo::NativeToken {
             denom: "incentive1".to_string(),
         }]),
@@ -297,7 +317,7 @@ fn instantiate_vault(
 }
 
 fn proper_instantiate(app: &mut App) -> Addr {
-    let asset = instantitate_asset(app);
+    let asset = instantiate_denom_asset(app);
     let staking = instantiate_staking(app);
     let lp = instantiate_lp(app, asset.clone());
     let tower_incentives = instantiate_incentives(app);
@@ -352,24 +372,7 @@ fn deposit_no_yield_must_be_one_to_one() {
 
     let asset_deposit_amount = Uint128::from(50000_u32);
 
-    let underlying_asset = app
-        .wrap()
-        .query_wasm_smart::<AssetResponse>(vault.clone(), &QueryMsg::Asset {})
-        .unwrap()
-        .asset_token_address;
-
     // do deposit
-    app.execute_contract(
-        user.clone(),
-        Addr::unchecked(underlying_asset),
-        &cw20::Cw20ExecuteMsg::IncreaseAllowance {
-            spender: vault.to_string(),
-            amount: asset_deposit_amount,
-            expires: None,
-        },
-        &vec![],
-    )
-    .unwrap();
     app.execute_contract(
         user.clone(),
         vault.clone(),
@@ -377,7 +380,7 @@ fn deposit_no_yield_must_be_one_to_one() {
             assets: asset_deposit_amount,
             receiver: user.clone(),
         },
-        &vec![],
+        &Vec::from([Coin::new(asset_deposit_amount, UNDERLYING_TOKEN)]),
     )
     .unwrap();
 
