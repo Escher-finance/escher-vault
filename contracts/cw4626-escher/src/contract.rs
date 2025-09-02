@@ -49,6 +49,22 @@ pub fn instantiate(
         crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
     }
 
+    // CRITICAL: Validate role initialization to prevent permanent lockout
+    if msg.managers.is_empty() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "At least one manager is required for contract initialization"
+        )));
+    }
+    if msg.oracles.is_empty() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "At least one oracle is required for price updates"
+        )));
+    }
+
+    // Validate role configurations using enhanced validation
+    crate::access_control::validate_role_config(&msg.managers)?;
+    crate::access_control::validate_role_config(&msg.oracles)?;
+
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Manager {}.key(),

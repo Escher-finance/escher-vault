@@ -30,14 +30,36 @@ pub fn add_to_role(
     address: Addr,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
+    
+    // Validate the address being added
+    crate::access_control::validate_address(&address)?;
+    
+    let address_str = address.to_string();
+    
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let mut addrs = addrs.unwrap_or_default();
-        if !addrs.contains(&address) {
-            addrs.push(address);
+        
+        // Check if address already exists
+        if addrs.contains(&address) {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                format!("Address {} already has {} role", address, role)
+            )));
         }
+        
+        // Check role size limit
+        if addrs.len() >= 20 {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                "Role size limit exceeded: max 20 addresses allowed"
+            )));
+        }
+        
+        addrs.push(address);
         Ok(addrs)
     })?;
-    Ok(Response::new())
+    
+    Ok(Response::new().add_attribute("action", "add_to_role")
+        .add_attribute("role", role.to_string())
+        .add_attribute("address", address_str))
 }
 
 pub fn remove_from_role(
@@ -47,14 +69,40 @@ pub fn remove_from_role(
     address: Addr,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
+    
+    // Validate the address being removed
+    crate::access_control::validate_address(&address)?;
+    
+    let address_str = address.to_string();
+    
+    // Prevent removing the last manager to avoid permanent lockout
+    if matches!(role, AccessControlRole::Manager {}) {
+        let current_managers = ACCESS_CONTROL.load(deps.storage, role.key())?;
+        if current_managers.len() <= 1 {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                "Cannot remove the last manager to prevent permanent lockout"
+            )));
+        }
+    }
+    
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
-        Ok(addrs
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|a| a != address)
-            .collect())
+        let addrs = addrs.unwrap_or_default();
+        let original_len = addrs.len();
+        let filtered_addrs: Vec<_> = addrs.into_iter().filter(|a| a != &address).collect();
+        
+        // Check if the address was actually in the role
+        if filtered_addrs.len() == original_len {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                format!("Address {} does not have {} role", address, role)
+            )));
+        }
+        
+        Ok(filtered_addrs)
     })?;
-    Ok(Response::new())
+    
+    Ok(Response::new().add_attribute("action", "remove_from_role")
+        .add_attribute("role", role.to_string())
+        .add_attribute("address", address_str))
 }
 
 pub fn oracle_update_prices(
