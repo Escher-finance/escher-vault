@@ -1,8 +1,23 @@
 use astroport::asset::AssetInfo;
 use cosmwasm_std::{Addr, Deps, StdError, StdResult, Uint128};
 
+/// Validates query parameters for security
+fn validate_amount(amount: Uint128, param_name: &str) -> StdResult<()> {
+    if amount.is_zero() {
+        return Err(StdError::generic_err(format!(
+            "{} cannot be zero", param_name
+        )));
+    }
+    // Check for extremely large values that could cause overflow
+    if amount > Uint128::new(u128::MAX / 1000) {
+        return Err(StdError::generic_err(format!(
+            "{} value too large (potential overflow risk)", param_name
+        )));
+    }
+    Ok(())
+}
+
 use crate::{
-    asset_info::get_asset_info_address,
     helpers::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
     },
@@ -45,9 +60,20 @@ pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
 
 pub fn asset(deps: &Deps) -> StdResult<cw4626::AssetResponse> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
-    let asset_address_str = get_asset_info_address(&asset);
+    // Convert AssetInfo to the appropriate address format
+    let asset_token_address = match &asset {
+        AssetInfo::Token { contract_addr } => contract_addr.clone(),
+        AssetInfo::NativeToken { denom } => {
+            // For native tokens, we need to handle this differently
+            // Since AssetResponse expects an Addr but native tokens don't have addresses,
+            // we'll use the denom as a pseudo-address (this is a design limitation)
+            deps.api.addr_validate(denom).map_err(|_| {
+                StdError::generic_err(format!("Cannot convert native token denom '{}' to address format", denom))
+            })?
+        }
+    };
     Ok(cw4626::AssetResponse {
-        asset_token_address: asset_address_str,
+        asset_token_address: asset_token_address.to_string(),
     })
 }
 
@@ -64,6 +90,9 @@ pub fn convert_to_shares(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<cw4626::ConvertToSharesResponse> {
+    // CRITICAL: Validate input parameters
+    validate_amount(assets, "assets")?;
+    
     let Tokens {
         total_shares,
         total_assets,
@@ -78,6 +107,9 @@ pub fn convert_to_assets(
     deps: &Deps,
     shares: Uint128,
 ) -> StdResult<cw4626::ConvertToAssetsResponse> {
+    // CRITICAL: Validate input parameters
+    validate_amount(shares, "shares")?;
+    
     let Tokens {
         total_shares,
         total_assets,
@@ -112,6 +144,9 @@ pub fn preview_deposit(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
+    // CRITICAL: Validate input parameters
+    validate_amount(assets, "assets")?;
+    
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     _preview_deposit(
         this,
@@ -126,6 +161,9 @@ pub fn preview_mint(
     deps: &Deps,
     shares: Uint128,
 ) -> StdResult<cw4626::PreviewMintResponse> {
+    // CRITICAL: Validate input parameters
+    validate_amount(shares, "shares")?;
+    
     let Tokens {
         total_shares,
         total_assets,

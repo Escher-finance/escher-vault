@@ -23,6 +23,64 @@ use crate::{
     ContractError,
 };
 
+/// Validates amount parameter for security
+fn validate_amount(amount: Uint128, param_name: &str) -> Result<(), ContractError> {
+    if amount.is_zero() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            format!("{} cannot be zero", param_name)
+        )));
+    }
+    Ok(())
+}
+
+/// Validates salt parameter for security
+fn validate_salt(salt: &str) -> Result<(), ContractError> {
+    if salt.is_empty() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Salt cannot be empty"
+        )));
+    }
+    if salt.len() > 100 {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Salt too long (max 100 characters)"
+        )));
+    }
+    // Check for dangerous characters
+    if salt.contains('\x00') || salt.contains('<') || salt.contains('>') {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Salt contains invalid characters"
+        )));
+    }
+    Ok(())
+}
+
+/// Validates slippage tolerance for security
+fn validate_slippage(slippage: Option<Decimal>) -> Result<(), ContractError> {
+    if let Some(slippage) = slippage {
+        if slippage > Decimal::percent(50) {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                "Slippage tolerance too high (max 50%)"
+            )));
+        }
+        if slippage < Decimal::percent(1) {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                "Slippage tolerance too low (min 1%)"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Validates receiver address for security
+fn validate_receiver(receiver: &Addr) -> Result<(), ContractError> {
+    if receiver.as_str().is_empty() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Receiver address cannot be empty"
+        )));
+    }
+    Ok(())
+}
+
 pub fn add_to_role(
     deps: DepsMut,
     sender: Addr,
@@ -111,6 +169,28 @@ pub fn oracle_update_prices(
     prices: PricesMap,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &sender, AccessControlRole::Oracle {})?;
+    
+    // CRITICAL: Validate prices map
+    if prices.is_empty() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Prices map cannot be empty"
+        )));
+    }
+    
+    // Validate each price is positive
+    for (token, price) in &prices {
+        if price.is_zero() {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                format!("Price for token {} cannot be zero", token)
+            )));
+        }
+        if token.is_empty() {
+            return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                "Token identifier cannot be empty"
+            )));
+        }
+    }
+    
     update_and_validate_prices(deps, prices)?;
     Ok(Response::new())
 }
@@ -124,6 +204,11 @@ pub fn bond(
     slippage: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+    
+    // CRITICAL: Validate all input parameters
+    validate_amount(amount, "amount")?;
+    validate_salt(&salt)?;
+    validate_slippage(slippage)?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = env.contract.address;
@@ -185,6 +270,10 @@ pub fn deposit(
     assets: Uint128,
     receiver: Addr,
 ) -> Result<Response, ContractError> {
+    // CRITICAL: Validate input parameters
+    validate_amount(assets, "assets")?;
+    validate_receiver(&receiver)?;
+    
     let cw4626::MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
         return Err(cw4626_base::ContractError::ExceededMaxDeposit {
@@ -206,6 +295,10 @@ pub fn mint(
     shares: Uint128,
     receiver: Addr,
 ) -> Result<Response, ContractError> {
+    // CRITICAL: Validate input parameters
+    validate_amount(shares, "shares")?;
+    validate_receiver(&receiver)?;
+    
     let deps_ref = deps.as_ref();
     let cw4626::MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
     if shares > max_shares {
@@ -228,6 +321,9 @@ pub fn add_liquidity(
     underlying_token_amount: Uint128,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+    
+    // CRITICAL: Validate input parameters
+    validate_amount(underlying_token_amount, "underlying_token_amount")?;
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let lp_price = Decimal::try_from(deps.querier.query_wasm_smart::<Decimal256>(

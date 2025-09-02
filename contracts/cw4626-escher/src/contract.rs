@@ -11,6 +11,92 @@ use crate::staking::EscherHubQueryMsg;
 use crate::staking::EscherHubStakingLiquidity;
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 use crate::tower::{init_oracle_prices, update_tower_config};
+use cw4626::InstantiateMarketingInfo;
+
+/// Validates share name for security and correctness
+fn validate_share_name(name: &str) -> Result<(), ContractError> {
+    if name.is_empty() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Share name cannot be empty"
+        )));
+    }
+    if name.len() > 50 {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Share name too long (max 50 characters)"
+        )));
+    }
+    // Check for dangerous characters that could break UI or cause issues
+    if name.contains('\x00') || name.contains('<') || name.contains('>') || name.contains('"') {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Share name contains invalid characters"
+        )));
+    }
+    Ok(())
+}
+
+/// Validates share symbol for security and correctness
+fn validate_share_symbol(symbol: &str) -> Result<(), ContractError> {
+    if symbol.is_empty() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Share symbol cannot be empty"
+        )));
+    }
+    if symbol.len() > 20 {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Share symbol too long (max 20 characters)"
+        )));
+    }
+    // Validate symbol contains only alphanumeric characters and common symbols
+    if !symbol.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Share symbol must contain only alphanumeric characters, '-', and '_'"
+        )));
+    }
+    Ok(())
+}
+
+/// Validates marketing info for security
+fn validate_marketing_info(marketing: &Option<InstantiateMarketingInfo>) -> Result<(), ContractError> {
+    if let Some(marketing) = marketing {
+        // Validate project name
+        if let Some(project) = &marketing.project {
+            if project.len() > 100 {
+                return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Project name too long (max 100 characters)"
+                )));
+            }
+            if project.contains('\x00') || project.contains('<') || project.contains('>') {
+                return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Project name contains invalid characters"
+                )));
+            }
+        }
+        
+        // Validate description
+        if let Some(description) = &marketing.description {
+            if description.len() > 500 {
+                return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Description too long (max 500 characters)"
+                )));
+            }
+            if description.contains('\x00') || description.contains('<') || description.contains('>') {
+                return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Description contains invalid characters"
+                )));
+            }
+        }
+        
+        // Validate marketing address (if provided)
+        if let Some(marketing_addr) = &marketing.marketing {
+            if marketing_addr.as_str().is_empty() {
+                return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Marketing address cannot be empty"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -19,6 +105,30 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    // CRITICAL: Validate all input parameters before processing
+    validate_share_name(&msg.share_name)?;
+    validate_share_symbol(&msg.share_symbol)?;
+    validate_marketing_info(&msg.share_marketing)?;
+    
+    // Validate underlying token before querying decimals
+    // Note: validate_asset_info is private, so we'll validate the token differently
+    match &msg.underlying_token {
+        astroport::asset::AssetInfo::Token { contract_addr } => {
+            if contract_addr.as_str().is_empty() {
+                return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Empty contract address not allowed"
+                )));
+            }
+        }
+        astroport::asset::AssetInfo::NativeToken { denom } => {
+            if denom.is_empty() {
+                return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                    "Empty denom not allowed"
+                )));
+            }
+        }
+    }
+    
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
     cw20_base::contract::instantiate(
@@ -75,6 +185,18 @@ pub fn instantiate(
         AccessControlRole::Oracle {}.key(),
         &msg.oracles,
     )?;
+    // Validate tower config parameters
+    if msg.slippage_tolerance > cosmwasm_std::Decimal::percent(50) {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Slippage tolerance too high (max 50%)"
+        )));
+    }
+    if msg.slippage_tolerance < cosmwasm_std::Decimal::percent(1) {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Slippage tolerance too low (min 1%)"
+        )));
+    }
+    
     let tower_config = update_tower_config(
         deps.branch(),
         msg.tower_incentives,
