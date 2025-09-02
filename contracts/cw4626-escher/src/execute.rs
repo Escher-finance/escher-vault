@@ -118,7 +118,6 @@ pub fn deposit(
     }
     let cw4626::PreviewDepositResponse { shares } =
         query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
-    dbg!(assets, shares);
     _deposit(deps, env, info, receiver, assets, shares)
 }
 
