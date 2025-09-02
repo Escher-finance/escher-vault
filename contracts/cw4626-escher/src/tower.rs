@@ -10,7 +10,7 @@ use astroport::{
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, Storage, Uint128, WasmMsg, StdError, StdResult,
 };
 use cw4626::cw20;
 
@@ -20,6 +20,77 @@ use crate::{
     ContractError,
 };
 
+// Security constants for tower validation
+const MAX_SLIPPAGE_PERCENT: u64 = 50; // 50%
+const MIN_SLIPPAGE_PERCENT: u64 = 1; // 1%
+const MAX_LP_INCENTIVES_SIZE: usize = 50;
+
+/// Validates address for security
+fn validate_address(addr: &Addr, field_name: &str) -> StdResult<()> {
+    if addr.as_str().is_empty() {
+        return Err(StdError::generic_err(format!("{} address cannot be empty", field_name)));
+    }
+    Ok(())
+}
+
+/// Validates amount for security
+fn validate_amount(amount: Uint128, field_name: &str) -> StdResult<()> {
+    if amount.is_zero() {
+        return Err(StdError::generic_err(format!("{} amount cannot be zero", field_name)));
+    }
+    Ok(())
+}
+
+/// Validates slippage tolerance for security
+fn validate_slippage_tolerance(slippage: Decimal) -> StdResult<()> {
+    if slippage < Decimal::percent(MIN_SLIPPAGE_PERCENT) {
+        return Err(StdError::generic_err(format!(
+            "Slippage tolerance too low (min {}%)", MIN_SLIPPAGE_PERCENT
+        )));
+    }
+    if slippage > Decimal::percent(MAX_SLIPPAGE_PERCENT) {
+        return Err(StdError::generic_err(format!(
+            "Slippage tolerance too high (max {}%)", MAX_SLIPPAGE_PERCENT
+        )));
+    }
+    Ok(())
+}
+
+/// Validates asset info for security
+fn validate_asset_info(asset_info: &AssetInfo, field_name: &str) -> StdResult<()> {
+    match asset_info {
+        AssetInfo::Token { contract_addr } => {
+            if contract_addr.as_str().is_empty() {
+                return Err(StdError::generic_err(format!("{} contract address cannot be empty", field_name)));
+            }
+        }
+        AssetInfo::NativeToken { denom } => {
+            if denom.is_empty() {
+                return Err(StdError::generic_err(format!("{} denom cannot be empty", field_name)));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Validates LP incentives for security
+fn validate_lp_incentives(lp_incentives: &[AssetInfo]) -> StdResult<()> {
+    if lp_incentives.is_empty() {
+        return Err(StdError::generic_err("LP incentives cannot be empty"));
+    }
+    if lp_incentives.len() > MAX_LP_INCENTIVES_SIZE {
+        return Err(StdError::generic_err(format!(
+            "LP incentives too large (max {} entries)", MAX_LP_INCENTIVES_SIZE
+        )));
+    }
+    
+    for (i, incentive) in lp_incentives.iter().enumerate() {
+        validate_asset_info(incentive, &format!("lp_incentives[{}]", i))?;
+    }
+    
+    Ok(())
+}
+
 pub fn update_tower_config(
     deps: DepsMut,
     tower_incentives: Addr,
@@ -28,6 +99,13 @@ pub fn update_tower_config(
     lp_incentives: Vec<AssetInfo>,
     underlying_asset_info: AssetInfo,
 ) -> Result<TowerConfig, ContractError> {
+    // CRITICAL: Validate all input parameters
+    validate_address(&tower_incentives, "tower_incentives")?;
+    validate_address(&lp, "lp")?;
+    validate_slippage_tolerance(slippage_tolerance)?;
+    validate_asset_info(&underlying_asset_info, "underlying_asset_info")?;
+    validate_lp_incentives(&lp_incentives)?;
+    
     let invalid_tower_config_err = Err(ContractError::InvalidTowerConfig {});
     if deps
         .querier
@@ -127,6 +205,9 @@ pub fn add_tower_liquidity(
     underlying_asset_amount: Uint128,
     other_lp_asset_amount: Uint128,
 ) -> Result<CosmosMsg, ContractError> {
+    // CRITICAL: Validate input parameters
+    validate_amount(underlying_asset_amount, "underlying_asset_amount")?;
+    validate_amount(other_lp_asset_amount, "other_lp_asset_amount")?;
     let assets = Vec::from([
         Asset {
             info: tower_config.lp_underlying_asset.clone(),
@@ -155,6 +236,8 @@ pub fn withdraw_liquidity(
     storage: &dyn Storage,
     lp_token_amount: Uint128,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
+    // CRITICAL: Validate input parameters
+    validate_amount(lp_token_amount, "lp_token_amount")?;
     let tower_config = TOWER_CONFIG.load(storage)?;
     let incentives_execute_msg = IncentivesExecuteMsg::Withdraw {
         lp_token: tower_config.lp_token.to_string(),
@@ -186,6 +269,8 @@ pub fn calculate_total_assets(
     storage: &dyn Storage,
     addr: Addr,
 ) -> Result<Uint128, ContractError> {
+    // CRITICAL: Validate input parameters
+    validate_address(&addr, "addr")?;
     let prices = get_and_validate_oracle_prices(storage)?;
     let tower_config = TOWER_CONFIG.load(storage)?;
     let mut total_balance = query_asset_info_balance(
