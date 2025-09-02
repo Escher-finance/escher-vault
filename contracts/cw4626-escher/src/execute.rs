@@ -1,16 +1,12 @@
-use astroport::{
-    asset::{Asset, AssetInfo},
-    pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
-};
+use astroport::{asset::Asset, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
 use cosmwasm_std::{
     to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError,
-    Uint128, WasmMsg,
+    Uint128,
 };
-use cw4626::cw20;
 
 use crate::{
     access_control::only_role,
-    asset::query_asset_info_balance,
+    asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     helpers::_deposit,
     query,
     responses::generate_bond_response,
@@ -99,33 +95,20 @@ pub fn bond(
     }
 
     // Create the bond message for the staking contract
-    let escher_bond_msg = EscherHubExecuteMsg::Bond {
-        slippage,
-        expected,
-        recipient: None,
-        recipient_channel_id: None,
-        salt: Some(salt),
-    };
-    let bond_msg = match asset_info {
-        AssetInfo::Token { contract_addr } => WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
-            msg: to_json_binary(&cw20::Cw20ExecuteMsg::Send {
-                contract: staking_contract.to_string(),
-                amount,
-                msg: to_json_binary(&escher_bond_msg)?,
-            })?,
-            funds: vec![],
+    let bond_msg = asset_cw20_send_or_attach_funds(
+        Asset {
+            info: asset_info,
+            amount,
         },
-        AssetInfo::NativeToken { .. } => WasmMsg::Execute {
-            contract_addr: staking_contract.to_string(),
-            msg: to_json_binary(&escher_bond_msg)?,
-            funds: Vec::from([Asset {
-                info: asset_info,
-                amount,
-            }
-            .as_coin()?]),
-        },
-    };
+        staking_contract.clone(),
+        to_json_binary(&EscherHubExecuteMsg::Bond {
+            slippage,
+            expected,
+            recipient: None,
+            recipient_channel_id: None,
+            salt: Some(salt),
+        })?,
+    )?;
 
     Ok(generate_bond_response(&this, expected, &staking_contract).add_message(bond_msg))
 }
