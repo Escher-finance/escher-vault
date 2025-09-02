@@ -195,11 +195,11 @@ pub fn add_liquidity(
         return Err(ContractError::InsufficientFunds {});
     }
 
-    let msg = add_tower_liquidity(
+    let msgs = add_tower_liquidity(
         &tower_config,
         underlying_token_amount,
         other_lp_token_amount,
     )?;
 
-    Ok(Response::new().add_message(msg))
+    Ok(Response::new().add_messages(msgs))
 }
