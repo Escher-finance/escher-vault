@@ -168,7 +168,7 @@ pub fn unbond(
             amount,
         },
         staking_contract.clone(),
-        to_json_binary(&EscherHubExecuteMsg::Unbond {
+        to_json_binary(&EscherHubExecuteMsg::Unstake {
             amount,
             salt: Some(salt),
         })?,
