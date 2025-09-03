@@ -34,7 +34,7 @@ pub fn add_to_role(
     only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let mut addrs = addrs.unwrap_or_default();
-        addrs.push(address);
+        addrs.push(address.clone());
         validate_addrs(addrs.into_iter())
     })?;
     Ok(generate_add_role_response(
