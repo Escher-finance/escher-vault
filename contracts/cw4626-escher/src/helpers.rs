@@ -139,6 +139,7 @@ pub fn _deposit(
     Ok(res)
 }
 
+/// Validates addrs uniqueness, minimum and maximum length
 pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, ContractError> {
     let addrs = addrs
         .collect::<HashSet<_>>()
@@ -146,6 +147,9 @@ pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, Co
         .collect::<Vec<_>>();
     if addrs.is_empty() {
         return Err(ContractError::EmptyAddrsList {});
+    }
+    if addrs.len() > 10 {
+        return Err(ContractError::MaxedAddrsList {});
     }
     Ok(addrs)
 }

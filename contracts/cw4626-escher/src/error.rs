@@ -46,4 +46,7 @@ pub enum ContractError {
 
     #[error("addrs list cannot be empty")]
     EmptyAddrsList {},
+
+    #[error("addrs list exceeds maximum length")]
+    MaxedAddrsList {},
 }
