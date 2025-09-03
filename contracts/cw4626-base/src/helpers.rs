@@ -130,16 +130,12 @@ pub fn _preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
-    via_receive: bool,
 ) -> StdResult<PreviewDepositResponse> {
     let Tokens {
         total_shares,
-        mut total_assets,
+        total_assets,
         ..
     } = get_tokens(this, deps)?;
-    if via_receive {
-        total_assets -= assets;
-    }
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(PreviewDepositResponse { shares })
 }

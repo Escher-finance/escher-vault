@@ -53,7 +53,7 @@ pub fn receive_deposit(
         });
     }
     let PreviewDepositResponse { shares } =
-        _preview_deposit(&env.contract.address, &deps.as_ref(), assets, true)?;
+        _preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
     _mint(deps, receiver.to_string(), shares)?;
     Ok(generate_deposit_response(
         &sender, &receiver, assets, shares,

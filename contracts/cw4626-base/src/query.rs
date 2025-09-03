@@ -67,7 +67,7 @@ pub fn preview_deposit(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<PreviewDepositResponse> {
-    _preview_deposit(this, deps, assets, false)
+    _preview_deposit(this, deps, assets)
 }
 
 pub fn max_mint(_receiver: Addr) -> StdResult<MaxMintResponse> {
