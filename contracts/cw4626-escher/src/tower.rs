@@ -16,8 +16,8 @@ use cw4626::cw20;
 
 use crate::{
     asset::{
-        asset_generate_increase_allowance_or_funds, get_asset_info_address,
-        query_asset_info_balance,
+        asset_cw20_send_or_attach_funds, asset_generate_increase_allowance_or_funds,
+        get_asset_info_address, query_asset_info_balance,
     },
     state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
@@ -271,43 +271,61 @@ pub fn calculate_total_assets(
 }
 
 // build the swap cosmos messages to the lp contract
-pub fn do_swap(
+pub fn tower_swap(
     tower_config: TowerConfig,
     amount: Uint128,
     asset_info: &AssetInfo,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
-    let (allowance_msg, fund) = asset_generate_increase_allowance_or_funds(
-        Asset {
-            info: asset_info.clone(),
-            amount,
-        },
-        tower_config.lp.clone(),
-    )?;
+    let offer_asset = Asset {
+        info: asset_info.clone(),
+        amount,
+    };
+    let (allowance_msg, fund) =
+        asset_generate_increase_allowance_or_funds(offer_asset.clone(), tower_config.lp.clone())?;
 
     let mut msgs = Vec::new();
     let mut funds = Vec::new();
 
     if let Some(msg) = allowance_msg {
         msgs.push(msg);
-    }
-    if let Some(coin) = fund {
+    } else if let Some(coin) = fund {
         funds.push(coin);
     }
-    // construct the swap message to the lp contract
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: tower_config.lp.to_string(),
-        msg: to_json_binary(&PairExecuteMsg::Swap {
-            offer_asset: Asset {
-                info: asset_info.clone(),
-                amount,
-            },
-            ask_asset_info: None,
-            belief_price: None,
-            max_spread: Some(tower_config.slippage_tolerance),
-            to: None,
-        })?,
-        funds,
-    });
-    msgs.push(msg);
+
+    let ask_asset_info = if asset_info == &tower_config.lp_underlying_asset {
+        tower_config.lp_other_asset.clone()
+    } else {
+        tower_config.lp_underlying_asset.clone()
+    };
+
+    let msg = {
+        let ask_asset_info = Some(ask_asset_info);
+        let belief_price = None;
+        let max_spread = Some(tower_config.slippage_tolerance);
+        let to = None;
+        match asset_info {
+            AssetInfo::NativeToken { .. } => to_json_binary(&PairExecuteMsg::Swap {
+                offer_asset: offer_asset.clone(),
+                ask_asset_info,
+                belief_price,
+                max_spread,
+                to,
+            }),
+            AssetInfo::Token { .. } => to_json_binary(&Cw20HookMsg::Swap {
+                ask_asset_info,
+                belief_price,
+                max_spread,
+                to,
+            }),
+        }?
+    };
+    msgs.push(CosmosMsg::Wasm(asset_cw20_send_or_attach_funds(
+        Asset {
+            info: asset_info.clone(),
+            amount,
+        },
+        tower_config.lp.clone(),
+        msg,
+    )?));
     Ok(msgs)
 }

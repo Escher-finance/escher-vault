@@ -44,6 +44,8 @@ pub enum ExecuteMsg {
         salt: String,
         slippage: Option<Decimal>,
     },
+    /// Manager unbond
+    Unbond { amount: Uint128 },
     /// Manager add liquidity
     AddLiquidity { underlying_token_amount: Uint128 },
     /// Manager swap

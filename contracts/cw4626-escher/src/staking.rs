@@ -30,4 +30,10 @@ pub enum EscherHubExecuteMsg {
         recipient_channel_id: Option<u32>,
         salt: Option<String>,
     },
+    Unstake {
+        amount: Uint128,
+        recipient: Option<String>,
+        recipient_channel_id: Option<u32>,
+        recipient_ibc_channel_id: Option<u32>,
+    },
 }

@@ -101,6 +101,7 @@ pub fn execute(
             salt,
             slippage,
         } => crate::execute::bond(deps, env, info, amount, salt, slippage)?,
+        ExecuteMsg::Unbond { amount } => crate::execute::unbond(deps, env, info, amount)?,
         ExecuteMsg::AddLiquidity {
             underlying_token_amount,
         } => crate::execute::add_liquidity(deps, env, info, underlying_token_amount)?,
@@ -127,7 +128,7 @@ pub fn execute(
             owner,
         } => cw4626_base_executes::redeem(deps, env, sender, shares, receiver, owner)?,
         ExecuteMsg::Receive(cw20_receive_msg) => {
-            cw4626_base_executes::receive(deps, env, sender, cw20_receive_msg)?
+            crate::execute::receive(deps, env, sender, cw20_receive_msg)?
         }
         //
         // CW20
