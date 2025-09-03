@@ -49,4 +49,7 @@ pub enum ContractError {
 
     #[error("addrs list exceeds maximum length")]
     MaxedAddrsList {},
+
+    #[error("salt is not valid")]
+    InvalidSalt {},
 }

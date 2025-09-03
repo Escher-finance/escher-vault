@@ -153,3 +153,13 @@ pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, Co
     }
     Ok(addrs)
 }
+
+pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
+    let hex = salt
+        .strip_prefix("0x")
+        .ok_or(ContractError::InvalidSalt {})?;
+    if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(ContractError::InvalidSalt {});
+    }
+    Ok(())
+}

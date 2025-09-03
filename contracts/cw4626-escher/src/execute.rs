@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use crate::{
     access_control::only_role,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
-    helpers::{_deposit, validate_addrs},
+    helpers::{_deposit, validate_addrs, validate_salt},
     query,
     responses::generate_bond_response,
     staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
@@ -75,6 +75,8 @@ pub fn bond(
     slippage: Option<Decimal>,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+
+    validate_salt(&salt)?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = env.contract.address;
