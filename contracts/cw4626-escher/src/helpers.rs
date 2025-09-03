@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
 use cw4626_base::helpers::generate_deposit_response;
@@ -135,4 +137,15 @@ pub fn _deposit(
     }
     _mint(deps.branch(), receiver.to_string(), shares)?;
     Ok(res)
+}
+
+pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, ContractError> {
+    let addrs = addrs
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    if addrs.is_empty() {
+        return Err(ContractError::EmptyAddrsList {});
+    }
+    Ok(addrs)
 }

@@ -43,4 +43,7 @@ pub enum ContractError {
 
     #[error("insufficient {kind} for swap funds")]
     InsufficientSwapFunds { kind: String },
+
+    #[error("addrs list cannot be empty")]
+    EmptyAddrsList {},
 }
