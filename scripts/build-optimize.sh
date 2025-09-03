@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Build the contract (lib only to avoid schema binary issues)
-cargo build --release --target wasm32-unknown-unknown --package cw4626-escher --lib
+# Build the contract
+cargo wasm -p cw4626-escher
 
 # Create artifacts directory
 mkdir -p artifacts
