@@ -159,7 +159,13 @@ print_status "Step 2: Instantiating contract with your configuration..."
 
 # Instantiate contract
 INSTANTIATE_TX=$(babylond tx wasm instantiate $CODE_ID "{
-  \"underlying_token_address\": \"$BABYLON_UNDERLYING_TOKEN\",
+  \"managers\": [\"$BABYLON_MANAGER\"],
+  \"oracles\": [\"$BABYLON_ORACLE\"],
+  \"underlying_token\": {
+    \"native_token\": {
+      \"denom\": \"ubbn\"
+    }
+  },
   \"share_name\": \"Babylon LP Vault\",
   \"share_symbol\": \"bLP\",
   \"share_marketing\": {
@@ -167,8 +173,6 @@ INSTANTIATE_TX=$(babylond tx wasm instantiate $CODE_ID "{
     \"description\": \"Automated LP vault for Babylon testnet\",
     \"marketing\": \"$BABYLON_MANAGER\"
   },
-  \"manager\": \"$BABYLON_MANAGER\",
-  \"oracle\": \"$BABYLON_ORACLE\",
   \"tower_incentives\": \"$BABYLON_TOWER_INCENTIVES\",
   \"lp\": \"$BABYLON_POOL_ADDRESS\",
   \"slippage_tolerance\": \"0.01\",
@@ -178,7 +182,8 @@ INSTANTIATE_TX=$(babylond tx wasm instantiate $CODE_ID "{
         \"denom\": \"ubbn\"
       }
     }
-  ]
+  ],
+  \"staking_contract\": null
 }" \
   --from $BABYLON_KEY_NAME \
   --chain-id $BABYLON_CHAIN_ID \

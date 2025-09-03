@@ -70,6 +70,10 @@ pub fn _convert_to_shares(
     assets: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
+    // If vault is in zero state, mint 1:1 shares for assets
+    if total_shares.is_zero() || total_assets.is_zero() {
+        return Ok(assets);
+    }
     let frac = (total_shares + Uint128::one(), total_assets + Uint128::one());
     match rounding {
         Rounding::Ceil => assets.checked_mul_ceil(frac),
@@ -321,5 +325,56 @@ mod tests {
             Rounding::Floor
         )
         .is_err());
+    }
+
+    #[test]
+    fn convert_to_shares_zero_state_returns_1_to_1() {
+        let assets = Uint128::new(60000);
+        
+        // Test when total_shares is zero
+        let shares = _convert_to_shares(
+            Uint128::zero(),
+            Uint128::new(1000),
+            assets,
+            Rounding::Floor
+        ).unwrap();
+        assert_eq!(shares, assets);
+
+        // Test when total_assets is zero
+        let shares = _convert_to_shares(
+            Uint128::new(1000),
+            Uint128::zero(),
+            assets,
+            Rounding::Floor
+        ).unwrap();
+        assert_eq!(shares, assets);
+
+        // Test when both are zero
+        let shares = _convert_to_shares(
+            Uint128::zero(),
+            Uint128::zero(),
+            assets,
+            Rounding::Floor
+        ).unwrap();
+        assert_eq!(shares, assets);
+    }
+
+    #[test]
+    fn convert_to_shares_non_zero_state_uses_ratio() {
+        let assets = Uint128::new(1000);
+        let total_shares = Uint128::new(2000);
+        let total_assets = Uint128::new(3000);
+        
+        // Should use the ratio formula, not 1:1
+        let shares = _convert_to_shares(
+            total_shares,
+            total_assets,
+            assets,
+            Rounding::Floor
+        ).unwrap();
+        
+        // Expected: 1000 * (2000 + 1) / (3000 + 1) = 1000 * 2001 / 3001 ≈ 666
+        let expected = Uint128::new(666);
+        assert_eq!(shares, expected);
     }
 }
