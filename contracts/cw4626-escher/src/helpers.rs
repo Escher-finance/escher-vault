@@ -80,15 +80,12 @@ pub fn _preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
-    _via_receive: bool,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
     let Tokens {
         total_shares,
         total_assets,
         ..
     } = get_tokens(this, deps)?;
-    // Use the same logic as convert_to_shares to ensure consistency
-    // Our zero-state fix in _convert_to_shares already handles 1:1 conversion correctly
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(cw4626::PreviewDepositResponse { shares })
 }
