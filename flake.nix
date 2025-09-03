@@ -23,7 +23,7 @@
         };
 
         # Rust toolchain with specific version
-        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+        rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
           extensions = [
             "rust-src"
             "rust-analyzer"
