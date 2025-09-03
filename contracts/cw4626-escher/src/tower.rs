@@ -274,7 +274,7 @@ pub fn calculate_total_assets(
 pub fn do_swap(
     tower_config: TowerConfig,
     amount: Uint128,
-    asset_info: AssetInfo,
+    asset_info: &AssetInfo,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let (allowance_msg, fund) = asset_generate_increase_allowance_or_funds(
         Asset {
@@ -298,7 +298,7 @@ pub fn do_swap(
         contract_addr: tower_config.lp.to_string(),
         msg: to_json_binary(&PairExecuteMsg::Swap {
             offer_asset: Asset {
-                info: asset_info,
+                info: asset_info.clone(),
                 amount,
             },
             ask_asset_info: None,

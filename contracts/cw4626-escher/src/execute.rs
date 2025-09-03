@@ -12,7 +12,10 @@ use crate::{
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     helpers::{_deposit, validate_addrs, validate_salt},
     query,
-    responses::generate_bond_response,
+    responses::{
+        add_liquidity_event, generate_add_role_response, generate_bond_response,
+        generate_oracle_update_prices_response, generate_remove_role_response, swap_event,
+    },
     staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
     state::{
         AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
@@ -34,7 +37,11 @@ pub fn add_to_role(
         addrs.push(address);
         validate_addrs(addrs.into_iter())
     })?;
-    Ok(Response::new())
+    Ok(generate_add_role_response(
+        sender.as_ref(),
+        &role.to_string(),
+        address.as_ref(),
+    ))
 }
 
 pub fn remove_from_role(
@@ -53,7 +60,11 @@ pub fn remove_from_role(
         )?;
         Ok(addrs)
     })?;
-    Ok(Response::new())
+    Ok(generate_remove_role_response(
+        sender.as_ref(),
+        &role.to_string(),
+        address.as_ref(),
+    ))
 }
 
 pub fn oracle_update_prices(
@@ -62,8 +73,11 @@ pub fn oracle_update_prices(
     prices: PricesMap,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &sender, AccessControlRole::Oracle {})?;
-    update_and_validate_prices(deps, prices)?;
-    Ok(Response::new())
+    update_and_validate_prices(deps, prices.clone())?;
+    Ok(generate_oracle_update_prices_response(
+        sender.as_ref(),
+        &prices,
+    ))
 }
 
 pub fn bond(
@@ -206,7 +220,13 @@ pub fn add_liquidity(
         other_lp_token_amount,
     )?;
 
-    Ok(Response::new().add_messages(msgs))
+    let event = add_liquidity_event(
+        &info.sender,
+        underlying_token_amount,
+        other_lp_token_amount,
+        &tower_config.lp,
+    );
+    Ok(Response::new().add_event(event).add_messages(msgs))
 }
 
 pub fn swap(
@@ -238,7 +258,12 @@ pub fn swap(
     }
 
     // build the execute swap cosmos messages
-    let msgs = do_swap(tower_config, amount, asset_info)?;
+    let msgs = do_swap(tower_config, amount, &asset_info)?;
 
-    Ok(Response::new().add_messages(msgs))
+    let event = swap_event(
+        info.sender.as_ref(),
+        amount,
+        asset_info.to_string().as_str(),
+    );
+    Ok(Response::new().add_event(event).add_messages(msgs))
 }
