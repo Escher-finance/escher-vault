@@ -32,7 +32,7 @@ pub fn add_to_role(
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let mut addrs = addrs.unwrap_or_default();
         addrs.push(address);
-        Ok(validate_addrs(addrs.into_iter())?)
+        validate_addrs(addrs.into_iter())
     })?;
     Ok(Response::new())
 }
