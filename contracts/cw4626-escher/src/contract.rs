@@ -7,11 +7,17 @@ use cw4626_base::query as cw4626_base_queries;
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractError;
 use crate::helpers::validate_addrs;
+use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::EscherHubQueryMsg;
 use crate::staking::EscherHubStakingLiquidity;
 use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
 use crate::tower::{init_oracle_prices, update_tower_config};
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    Ok(Response::new())
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
