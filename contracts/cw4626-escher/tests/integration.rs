@@ -395,9 +395,25 @@ fn deposit_no_yield_must_be_one_to_one() {
 }
 
 #[test]
-fn get_access_git_commit() {
-    let git_branch = env!("VERGEN_GIT_BRANCH");
-    let git_commit = env!("VERGEN_GIT_SHA");
-    assert!(!git_branch.is_empty());
-    assert!(!git_commit.is_empty());
+fn git_info_must_return_valid_data() {
+    let mut app = get_app();
+    let vault = proper_instantiate(&mut app);
+    let git_info = app
+        .wrap()
+        .query_wasm_smart::<GitInfoResponse>(&vault, &QueryMsg::GitInfo {})
+        .unwrap()
+        .git;
+    dbg!(&git_info);
+    let mut parts = git_info.splitn(2, ':');
+    let branch = parts.next().unwrap();
+    assert!(
+        !branch.is_empty()
+            && branch.chars().all(|c| c.is_ascii_alphanumeric()
+                || c == '.'
+                || c == '_'
+                || c == '-'
+                || c == '/')
+    );
+    let hash = parts.next().unwrap();
+    assert!(hash.len() == 40 && hash.chars().all(|c| c.is_ascii_hexdigit()))
 }
