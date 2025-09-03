@@ -47,7 +47,6 @@ pub enum ExecuteMsg {
     /// Manager unbond
     Unbond {
         amount: Uint128,
-        salt: String,
     },
     /// Manager add liquidity
     AddLiquidity { underlying_token_amount: Uint128 },
