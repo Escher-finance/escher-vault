@@ -124,12 +124,12 @@ pub fn _deposit(
     assets: Uint128,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
-    // if assets.is_zero() {
-    //     return Err(ContractError::ZeroAssetAmount {});
-    // }
-    // if shares.is_zero() {
-    //     return Err(ContractError::ZeroShareAmount {});
-    // }
+    if assets.is_zero() {
+        return Err(ContractError::ZeroAssetAmount {});
+    }
+    if shares.is_zero() {
+        return Err(ContractError::ZeroShareAmount {});
+    }
 
     let caller = info.sender.clone();
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;

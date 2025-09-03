@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use astroport::asset::AssetInfo;
 use cosmwasm_std::testing::MockApi;
@@ -300,9 +301,14 @@ fn instantiate_vault(
         share_symbol: "sTKN".to_string(),
         share_marketing: None,
         underlying_token,
-        incentives: Vec::from([AssetInfo::NativeToken {
-            denom: "incentive1".to_string(),
-        }]),
+        incentives: Vec::from([
+            AssetInfo::NativeToken {
+                denom: "incentive1".to_string(),
+            },
+            AssetInfo::NativeToken {
+                denom: "incentive2".to_string(),
+            },
+        ]),
         slippage_tolerance: Decimal::from_ratio(1_u32, 100_u32),
         staking_contract: Some(staking_address),
         lp: lp_address,
@@ -331,17 +337,19 @@ fn deposit_no_yield_must_be_one_to_one() {
     let mut app = get_app();
     let vault = proper_instantiate(&mut app);
     let api = app.api();
-    let oracle_tokens = app
-        .wrap()
-        .query_wasm_smart::<OracleTokensListResponse>(&vault, &QueryMsg::OracleTokensList {})
-        .unwrap();
     let oracle = addr(api, ORACLE);
     let user = addr(api, USER);
-    let prices = oracle_tokens
-        .tokens
-        .into_iter()
-        .map(|t| (t, Decimal::one()))
-        .collect();
+    let prices = HashMap::from_iter(
+        [
+            (
+                "other_lp_tkn".to_string(),
+                Decimal::from_str("1.78786").unwrap(),
+            ),
+            ("incentive1".to_string(), Decimal::from_str("0.8").unwrap()),
+            ("incentive2".to_string(), Decimal::from_str("0.8").unwrap()),
+        ]
+        .into_iter(),
+    );
     app.execute_contract(
         oracle.clone(),
         vault.clone(),
