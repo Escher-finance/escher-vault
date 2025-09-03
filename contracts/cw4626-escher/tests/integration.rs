@@ -433,7 +433,7 @@ fn sequential_deposits_with_oracle_prices_must_be_one_to_one() {
     let api = app.api();
     let oracle = addr(api, ORACLE);
     let user = addr(api, USER);
-    
+
     // Set up oracle prices (same as existing test - but mock contracts have no actual balances)
     let prices = HashMap::from_iter(
         [
@@ -456,7 +456,7 @@ fn sequential_deposits_with_oracle_prices_must_be_one_to_one() {
 
     // First deposit: 6000 ubbn should get 6000 shares
     let first_deposit_amount = Uint128::from(6000_u32);
-    
+
     app.execute_contract(
         user.clone(),
         vault.clone(),
@@ -478,13 +478,16 @@ fn sequential_deposits_with_oracle_prices_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
-    
-    println!("First deposit: {} ubbn -> {} shares", first_deposit_amount, first_share_balance);
+
+    println!(
+        "First deposit: {} ubbn -> {} shares",
+        first_deposit_amount, first_share_balance
+    );
     assert_eq!(first_share_balance, first_deposit_amount);
 
     // Second deposit: 5000 ubbn should get 5000 shares (mock contracts have no balances, so 1:1)
     let second_deposit_amount = Uint128::from(5000_u32);
-    
+
     app.execute_contract(
         user.clone(),
         vault.clone(),
@@ -506,19 +509,28 @@ fn sequential_deposits_with_oracle_prices_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
-    
+
     let second_deposit_shares = total_share_balance - first_share_balance;
-    println!("Second deposit: {} ubbn -> {} shares", second_deposit_amount, second_deposit_shares);
+    println!(
+        "Second deposit: {} ubbn -> {} shares",
+        second_deposit_amount, second_deposit_shares
+    );
     println!("Total shares: {}", total_share_balance);
-    
+
     // Second deposit should get fewer shares due to yield from LP tokens (oracle price 1.78786)
     // The vault now has yield-generating assets, so new deposits get fewer shares per ubbn
-    assert!(second_deposit_shares < second_deposit_amount, 
-        "Second deposit should get fewer shares due to yield: {} < {}", 
-        second_deposit_shares, second_deposit_amount);
-    assert!(total_share_balance < first_deposit_amount + second_deposit_amount,
-        "Total shares should be less than simple sum due to yield: {} < {}", 
-        total_share_balance, first_deposit_amount + second_deposit_amount);
+    assert!(
+        second_deposit_shares < second_deposit_amount,
+        "Second deposit should get fewer shares due to yield: {} < {}",
+        second_deposit_shares,
+        second_deposit_amount
+    );
+    assert!(
+        total_share_balance < first_deposit_amount + second_deposit_amount,
+        "Total shares should be less than simple sum due to yield: {} < {}",
+        total_share_balance,
+        first_deposit_amount + second_deposit_amount
+    );
 
     // Now add some incentive tokens to the vault to create yield
     let incentive_amount = Uint128::from(1000_u32);
@@ -535,7 +547,7 @@ fn sequential_deposits_with_oracle_prices_must_be_one_to_one() {
 
     // Third deposit: 3000 ubbn should get fewer shares due to yield
     let third_deposit_amount = Uint128::from(3000_u32);
-    
+
     app.execute_contract(
         user.clone(),
         vault.clone(),
@@ -557,19 +569,27 @@ fn sequential_deposits_with_oracle_prices_must_be_one_to_one() {
         )
         .unwrap()
         .balance;
-    
+
     let third_deposit_shares = final_share_balance - total_share_balance;
-    println!("Third deposit: {} ubbn -> {} shares (with yield)", third_deposit_amount, third_deposit_shares);
+    println!(
+        "Third deposit: {} ubbn -> {} shares (with yield)",
+        third_deposit_amount, third_deposit_shares
+    );
     println!("Final total shares: {}", final_share_balance);
-    
+
     // Third deposit should get fewer shares than 1:1 due to yield from incentive tokens
-    assert!(third_deposit_shares < third_deposit_amount, 
-        "Third deposit should get fewer shares due to yield: {} < {}", 
-        third_deposit_shares, third_deposit_amount);
-    
+    assert!(
+        third_deposit_shares < third_deposit_amount,
+        "Third deposit should get fewer shares due to yield: {} < {}",
+        third_deposit_shares,
+        third_deposit_amount
+    );
+
     // The yield from incentive tokens (1000 * 0.8 * 2 = 1600) should be reflected in the vault's total assets
     // This means the third deposit gets fewer shares because existing shareholders benefit from the yield
     let percentage = (third_deposit_shares * Uint128::from(100u32)) / third_deposit_amount;
-    println!("Yield effect: {} ubbn deposit only got {} shares ({}% of 1:1)", 
-        third_deposit_amount, third_deposit_shares, percentage);
+    println!(
+        "Yield effect: {} ubbn deposit only got {} shares ({}% of 1:1)",
+        third_deposit_amount, third_deposit_shares, percentage
+    );
 }

@@ -181,32 +181,22 @@ mod tests {
     #[test]
     fn convert_to_shares_zero_state_returns_1_to_1() {
         let assets = Uint128::new(60000);
-        
+
         // Test when total_shares is zero
-        let shares = _convert_to_shares(
-            Uint128::zero(),
-            Uint128::new(1000),
-            assets,
-            Rounding::Floor
-        ).unwrap();
+        let shares =
+            _convert_to_shares(Uint128::zero(), Uint128::new(1000), assets, Rounding::Floor)
+                .unwrap();
         assert_eq!(shares, assets);
 
         // Test when total_assets is zero
-        let shares = _convert_to_shares(
-            Uint128::new(1000),
-            Uint128::zero(),
-            assets,
-            Rounding::Floor
-        ).unwrap();
+        let shares =
+            _convert_to_shares(Uint128::new(1000), Uint128::zero(), assets, Rounding::Floor)
+                .unwrap();
         assert_eq!(shares, assets);
 
         // Test when both are zero
-        let shares = _convert_to_shares(
-            Uint128::zero(),
-            Uint128::zero(),
-            assets,
-            Rounding::Floor
-        ).unwrap();
+        let shares =
+            _convert_to_shares(Uint128::zero(), Uint128::zero(), assets, Rounding::Floor).unwrap();
         assert_eq!(shares, assets);
     }
 
@@ -215,15 +205,11 @@ mod tests {
         let assets = Uint128::new(1000);
         let total_shares = Uint128::new(2000);
         let total_assets = Uint128::new(3000);
-        
+
         // Should use the ratio formula, not 1:1
-        let shares = _convert_to_shares(
-            total_shares,
-            total_assets,
-            assets,
-            Rounding::Floor
-        ).unwrap();
-        
+        let shares =
+            _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor).unwrap();
+
         // Expected: 1000 * (2000 + 1) / (3000 + 1) = 1000 * 2001 / 3001 ≈ 666
         let expected = Uint128::new(666);
         assert_eq!(shares, expected);
@@ -236,15 +222,11 @@ mod tests {
         let assets = Uint128::new(1000);
         let total_shares = Uint128::new(1000);
         let total_assets = Uint128::new(1000);
-        
+
         // Both should give the same result now
-        let convert_shares = _convert_to_shares(
-            total_shares,
-            total_assets,
-            assets,
-            Rounding::Floor
-        ).unwrap();
-        
+        let convert_shares =
+            _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor).unwrap();
+
         // The preview should now match the convert_to_shares result
         // (We can't test _preview_deposit directly here as it needs deps, but the logic is the same)
         assert_eq!(convert_shares, assets); // Should be 1:1 in this case
