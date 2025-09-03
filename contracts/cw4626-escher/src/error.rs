@@ -1,4 +1,3 @@
-use astroport::asset::AssetInfo;
 use cosmwasm_std::StdError;
 use cw20_base::ContractError as Cw20ContractError;
 use cw4626_base::ContractError as Cw4626BaseContractError;
