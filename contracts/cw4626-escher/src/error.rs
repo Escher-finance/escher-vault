@@ -41,6 +41,6 @@ pub enum ContractError {
     #[error("invalid staking contract provided")]
     InvalidStakingContract {},
 
-    #[error("insufficient {kind} funds")]
+    #[error("insufficient {kind} for swap funds")]
     InsufficientSwapFunds { kind: String },
 }

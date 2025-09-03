@@ -269,3 +269,45 @@ pub fn calculate_total_assets(
     }
     Ok(total_balance)
 }
+
+// build the swap cosmos messages to the lp contract
+pub fn do_swap(
+    tower_config: TowerConfig,
+    amount: Uint128,
+    asset_info: AssetInfo,
+) -> Result<Vec<CosmosMsg>, ContractError> {
+    let (allowance_msg, fund) = asset_generate_increase_allowance_or_funds(
+        Asset {
+            info: asset_info.clone(),
+            amount,
+        },
+        tower_config.lp.clone(),
+    )?;
+
+    let mut msgs = Vec::new();
+    let mut funds = Vec::new();
+
+    if let Some(msg) = allowance_msg {
+        msgs.push(msg);
+    }
+    if let Some(coin) = fund {
+        funds.push(coin);
+    }
+    // construct the swap message to the lp contract
+    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: tower_config.lp.to_string(),
+        msg: to_json_binary(&PairExecuteMsg::Swap {
+            offer_asset: Asset {
+                info: asset_info,
+                amount,
+            },
+            ask_asset_info: None,
+            belief_price: None,
+            max_spread: Some(tower_config.slippage_tolerance),
+            to: None,
+        })?,
+        funds,
+    });
+    msgs.push(msg);
+    Ok(msgs)
+}
