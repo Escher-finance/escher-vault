@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
 use cw4626_base::helpers::generate_deposit_response;
@@ -122,6 +124,13 @@ pub fn _deposit(
     assets: Uint128,
     shares: Uint128,
 ) -> Result<Response, ContractError> {
+    if assets.is_zero() {
+        return Err(ContractError::ZeroAssetAmount {});
+    }
+    if shares.is_zero() {
+        return Err(ContractError::ZeroShareAmount {});
+    }
+
     let caller = info.sender.clone();
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     let asset = Asset {
@@ -135,4 +144,29 @@ pub fn _deposit(
     }
     _mint(deps.branch(), receiver.to_string(), shares)?;
     Ok(res)
+}
+
+/// Validates addrs uniqueness, minimum and maximum length
+pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, ContractError> {
+    let addrs = addrs
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    if addrs.is_empty() {
+        return Err(ContractError::EmptyAddrsList {});
+    }
+    if addrs.len() > 10 {
+        return Err(ContractError::MaxedAddrsList {});
+    }
+    Ok(addrs)
+}
+
+pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
+    let hex = salt
+        .strip_prefix("0x")
+        .ok_or(ContractError::InvalidSalt {})?;
+    if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(ContractError::InvalidSalt {});
+    }
+    Ok(())
 }

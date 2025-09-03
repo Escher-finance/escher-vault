@@ -6,6 +6,7 @@ use cw4626_base::query as cw4626_base_queries;
 
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractError;
+use crate::helpers::validate_addrs;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::EscherHubQueryMsg;
 use crate::staking::EscherHubStakingLiquidity;
@@ -52,12 +53,12 @@ pub fn instantiate(
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Manager {}.key(),
-        &msg.managers,
+        &validate_addrs(msg.managers.into_iter())?,
     )?;
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Oracle {}.key(),
-        &msg.oracles,
+        &validate_addrs(msg.oracles.into_iter())?,
     )?;
     let tower_config = update_tower_config(
         deps.branch(),
