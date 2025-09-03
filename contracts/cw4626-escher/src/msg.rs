@@ -43,6 +43,11 @@ pub enum ExecuteMsg {
     },
     /// Manager add liquidity
     AddLiquidity { underlying_token_amount: Uint128 },
+    /// Manager swap
+    Swap {
+        amount: Uint128,
+        asset_info: AssetInfo,
+    },
 
     //
     // CW4626

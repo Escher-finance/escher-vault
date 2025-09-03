@@ -32,12 +32,15 @@ pub enum ContractError {
     #[error("oracle prices are not valid")]
     OracleInvalidPrices {},
 
-    #[error("Insufficient funds for operation")]
+    #[error("insufficient funds for operation")]
     InsufficientFunds {},
 
-    #[error("Invalid token type for this operation")]
+    #[error("invalid token type for this operation")]
     InvalidTokenType {},
 
-    #[error("Invalid staking contract provided")]
+    #[error("invalid staking contract provided")]
     InvalidStakingContract {},
+
+    #[error("insufficient {kind} funds")]
+    InsufficientSwapFunds { kind: String },
 }
