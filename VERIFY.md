@@ -1,11 +1,12 @@
 # Deployment Code Verification
 
-Using our current setup it is possible to verify which commit corresponds to a
-certain deployment of `cw4626-escher`.
+Using our current setup it is possible to verify that the code on this
+repository corresponds to a certain deployment of `cw4626-escher`.
 
 1. Getting Git info from the deployed contract
    - Query the deployed contract with `{ "git_info": {} }`
-   - That should return a string in the format `{git branch}:{git commit hash}`
+   - That should return a string in the format
+     `"{git branch}:{git commit hash}"`
 2. Checkout to that git branch and commit
 3. Build the optimized code
    - `$ nix develop`
