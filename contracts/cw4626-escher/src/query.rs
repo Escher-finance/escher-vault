@@ -7,7 +7,8 @@ use crate::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
     },
     msg::{
-        AccessControlRoleResponse, ConfigResponse, OraclePricesResponse, OracleTokensListResponse,
+        AccessControlRoleResponse, ConfigResponse, GitInfoResponse, OraclePricesResponse,
+        OracleTokensListResponse,
     },
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
@@ -15,6 +16,11 @@ use crate::{
     },
     tower::calculate_total_assets,
 };
+
+pub fn git_info() -> StdResult<GitInfoResponse> {
+    let git = format!("{}:{}", env!("VERGEN_GIT_BRANCH"), env!("VERGEN_GIT_SHA"));
+    Ok(GitInfoResponse { git })
+}
 
 pub fn role(deps: &Deps, kind: AccessControlRole) -> StdResult<AccessControlRoleResponse> {
     let addresses = ACCESS_CONTROL.load(deps.storage, kind.key())?;

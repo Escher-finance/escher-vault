@@ -3,6 +3,7 @@ name = "cw4626-escher"
 authors = ["Nuno David <ndavidq0@gmail.com>"]
 edition = "2021"
 version.workspace = true
+build = "build.rs"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -24,6 +25,10 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 astroport = { workspace = true }
 astroport-pair-concentrated = { workspace = true }
+
+[build-dependencies]
+vergen-git2 = { workspace = true }
+anyhow = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
