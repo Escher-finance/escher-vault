@@ -26,6 +26,8 @@ thiserror = { version = "1.0.58" }
 cw-multi-test = "2.0.0"
 cw-ownable = "2.1.0"
 cw-utils = "2.0.0"
+vergen-git2 = "1.0.7"
+anyhow = "1.0.99"
 astroport = { git = "https://github.com/quasar-finance/babydex.git", version = "5.7.0" }
 astroport-pair = { git = "https://github.com/quasar-finance/babydex.git", version = "2.1.1" }
 astroport-pair-concentrated = { git = "https://github.com/quasar-finance/babydex.git", version = "4.1.1" }

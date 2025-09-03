@@ -393,3 +393,11 @@ fn deposit_no_yield_must_be_one_to_one() {
     println!("{new_share_balance}");
     assert_eq!(new_share_balance, asset_deposit_amount);
 }
+
+#[test]
+fn get_access_git_commit() {
+    let git_branch = env!("VERGEN_GIT_BRANCH");
+    let git_commit = env!("VERGEN_GIT_SHA");
+    assert!(!git_branch.is_empty());
+    assert!(!git_commit.is_empty());
+}
