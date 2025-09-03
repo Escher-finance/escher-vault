@@ -138,11 +138,8 @@ pub fn unbond(
     env: Env,
     info: MessageInfo,
     amount: Uint128,
-    salt: String,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-
-    validate_salt(&salt)?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = env.contract.address;
@@ -172,7 +169,9 @@ pub fn unbond(
         staking_contract.clone(),
         to_json_binary(&EscherHubExecuteMsg::Unstake {
             amount,
-            salt: Some(salt),
+            recipient: Some(info.sender.to_string()), // Send unstaked tokens back to the caller
+            recipient_channel_id: None,
+            recipient_ibc_channel_id: None,
         })?,
     )?;
 

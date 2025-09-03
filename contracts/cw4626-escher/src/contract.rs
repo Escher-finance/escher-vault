@@ -101,8 +101,8 @@ pub fn execute(
             salt,
             slippage,
         } => crate::execute::bond(deps, env, info, amount, salt, slippage)?,
-        ExecuteMsg::Unbond { amount, salt } => {
-            crate::execute::unbond(deps, env, info, amount, salt)?
+        ExecuteMsg::Unbond { amount } => {
+            crate::execute::unbond(deps, env, info, amount)?
         }
         ExecuteMsg::AddLiquidity {
             underlying_token_amount,
