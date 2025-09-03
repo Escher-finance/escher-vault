@@ -97,6 +97,9 @@ pub fn execute(
         ExecuteMsg::AddLiquidity {
             underlying_token_amount,
         } => crate::execute::add_liquidity(deps, env, info, underlying_token_amount)?,
+        ExecuteMsg::Swap { amount, asset_info } => {
+            crate::execute::swap(deps, env, info, amount, asset_info)?
+        }
         //
         // CW4626
         //

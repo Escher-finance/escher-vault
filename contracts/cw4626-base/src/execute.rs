@@ -177,7 +177,7 @@ mod tests {
             deposit(deps_mut, env, sender, amount, receiver.clone()).unwrap_err(),
             ContractError::ExceededMaxDeposit {
                 receiver: receiver.clone(),
-                max_assets: max_assets,
+                max_assets,
                 assets: amount
             },
         );
@@ -196,7 +196,7 @@ mod tests {
             mint(deps_mut, env, sender, amount, receiver.clone()).unwrap_err(),
             ContractError::ExceededMaxMint {
                 receiver: receiver.clone(),
-                max_shares: max_shares,
+                max_shares,
                 shares: amount
             },
         );
@@ -227,7 +227,7 @@ mod tests {
             .unwrap_err(),
             ContractError::ExceededMaxDeposit {
                 receiver: receiver.clone(),
-                max_assets: max_assets,
+                max_assets,
                 assets: received_balance.amount
             },
         );
