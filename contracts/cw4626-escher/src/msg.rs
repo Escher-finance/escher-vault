@@ -155,8 +155,15 @@ pub struct OraclePricesResponse {
 }
 
 #[cw_serde]
+pub struct GitInfoResponse {
+    pub git: String,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(GitInfoResponse)]
+    GitInfo {},
     #[returns(ConfigResponse)]
     Config {},
     #[returns(AccessControlRoleResponse)]
