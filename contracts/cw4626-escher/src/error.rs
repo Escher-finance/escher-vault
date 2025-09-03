@@ -1,3 +1,4 @@
+use astroport::asset::AssetInfo;
 use cosmwasm_std::StdError;
 use cw20_base::ContractError as Cw20ContractError;
 use cw4626_base::ContractError as Cw4626BaseContractError;
@@ -41,8 +42,8 @@ pub enum ContractError {
     #[error("invalid staking contract provided")]
     InvalidStakingContract {},
 
-    #[error("insufficient {kind} for swap funds")]
-    InsufficientSwapFunds { kind: String },
+    #[error("insufficient {asset_info} for swap funds")]
+    InsufficientSwapFunds { asset_info: AssetInfo },
 
     #[error("addrs list cannot be empty")]
     EmptyAddrsList {},

@@ -1,3 +1,4 @@
+use astroport::asset::AssetInfo;
 use cosmwasm_std::{Addr, Event, Response, Uint128};
 
 const EVENT_BOND: &str = "bond";
@@ -79,11 +80,11 @@ pub fn add_liquidity_event(
         .add_attribute("lp_contract", lp_contract)
 }
 
-pub fn swap_event(sender: &str, amount: Uint128, asset_info: &str) -> Event {
+pub fn swap_event(sender: &str, amount: Uint128, asset_info: &AssetInfo) -> Event {
     Event::new(EVENT_SWAP)
         .add_attribute("sender", sender)
         .add_attribute("amount", amount)
-        .add_attribute("asset_info", asset_info)
+        .add_attribute("asset_info", asset_info.to_string())
 }
 
 pub fn generate_add_role_response(sender: &str, role: &str, address: &str) -> Response {

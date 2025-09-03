@@ -22,7 +22,7 @@ use crate::{
         AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
-    tower::{add_tower_liquidity, do_swap, update_and_validate_prices},
+    tower::{add_tower_liquidity, tower_swap, update_and_validate_prices},
     ContractError,
 };
 
@@ -294,23 +294,16 @@ pub fn swap(
     let this = env.contract.address;
 
     // make sure we have enough native funds to swap
-    let underlying_balance =
-        query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
+    let balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
 
-    if underlying_balance < amount {
-        return Err(ContractError::InsufficientSwapFunds {
-            kind: asset_info.to_string(),
-        });
+    if balance < amount {
+        return Err(ContractError::InsufficientSwapFunds { asset_info });
     }
 
     // build the execute swap cosmos messages
-    let msgs = do_swap(tower_config, amount, &asset_info, Some(info.sender.clone()))?;
+    let msgs = tower_swap(tower_config, amount, &asset_info)?;
 
-    let event = swap_event(
-        info.sender.as_ref(),
-        amount,
-        asset_info.to_string().as_str(),
-    );
+    let event = swap_event(info.sender.as_ref(), amount, &asset_info);
     Ok(Response::new().add_event(event).add_messages(msgs))
 }
 
@@ -332,42 +325,6 @@ pub fn receive(
             crate::execute::receive_deposit(deps, env, sender, received_balance, receiver)
         }
     }
-}
-
-pub fn receive_swap(
-    deps: DepsMut,
-    _env: Env,
-    sender: Addr,
-    received_balance: cw4626::cw20::Cw20CoinVerified,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    // Only managers can perform swaps
-    only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
-
-    let tower_config = TOWER_CONFIG.load(deps.storage)?;
-
-    // Validate that the received token is one of the LP assets
-    let asset_info = AssetInfo::Token {
-        contract_addr: received_balance.address.clone(),
-    };
-
-    if asset_info != tower_config.lp_underlying_asset && asset_info != tower_config.lp_other_asset {
-        return Err(ContractError::InvalidTokenType {});
-    }
-
-    // Validate that we have enough tokens to swap
-    if received_balance.amount < amount {
-        return Err(ContractError::InsufficientSwapFunds {
-            kind: asset_info.to_string(),
-        });
-    }
-
-    // Build the swap messages
-    let msgs = do_swap(tower_config, amount, &asset_info, Some(sender.clone()))?;
-
-    let event = swap_event(sender.as_ref(), amount, asset_info.to_string().as_str());
-
-    Ok(Response::new().add_event(event).add_messages(msgs))
 }
 
 pub fn receive_deposit(
@@ -432,102 +389,6 @@ mod tests {
         STAKING_CONTRACT
             .save(deps.storage, &Addr::unchecked("tower_incentives"))
             .unwrap();
-    }
-
-    #[test]
-    fn test_receive_swap_with_valid_cw20_token() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        setup_test_contract(&mut deps.as_mut());
-
-        let sender =
-            Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd");
-        let received_balance = cw4626::cw20::Cw20CoinVerified {
-            address: Addr::unchecked("cw20_token"),
-            amount: Uint128::from(1000u128),
-        };
-        let amount = Uint128::from(500u128);
-
-        // This should succeed for a valid CW20 token swap
-        let result = receive_swap(deps.as_mut(), env, sender, received_balance, amount);
-
-        // The function should succeed and return swap messages
-        assert!(result.is_ok());
-        let response = result.unwrap();
-        assert!(!response.messages.is_empty());
-    }
-
-    #[test]
-    fn test_receive_swap_with_invalid_token() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        setup_test_contract(&mut deps.as_mut());
-
-        let sender =
-            Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd");
-        let received_balance = cw4626::cw20::Cw20CoinVerified {
-            address: Addr::unchecked("invalid_token"), // Not in LP assets
-            amount: Uint128::from(1000u128),
-        };
-        let amount = Uint128::from(500u128);
-
-        let result = receive_swap(deps.as_mut(), env, sender, received_balance, amount);
-
-        // Should fail with InvalidTokenType error
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            ContractError::InvalidTokenType {} => {}
-            _ => panic!("Expected InvalidTokenType error"),
-        }
-    }
-
-    #[test]
-    fn test_receive_swap_with_insufficient_funds() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        setup_test_contract(&mut deps.as_mut());
-
-        let sender =
-            Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd");
-        let received_balance = cw4626::cw20::Cw20CoinVerified {
-            address: Addr::unchecked("cw20_token"),
-            amount: Uint128::from(100u128), // Less than requested amount
-        };
-        let amount = Uint128::from(500u128); // More than available
-
-        let result = receive_swap(deps.as_mut(), env, sender, received_balance, amount);
-
-        // Should fail with InsufficientSwapFunds error
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            ContractError::InsufficientSwapFunds { kind } => {
-                assert!(kind.contains("cw20_token"));
-            }
-            _ => panic!("Expected InsufficientSwapFunds error"),
-        }
-    }
-
-    #[test]
-    fn test_receive_swap_with_unauthorized_user() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        setup_test_contract(&mut deps.as_mut());
-
-        let sender = Addr::unchecked("cosmwasm1unauthorizeduser123456789012345678901234567890"); // Not a manager
-        let received_balance = cw4626::cw20::Cw20CoinVerified {
-            address: Addr::unchecked("cw20_token"),
-            amount: Uint128::from(1000u128),
-        };
-        let amount = Uint128::from(500u128);
-
-        let result = receive_swap(deps.as_mut(), env, sender, received_balance, amount);
-
-        // Should fail with Unauthorized error
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            ContractError::Unauthorized(_) => {}
-            _ => panic!("Expected Unauthorized error"),
-        }
     }
 
     #[test]
