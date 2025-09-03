@@ -3,7 +3,7 @@ use astroport::{
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError,
+    from_json, to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError,
     Uint128,
 };
 
@@ -14,7 +14,7 @@ use crate::{
     query,
     responses::{
         add_liquidity_event, generate_add_role_response, generate_bond_response,
-        generate_oracle_update_prices_response, generate_remove_role_response, swap_event,
+        generate_oracle_update_prices_response, generate_remove_role_response, generate_unbond_response, swap_event,
     },
     staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
     state::{
@@ -24,6 +24,7 @@ use crate::{
     tower::{add_tower_liquidity, do_swap, update_and_validate_prices},
     ContractError,
 };
+
 
 pub fn add_to_role(
     deps: DepsMut,
@@ -130,6 +131,50 @@ pub fn bond(
     )?;
 
     Ok(generate_bond_response(&this, expected, &staking_contract).add_message(bond_msg))
+}
+
+pub fn unbond(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+    salt: String,
+) -> Result<Response, ContractError> {
+    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+
+    validate_salt(&salt)?;
+
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+    let this = env.contract.address;
+
+    // Query the staking contract to get current liquidity info
+    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
+        staking_contract.clone(),
+        &EscherHubQueryMsg::StakingLiquidity {},
+    )?;
+
+    // Calculate the expected amount of underlying tokens to receive
+    let expected = amount
+        .checked_mul_floor(exchange_rate)
+        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+
+    // Create the unbond message by sending eBABY tokens to the staking contract
+    // The staking contract's Receive handler will process the unbond when it receives the eBABY tokens
+    let unbond_msg = asset_cw20_send_or_attach_funds(
+        Asset {
+            info: AssetInfo::Token {
+                contract_addr: Addr::unchecked("bbn1cnx34p82zngq0uuaendsne0x4s5gsm7gpwk2es8zk8rz8tnj938qqyq8f9"), // eBABY contract
+            },
+            amount,
+        },
+        staking_contract.clone(),
+        to_json_binary(&EscherHubExecuteMsg::Unbond {
+            amount,
+            salt: Some(salt),
+        })?,
+    )?;
+
+    Ok(generate_unbond_response(&this, expected, &staking_contract).add_message(unbond_msg))
 }
 
 pub fn deposit(
@@ -266,4 +311,479 @@ pub fn swap(
         asset_info.to_string().as_str(),
     );
     Ok(Response::new().add_event(event).add_messages(msgs))
+}
+
+pub fn receive(
+    deps: DepsMut,
+    env: Env,
+    cw20_contract: Addr,
+    cw20_receive_msg: cw4626::cw20::Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let msg = from_json::<cw4626::Cw4626ReceiveMsg>(&cw20_receive_msg.msg)?;
+    let sender = deps.api.addr_validate(&cw20_receive_msg.sender)?;
+    let received_balance = cw4626::cw20::Cw20CoinVerified {
+        address: cw20_contract,
+        amount: cw20_receive_msg.amount,
+    };
+    
+    match msg {
+        cw4626::Cw4626ReceiveMsg::Deposit { receiver } => {
+            // Use the base implementation for deposits
+            crate::execute::receive_deposit(deps, env, sender, received_balance, receiver)
+        }
+        cw4626::Cw4626ReceiveMsg::Swap { amount } => {
+            // Handle swap for CW20 tokens
+            receive_swap(deps, env, sender, received_balance, amount)
+        }
+    }
+}
+
+pub fn receive_swap(
+    deps: DepsMut,
+    _env: Env,
+    sender: Addr,
+    received_balance: cw4626::cw20::Cw20CoinVerified,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    // Only managers can perform swaps
+    only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
+    
+    let tower_config = TOWER_CONFIG.load(deps.storage)?;
+    
+    // Validate that the received token is one of the LP assets
+    let asset_info = AssetInfo::Token {
+        contract_addr: received_balance.address.clone(),
+    };
+    
+    if asset_info != tower_config.lp_underlying_asset && asset_info != tower_config.lp_other_asset {
+        return Err(ContractError::InvalidTokenType {});
+    }
+    
+    // Validate that we have enough tokens to swap
+    if received_balance.amount < amount {
+        return Err(ContractError::InsufficientSwapFunds {
+            kind: asset_info.to_string(),
+        });
+    }
+    
+    // Build the swap messages
+    let msgs = do_swap(tower_config, amount, &asset_info)?;
+    
+    let event = swap_event(
+        sender.as_ref(),
+        amount,
+        asset_info.to_string().as_str(),
+    );
+    
+    Ok(Response::new().add_event(event).add_messages(msgs))
+}
+
+pub fn receive_deposit(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    received_balance: cw4626::cw20::Cw20CoinVerified,
+    receiver: Addr,
+) -> Result<Response, ContractError> {
+    // For now, just delegate to the base implementation
+    // This is a simplified version that works with the escher contract
+    let assets = received_balance.amount;
+    let preview = query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+    
+    // Create a mock MessageInfo for the _deposit function
+    let info = MessageInfo {
+        sender: sender.clone(),
+        funds: vec![],
+    };
+    
+    _deposit(deps, env, info, receiver, assets, preview.shares)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Addr, Uint128, to_json_binary,
+    };
+    use cw4626::Cw4626ReceiveMsg;
+    use crate::state::{TowerConfig, ACCESS_CONTROL, TOWER_CONFIG};
+    use std::str::FromStr;
+
+    fn setup_test_contract(deps: &mut DepsMut) {
+        // Set up a manager using ACCESS_CONTROL
+        let manager = Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd"); // Valid bech32 address
+        let managers = vec![manager];
+        ACCESS_CONTROL.save(deps.storage, AccessControlRole::Manager {}.key(), &managers).unwrap();
+        
+        // Set up tower config with LP assets
+        let tower_config = TowerConfig {
+            lp: Addr::unchecked("lp_contract"),
+            lp_underlying_asset: AssetInfo::NativeToken {
+                denom: "ubbn".to_string(),
+            },
+            lp_other_asset: AssetInfo::Token {
+                contract_addr: Addr::unchecked("cw20_token"),
+            },
+            lp_token: Addr::unchecked("lp_token"),
+            lp_incentives: vec![],
+            is_underlying_first_lp_asset: true,
+            slippage_tolerance: Decimal::from_str("0.01").unwrap(),
+            tower_incentives: Addr::unchecked("tower_incentives"),
+        };
+        TOWER_CONFIG.save(deps.storage, &tower_config).unwrap();
+        
+        // Set up staking contract
+        STAKING_CONTRACT.save(deps.storage, &Addr::unchecked("tower_incentives")).unwrap();
+    }
+
+    #[test]
+    fn test_receive_swap_with_valid_cw20_token() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd");
+        let received_balance = cw4626::cw20::Cw20CoinVerified {
+            address: Addr::unchecked("cw20_token"),
+            amount: Uint128::from(1000u128),
+        };
+        let amount = Uint128::from(500u128);
+
+        // This should succeed for a valid CW20 token swap
+        let result = receive_swap(
+            deps.as_mut(),
+            env,
+            sender,
+            received_balance,
+            amount,
+        );
+
+        // The function should succeed and return swap messages
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert!(!response.messages.is_empty());
+    }
+
+    #[test]
+    fn test_receive_swap_with_invalid_token() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd");
+        let received_balance = cw4626::cw20::Cw20CoinVerified {
+            address: Addr::unchecked("invalid_token"), // Not in LP assets
+            amount: Uint128::from(1000u128),
+        };
+        let amount = Uint128::from(500u128);
+
+        let result = receive_swap(
+            deps.as_mut(),
+            env,
+            sender,
+            received_balance,
+            amount,
+        );
+
+        // Should fail with InvalidTokenType error
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ContractError::InvalidTokenType {} => {},
+            _ => panic!("Expected InvalidTokenType error"),
+        }
+    }
+
+    #[test]
+    fn test_receive_swap_with_insufficient_funds() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd");
+        let received_balance = cw4626::cw20::Cw20CoinVerified {
+            address: Addr::unchecked("cw20_token"),
+            amount: Uint128::from(100u128), // Less than requested amount
+        };
+        let amount = Uint128::from(500u128); // More than available
+
+        let result = receive_swap(
+            deps.as_mut(),
+            env,
+            sender,
+            received_balance,
+            amount,
+        );
+
+        // Should fail with InsufficientSwapFunds error
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ContractError::InsufficientSwapFunds { kind } => {
+                assert!(kind.contains("cw20_token"));
+            },
+            _ => panic!("Expected InsufficientSwapFunds error"),
+        }
+    }
+
+    #[test]
+    fn test_receive_swap_with_unauthorized_user() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1unauthorizeduser123456789012345678901234567890"); // Not a manager
+        let received_balance = cw4626::cw20::Cw20CoinVerified {
+            address: Addr::unchecked("cw20_token"),
+            amount: Uint128::from(1000u128),
+        };
+        let amount = Uint128::from(500u128);
+
+        let result = receive_swap(
+            deps.as_mut(),
+            env,
+            sender,
+            received_balance,
+            amount,
+        );
+
+        // Should fail with Unauthorized error
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ContractError::Unauthorized(_) => {},
+            _ => panic!("Expected Unauthorized error"),
+        }
+    }
+
+    #[test]
+    fn test_receive_with_swap_message() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let cw20_contract = Addr::unchecked("cw20_token");
+        let sender = Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd");
+        let amount = Uint128::from(500u128);
+
+        let swap_msg = Cw4626ReceiveMsg::Swap { amount };
+        let cw20_receive_msg = cw4626::cw20::Cw20ReceiveMsg {
+            sender: sender.to_string(),
+            amount: Uint128::from(1000u128),
+            msg: to_json_binary(&swap_msg).unwrap(),
+        };
+
+        let result = receive(
+            deps.as_mut(),
+            env,
+            cw20_contract,
+            cw20_receive_msg,
+        );
+
+        // Should succeed and return swap messages
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert!(!response.messages.is_empty());
+    }
+
+    #[test]
+    fn test_receive_with_deposit_message() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let cw20_contract = Addr::unchecked("cw20_token");
+        let sender = Addr::unchecked("user");
+        let receiver = Addr::unchecked("receiver");
+
+        let deposit_msg = Cw4626ReceiveMsg::Deposit { receiver };
+        let cw20_receive_msg = cw4626::cw20::Cw20ReceiveMsg {
+            sender: sender.to_string(),
+            amount: Uint128::from(1000u128),
+            msg: to_json_binary(&deposit_msg).unwrap(),
+        };
+
+        // This might fail due to missing underlying asset setup, but should not panic
+        let result = receive(
+            deps.as_mut(),
+            env,
+            cw20_contract,
+            cw20_receive_msg,
+        );
+
+        // We expect this to fail due to missing setup, but the function should handle it gracefully
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unbond_with_valid_amount() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1wug8sewp8h2qqm53ke23fxdz2xu75r2p00gzkh0346yt7lqskgjv4svsm23j");
+        let amount = Uint128::from(1000u128);
+        let salt = "test_salt_123".to_string();
+
+        // This should succeed for a valid unbond request
+        let result = unbond(
+            deps.as_mut(),
+            env,
+            MessageInfo {
+                sender: sender.clone(),
+                funds: vec![],
+            },
+            amount,
+            salt,
+        );
+
+        // The function should succeed and return unbond messages
+        if result.is_err() {
+            println!("Error: {:?}", result.as_ref().unwrap_err());
+        }
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert!(!response.messages.is_empty());
+        
+        // Check that the event contains the expected attributes
+        assert_eq!(response.events.len(), 1);
+        let event = &response.events[0];
+        assert_eq!(event.ty, "unbond");
+        assert!(event.attributes.iter().any(|attr| attr.key == "sender" && attr.value == sender.to_string()));
+        assert!(event.attributes.iter().any(|attr| attr.key == "expected"));
+        assert!(event.attributes.iter().any(|attr| attr.key == "staking_contract"));
+    }
+
+    #[test]
+    fn test_unbond_with_unauthorized_user() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1unauthorizeduser123456789012345678901234567890"); // Not a manager
+        let amount = Uint128::from(1000u128);
+        let salt = "test_salt_123".to_string();
+
+        let result = unbond(
+            deps.as_mut(),
+            env,
+            MessageInfo {
+                sender: sender.clone(),
+                funds: vec![],
+            },
+            amount,
+            salt,
+        );
+
+        // Should fail with Unauthorized error
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            ContractError::Unauthorized(_) => {},
+            _ => panic!("Expected Unauthorized error"),
+        }
+    }
+
+    #[test]
+    fn test_unbond_with_zero_amount() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1wug8sewp8h2qqm53ke23fxdz2xu75r2p00gzkh0346yt7lqskgjv4svsm23j");
+        let amount = Uint128::zero();
+        let salt = "test_salt_123".to_string();
+
+        let result = unbond(
+            deps.as_mut(),
+            env,
+            MessageInfo {
+                sender: sender.clone(),
+                funds: vec![],
+            },
+            amount,
+            salt,
+        );
+
+        // Should succeed even with zero amount (though not practically useful)
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert!(!response.messages.is_empty());
+    }
+
+    #[test]
+    fn test_unbond_exchange_rate_calculation() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1wug8sewp8h2qqm53ke23fxdz2xu75r2p00gzkh0346yt7lqskgjv4svsm23j");
+        let amount = Uint128::from(1000u128);
+
+        let result = unbond(
+            deps.as_mut(),
+            env,
+            MessageInfo {
+                sender: sender.clone(),
+                funds: vec![],
+            },
+            amount,
+            "test_salt_123".to_string(),
+        );
+
+        // Should succeed and calculate expected amount based on exchange rate
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        
+        // Check that the expected amount is calculated and included in the event
+        let event = &response.events[0];
+        let expected_attr = event.attributes.iter()
+            .find(|attr| attr.key == "expected")
+            .expect("Expected attribute should be present");
+        
+        // The expected amount should be calculated (amount * exchange_rate)
+        // Since we're using mock data, we can't predict the exact value, but it should be present
+        assert!(!expected_attr.value.is_empty());
+    }
+
+    #[test]
+    fn test_unbond_message_structure() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        setup_test_contract(&mut deps.as_mut());
+
+        let sender = Addr::unchecked("cosmwasm1wug8sewp8h2qqm53ke23fxdz2xu75r2p00gzkh0346yt7lqskgjv4svsm23j");
+        let amount = Uint128::from(1000u128);
+
+        let result = unbond(
+            deps.as_mut(),
+            env,
+            MessageInfo {
+                sender: sender.clone(),
+                funds: vec![],
+            },
+            amount,
+            "test_salt_123".to_string(),
+        );
+
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        
+        // Should have exactly one message (the unbond message to staking contract)
+        assert_eq!(response.messages.len(), 1);
+        
+        // The message should be a WasmMsg::Execute to the staking contract
+        match &response.messages[0].msg {
+            cosmwasm_std::CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute { contract_addr, msg, funds }) => {
+                // Should be sent to the staking contract
+                assert_eq!(contract_addr, "tower_incentives");
+                
+                // Should have no funds (since we're sending CW20 tokens)
+                assert!(funds.is_empty());
+                
+                // The message should be a valid JSON
+                let msg_str = String::from_utf8(msg.to_vec()).expect("Message should be valid UTF-8");
+                assert!(msg_str.contains("unbond"));
+                assert!(msg_str.contains("1000"));
+            },
+            _ => panic!("Expected WasmMsg::Execute"),
+        }
+    }
 }

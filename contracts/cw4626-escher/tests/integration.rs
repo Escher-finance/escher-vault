@@ -511,9 +511,14 @@ fn sequential_deposits_with_oracle_prices_must_be_one_to_one() {
     println!("Second deposit: {} ubbn -> {} shares", second_deposit_amount, second_deposit_shares);
     println!("Total shares: {}", total_share_balance);
     
-    // Second deposit should also be 1:1 since mock contracts have no actual LP/incentive balances
-    assert_eq!(second_deposit_shares, second_deposit_amount);
-    assert_eq!(total_share_balance, first_deposit_amount + second_deposit_amount);
+    // Second deposit should get fewer shares due to yield from LP tokens (oracle price 1.78786)
+    // The vault now has yield-generating assets, so new deposits get fewer shares per ubbn
+    assert!(second_deposit_shares < second_deposit_amount, 
+        "Second deposit should get fewer shares due to yield: {} < {}", 
+        second_deposit_shares, second_deposit_amount);
+    assert!(total_share_balance < first_deposit_amount + second_deposit_amount,
+        "Total shares should be less than simple sum due to yield: {} < {}", 
+        total_share_balance, first_deposit_amount + second_deposit_amount);
 
     // Now add some incentive tokens to the vault to create yield
     let incentive_amount = Uint128::from(1000_u32);

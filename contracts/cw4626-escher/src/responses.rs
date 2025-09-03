@@ -1,6 +1,7 @@
 use cosmwasm_std::{Addr, Event, Response, Uint128};
 
 const EVENT_BOND: &str = "bond";
+const EVENT_UNBOND: &str = "unbond";
 const EVENT_DEPOSIT: &str = "deposit";
 const EVENT_WITHDRAW: &str = "withdraw";
 const EVENT_ADD_LIQUIDITY: &str = "add_liquidity";
@@ -31,6 +32,19 @@ pub fn generate_bond_response(
 ) -> Response {
     Response::new().add_event(
         Event::new(EVENT_BOND)
+            .add_attribute("sender", sender)
+            .add_attribute("expected", expected)
+            .add_attribute("staking_contract", staking_contract),
+    )
+}
+
+pub fn generate_unbond_response(
+    sender: &Addr,
+    expected: Uint128,
+    staking_contract: &Addr,
+) -> Response {
+    Response::new().add_event(
+        Event::new(EVENT_UNBOND)
             .add_attribute("sender", sender)
             .add_attribute("expected", expected)
             .add_attribute("staking_contract", staking_contract),

@@ -21,6 +21,8 @@ pub struct Cw4626InstantiateMsg {
 pub enum Cw4626ReceiveMsg {
     /// Mints shares to receiver by depositing exact amount of underlying tokens
     Deposit { receiver: Addr },
+    /// Swaps the received tokens (for escher vaults)
+    Swap { amount: Uint128 },
 }
 
 #[cw_ownable_execute]

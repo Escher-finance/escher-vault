@@ -28,6 +28,12 @@ pub fn receive(
         Cw4626ReceiveMsg::Deposit { receiver } => {
             receive_deposit(deps, env, sender, received_balance, receiver)
         }
+        Cw4626ReceiveMsg::Swap { amount: _amount } => {
+            // This will be handled by the escher contract's custom receive implementation
+            Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+                "Swap functionality not implemented in base contract"
+            )))
+        }
     }
 }
 
