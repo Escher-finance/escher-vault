@@ -403,7 +403,6 @@ cargo test
 1. **Update messages** in `packages/cw4626/src/msg.rs`
 2. **Implement logic** in contract files
 3. **Add tests** for new functionality
-4. **Update schemas** with `cargo schema`
 
 ### **Code Quality**
 
@@ -427,6 +426,7 @@ cargo clippy --workspace -- -D warnings
 - **🐧 Nix Only Setup**: See `NIX-ONLY-SETUP.md`
 - **🐧 Nix Setup**: See `NIX-SETUP.md`
 - **🚀 Deployment Guide**: See `DEPLOYMENT.md`
+- **✅ Deployment Code Verification**: See `VERIFY.md`
 - **🌌 Babylon Deployment**: See `BABYLON-DEPLOYMENT.md`
 - **📋 Quick Reference**: See `NIX-QUICK-REFERENCE.md`
 - **API Reference**: Generated schemas in `schema/` directory
