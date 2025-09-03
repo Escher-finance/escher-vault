@@ -1,13 +1,11 @@
 use astroport::{
     asset::{Asset, AssetInfo},
-    pair::ExecuteMsg as PairExecuteMsg,
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Coin, CosmosMsg, Decimal, Decimal256, DepsMut, Env, MessageInfo,
-    Response, StdError, Uint128, WasmMsg,
+    to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError,
+    Uint128,
 };
-use cw4626::cw20;
 
 use crate::{
     access_control::only_role,
@@ -20,7 +18,7 @@ use crate::{
         AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
-    tower::{add_tower_liquidity, update_and_validate_prices},
+    tower::{add_tower_liquidity, do_swap, update_and_validate_prices},
     ContractError,
 };
 
@@ -227,69 +225,18 @@ pub fn swap(
 
     let this = env.contract.address;
 
-    let mut msgs: Vec<CosmosMsg> = vec![];
-    let mut funds: Vec<Coin> = vec![];
+    // make sure we have enough native funds to swap
+    let underlying_balance =
+        query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
 
-    match &asset_info {
-        AssetInfo::NativeToken { denom } => {
-            let underlying_balance =
-                query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
-
-            // make sure we have enough native funds to swap
-            if underlying_balance < amount {
-                return Err(ContractError::InsufficientSwapFunds {
-                    kind: "underlying".into(),
-                });
-            }
-
-            // if the offer is a native token, we need to attach the funds to the message
-            funds.push(Coin {
-                denom: denom.to_string(),
-                amount,
-            });
-        }
-        AssetInfo::Token { contract_addr } => {
-            let other_lp_balance =
-                query_asset_info_balance(&deps.querier, asset_info.clone(), this)?;
-
-            // make sure we have enough native funds to swap
-            if other_lp_balance < amount {
-                return Err(ContractError::InsufficientSwapFunds {
-                    kind: "shares".into(),
-                });
-            }
-
-            // if the offer is a token, we need to increase the allowance first
-            let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_json_binary(&cw20::Cw20ExecuteMsg::IncreaseAllowance {
-                    spender: contract_addr.to_string(),
-                    amount,
-                    expires: None,
-                })?,
-                funds: vec![],
-            });
-
-            msgs.push(msg);
-        }
+    if underlying_balance < amount {
+        return Err(ContractError::InsufficientSwapFunds {
+            kind: asset_info.to_string(),
+        });
     }
 
-    // construct the swap message to the lp contract
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: tower_config.lp.to_string(),
-        msg: to_json_binary(&PairExecuteMsg::Swap {
-            offer_asset: Asset {
-                info: asset_info,
-                amount,
-            },
-            ask_asset_info: None,
-            belief_price: None,
-            max_spread: Some(tower_config.slippage_tolerance),
-            to: None,
-        })?,
-        funds,
-    });
-    msgs.push(msg);
+    // build the execute swap cosmos messages
+    let msgs = do_swap(tower_config, amount, asset_info)?;
 
     Ok(Response::new().add_messages(msgs))
 }
