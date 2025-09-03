@@ -275,6 +275,7 @@ pub fn do_swap(
     tower_config: TowerConfig,
     amount: Uint128,
     asset_info: &AssetInfo,
+    recipient: Option<Addr>,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
     let (allowance_msg, fund) = asset_generate_increase_allowance_or_funds(
         Asset {
@@ -293,6 +294,13 @@ pub fn do_swap(
     if let Some(coin) = fund {
         funds.push(coin);
     }
+    // Determine the ask asset (the other asset in the pair)
+    let ask_asset_info = if asset_info == &tower_config.lp_underlying_asset {
+        tower_config.lp_other_asset.clone()
+    } else {
+        tower_config.lp_underlying_asset.clone()
+    };
+
     // construct the swap message to the lp contract
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: tower_config.lp.to_string(),
@@ -301,10 +309,10 @@ pub fn do_swap(
                 info: asset_info.clone(),
                 amount,
             },
-            ask_asset_info: None,
+            ask_asset_info: Some(ask_asset_info),
             belief_price: None,
             max_spread: Some(tower_config.slippage_tolerance),
-            to: None,
+            to: recipient.map(|addr| addr.to_string()),
         })?,
         funds,
     });

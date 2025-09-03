@@ -303,7 +303,7 @@ pub fn swap(
     }
 
     // build the execute swap cosmos messages
-    let msgs = do_swap(tower_config, amount, &asset_info)?;
+    let msgs = do_swap(tower_config, amount, &asset_info, Some(info.sender.clone()))?;
 
     let event = swap_event(
         info.sender.as_ref(),
@@ -367,7 +367,7 @@ pub fn receive_swap(
     }
     
     // Build the swap messages
-    let msgs = do_swap(tower_config, amount, &asset_info)?;
+    let msgs = do_swap(tower_config, amount, &asset_info, Some(sender.clone()))?;
     
     let event = swap_event(
         sender.as_ref(),
