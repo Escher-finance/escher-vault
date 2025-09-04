@@ -227,7 +227,7 @@ fn instantiate_lp(app: &mut App, underlying_token: AssetInfo) -> Addr {
 }
 
 mod incentives_mock {
-    use astroport::incentives;
+    use astroport::{asset::Asset, incentives};
     use cosmwasm_std::to_json_binary;
 
     use super::*;
@@ -263,6 +263,8 @@ mod incentives_mock {
                 incentivization_fee_info: None,
                 token_transfer_gas_limit: None,
             }),
+            incentives::QueryMsg::PendingRewards { .. } => to_json_binary(&Vec::<Asset>::from([])),
+            incentives::QueryMsg::QueryDeposit { .. } => to_json_binary(&Uint128::zero()),
             _ => unimplemented!(),
         }
     }
