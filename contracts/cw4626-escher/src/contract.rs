@@ -108,6 +108,7 @@ pub fn execute(
         ExecuteMsg::RemoveLiquidity { lp_token_amount } => {
             crate::execute::remove_liquidity(deps, env, info, lp_token_amount)?
         }
+        ExecuteMsg::ClaimIncentives {} => crate::execute::claim_incentives(deps, info)?,
         ExecuteMsg::Swap { amount, asset_info } => {
             crate::execute::swap(deps, env, info, amount, asset_info)?
         }

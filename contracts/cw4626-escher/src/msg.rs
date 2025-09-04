@@ -50,6 +50,8 @@ pub enum ExecuteMsg {
     AddLiquidity { underlying_token_amount: Uint128 },
     /// Manager remove liquidity
     RemoveLiquidity { lp_token_amount: Uint128 },
+    /// Manager claim incentives
+    ClaimIncentives {},
     /// Manager swap
     Swap {
         amount: Uint128,

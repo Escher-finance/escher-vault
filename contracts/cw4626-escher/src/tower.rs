@@ -209,6 +209,17 @@ pub fn remove_tower_liquidity(
     ]))
 }
 
+pub fn claim_tower_incentives(tower_config: &TowerConfig) -> Result<CosmosMsg, ContractError> {
+    let incentives_execute_msg = IncentivesExecuteMsg::ClaimRewards {
+        lp_tokens: Vec::from([tower_config.lp_token.to_string()]),
+    };
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: tower_config.tower_incentives.to_string(),
+        msg: to_json_binary(&incentives_execute_msg)?,
+        funds: vec![],
+    }))
+}
+
 pub fn calculate_total_assets(
     querier: &QuerierWrapper,
     storage: &dyn Storage,

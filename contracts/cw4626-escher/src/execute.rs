@@ -13,9 +13,10 @@ use crate::{
     helpers::{_deposit, validate_addrs, validate_salt},
     query,
     responses::{
-        add_liquidity_event, generate_add_role_response, generate_bond_response,
-        generate_oracle_update_prices_response, generate_remove_role_response,
-        generate_unbond_response, remove_liquidity_event, swap_event,
+        add_liquidity_event, claim_incentives_event, generate_add_role_response,
+        generate_bond_response, generate_oracle_update_prices_response,
+        generate_remove_role_response, generate_unbond_response, remove_liquidity_event,
+        swap_event,
     },
     staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
     state::{
@@ -23,8 +24,8 @@ use crate::{
         UNDERLYING_ASSET,
     },
     tower::{
-        add_tower_liquidity, get_tower_lp_token_deposit, remove_tower_liquidity, tower_swap,
-        update_and_validate_prices,
+        add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
+        remove_tower_liquidity, tower_swap, update_and_validate_prices,
     },
     ContractError,
 };
@@ -298,6 +299,16 @@ pub fn remove_liquidity(
 
     let event = remove_liquidity_event(&info.sender, lp_token_amount, &tower_config.lp);
     Ok(Response::new().add_event(event).add_messages(msgs))
+}
+
+pub fn claim_incentives(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+
+    let tower_config = TOWER_CONFIG.load(deps.storage)?;
+    let msg = claim_tower_incentives(&tower_config)?;
+
+    let event = claim_incentives_event(&info.sender, &tower_config.lp);
+    Ok(Response::new().add_event(event).add_message(msg))
 }
 
 pub fn swap(
