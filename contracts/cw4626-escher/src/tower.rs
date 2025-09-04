@@ -241,34 +241,26 @@ pub fn calculate_total_assets(
         };
         total_balance += asset_balance.mul_floor(*asset_price);
     }
+    let mut assets: Vec<Asset> = get_tower_pending_rewards(querier, &tower_config, &this)?
+        .into_iter()
+        .filter(|a| tower_config.lp_incentives.contains(&a.info))
+        .collect();
     let lp_amount = get_tower_lp_token_deposit(querier, &tower_config, &this)?;
     if !lp_amount.is_zero() {
-        let mut assets: Vec<Asset> = querier.query_wasm_smart(
-            tower_config.lp,
+        assets.extend(querier.query_wasm_smart::<Vec<Asset>>(
+            tower_config.lp.clone(),
             &PairConcentratedQueryMsg::SimulateWithdraw { lp_amount },
-        )?;
-        assets.extend(
-            querier
-                .query_wasm_smart::<Vec<Asset>>(
-                    tower_config.tower_incentives,
-                    &IncentivesQueryMsg::PendingRewards {
-                        lp_token: tower_config.lp_token.to_string(),
-                        user: this.to_string(),
-                    },
-                )?
-                .into_iter()
-                .filter(|a| tower_config.lp_incentives.contains(&a.info)),
-        );
-        for asset in assets {
-            if asset.info == tower_config.lp_underlying_asset {
-                total_balance += asset.amount;
-                continue;
-            }
-            let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
-                return Err(ContractError::OracleInvalidPrices {});
-            };
-            total_balance += asset.amount.mul_floor(*asset_price);
+        )?);
+    }
+    for asset in assets {
+        if asset.info == tower_config.lp_underlying_asset {
+            total_balance += asset.amount;
+            continue;
         }
+        let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
+            return Err(ContractError::OracleInvalidPrices {});
+        };
+        total_balance += asset.amount.mul_floor(*asset_price);
     }
     Ok(total_balance)
 }
