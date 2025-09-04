@@ -6,8 +6,8 @@ use crate::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
     },
     msg::{
-        AccessControlRoleResponse, ConfigResponse, GitInfoResponse, OraclePricesResponse,
-        OracleTokensListResponse, VaultExchangeRateResponse,
+        AccessControlRoleResponse, ConfigResponse, ExchangeRateResponse, GitInfoResponse,
+        OraclePricesResponse, OracleTokensListResponse,
     },
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
@@ -133,11 +133,11 @@ pub fn preview_mint(
     Ok(cw4626::PreviewMintResponse { assets })
 }
 
-pub fn vault_exchange_rate(this: &Addr, deps: &Deps) -> StdResult<VaultExchangeRateResponse> {
+pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse> {
     // Check total supply first to avoid requiring oracle prices for zero-state
     let token_info = cw20_base::contract::query_token_info(*deps)?;
     if token_info.total_supply.is_zero() {
-        return Ok(VaultExchangeRateResponse {
+        return Ok(ExchangeRateResponse {
             exchange_rate: Decimal::one(),
         });
     }
@@ -151,5 +151,5 @@ pub fn vault_exchange_rate(this: &Addr, deps: &Deps) -> StdResult<VaultExchangeR
     let assets_dec = Decimal::from_ratio(total_assets, Uint128::one());
     let shares_dec = Decimal::from_ratio(total_shares, Uint128::one());
     let exchange_rate = assets_dec / shares_dec;
-    Ok(VaultExchangeRateResponse { exchange_rate })
+    Ok(ExchangeRateResponse { exchange_rate })
 }

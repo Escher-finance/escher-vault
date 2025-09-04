@@ -201,9 +201,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
         QueryMsg::OracleTokensList {} => to_json_binary(&crate::query::oracle_tokens_list(&deps)?),
         QueryMsg::OraclePrices {} => to_json_binary(&crate::query::oracle_prices(&deps)?),
-        QueryMsg::VaultExchangeRate {} => {
-            to_json_binary(&crate::query::vault_exchange_rate(&this, &deps)?)
-        }
+        QueryMsg::ExchangeRate {} => to_json_binary(&crate::query::exchange_rate(&this, &deps)?),
         //
         // CW4626
         //

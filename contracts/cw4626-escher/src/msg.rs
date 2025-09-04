@@ -160,7 +160,7 @@ pub struct OraclePricesResponse {
 }
 
 #[cw_serde]
-pub struct VaultExchangeRateResponse {
+pub struct ExchangeRateResponse {
     pub exchange_rate: Decimal,
 }
 
@@ -184,8 +184,8 @@ pub enum QueryMsg {
     #[returns(OracleTokensListResponse)]
     OraclePrices {},
     /// Returns vault underlying asset exchange rate (total_assets / total_shares) as string
-    #[returns(VaultExchangeRateResponse)]
-    VaultExchangeRate {},
+    #[returns(ExchangeRateResponse)]
+    ExchangeRate {},
 
     //
     // CW4626

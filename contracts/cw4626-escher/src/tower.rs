@@ -179,7 +179,7 @@ pub fn add_tower_liquidity(
     Ok(msgs)
 }
 
-pub fn withdraw_liquidity(
+pub fn withdraw_tower_liquidity(
     storage: &dyn Storage,
     lp_token_amount: Uint128,
 ) -> Result<Vec<CosmosMsg>, ContractError> {

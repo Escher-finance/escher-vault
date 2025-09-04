@@ -338,9 +338,9 @@ fn vault_exchange_rate_query_returns_pps_string() {
     let vault = proper_instantiate(&mut app);
 
     // Initially no deposits: define PPS as 1.0
-    let rate: VaultExchangeRateResponse = app
+    let rate: ExchangeRateResponse = app
         .wrap()
-        .query_wasm_smart(&vault, &QueryMsg::VaultExchangeRate {})
+        .query_wasm_smart(&vault, &QueryMsg::ExchangeRate {})
         .unwrap();
     assert_eq!(rate.exchange_rate, Decimal::from_str("1.0").unwrap());
 
@@ -380,9 +380,9 @@ fn vault_exchange_rate_query_returns_pps_string() {
     )
     .unwrap();
 
-    let rate2: VaultExchangeRateResponse = app
+    let rate2: ExchangeRateResponse = app
         .wrap()
-        .query_wasm_smart(&vault, &QueryMsg::VaultExchangeRate {})
+        .query_wasm_smart(&vault, &QueryMsg::ExchangeRate {})
         .unwrap();
     println!("rate after 1000 deposit: {}", rate2.exchange_rate);
     // Should be very close to 1.0; string compare allows 1 or 1.0 depending on formatting
@@ -402,9 +402,9 @@ fn vault_exchange_rate_query_returns_pps_string() {
     ))
     .unwrap();
 
-    let rate3: VaultExchangeRateResponse = app
+    let rate3: ExchangeRateResponse = app
         .wrap()
-        .query_wasm_smart(&vault, &QueryMsg::VaultExchangeRate {})
+        .query_wasm_smart(&vault, &QueryMsg::ExchangeRate {})
         .unwrap();
     println!("rate after incentives: {}", rate3.exchange_rate);
 
