@@ -10,7 +10,8 @@ use astroport::{
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, StdResult, Storage, Uint128,
+    WasmMsg,
 };
 use cw4626::cw20;
 
@@ -211,37 +212,29 @@ pub fn remove_tower_liquidity(
 pub fn calculate_total_assets(
     querier: &QuerierWrapper,
     storage: &dyn Storage,
-    addr: Addr,
+    this: Addr,
 ) -> Result<Uint128, ContractError> {
     let prices = get_and_validate_oracle_prices(storage)?;
     let tower_config = TOWER_CONFIG.load(storage)?;
     let mut total_balance = query_asset_info_balance(
         querier,
         tower_config.lp_underlying_asset.clone(),
-        addr.clone(),
+        this.clone(),
     )?;
     let mut asset_infos = tower_config.lp_incentives.clone();
-    asset_infos.push(tower_config.lp_other_asset);
+    asset_infos.push(tower_config.lp_other_asset.clone());
     for asset_info in asset_infos {
-        let asset_balance = query_asset_info_balance(querier, asset_info.clone(), addr.clone())?;
+        let asset_balance = query_asset_info_balance(querier, asset_info.clone(), this.clone())?;
         let Some(asset_price) = prices.get(&get_asset_info_address(&asset_info)) else {
             return Err(ContractError::OracleInvalidPrices {});
         };
         total_balance += asset_balance.mul_floor(*asset_price);
     }
-    let lp_token_balance = query_asset_info_balance(
-        querier,
-        AssetInfo::Token {
-            contract_addr: tower_config.lp_token.clone(),
-        },
-        addr.clone(),
-    )?;
-    if !lp_token_balance.is_zero() {
+    let lp_amount = get_tower_lp_token_deposit(querier, &tower_config, &this)?;
+    if !lp_amount.is_zero() {
         let mut assets: Vec<Asset> = querier.query_wasm_smart(
             tower_config.lp,
-            &PairConcentratedQueryMsg::SimulateWithdraw {
-                lp_amount: lp_token_balance,
-            },
+            &PairConcentratedQueryMsg::SimulateWithdraw { lp_amount },
         )?;
         assets.extend(
             querier
@@ -249,7 +242,7 @@ pub fn calculate_total_assets(
                     tower_config.tower_incentives,
                     &IncentivesQueryMsg::PendingRewards {
                         lp_token: tower_config.lp_token.to_string(),
-                        user: addr.to_string(),
+                        user: this.to_string(),
                     },
                 )?
                 .into_iter()
@@ -327,4 +320,18 @@ pub fn tower_swap(
         msg,
     )?));
     Ok(msgs)
+}
+
+pub fn get_tower_lp_token_deposit(
+    querier: &QuerierWrapper,
+    tower_config: &TowerConfig,
+    addr: &Addr,
+) -> StdResult<Uint128> {
+    querier.query_wasm_smart::<Uint128>(
+        tower_config.tower_incentives.clone(),
+        &IncentivesQueryMsg::QueryDeposit {
+            lp_token: tower_config.lp_token.to_string(),
+            user: addr.to_string(),
+        },
+    )
 }
