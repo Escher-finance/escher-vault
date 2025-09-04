@@ -172,6 +172,11 @@ pub struct GitInfoResponse {
 }
 
 #[cw_serde]
+pub struct LpPositionResponse {
+    pub lp_token_amount: Uint128,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GitInfoResponse)]
@@ -188,6 +193,8 @@ pub enum QueryMsg {
     /// Returns vault underlying asset exchange rate (total_assets / total_shares) as string
     #[returns(ExchangeRateResponse)]
     ExchangeRate {},
+    #[returns(LpPositionResponse)]
+    LpPosition {},
 
     //
     // CW4626
