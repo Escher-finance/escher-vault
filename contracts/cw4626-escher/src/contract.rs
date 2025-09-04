@@ -105,6 +105,9 @@ pub fn execute(
         ExecuteMsg::AddLiquidity {
             underlying_token_amount,
         } => crate::execute::add_liquidity(deps, env, info, underlying_token_amount)?,
+        ExecuteMsg::RemoveLiquidity { lp_token_amount } => {
+            crate::execute::remove_liquidity(deps, env, info, lp_token_amount)?
+        }
         ExecuteMsg::Swap { amount, asset_info } => {
             crate::execute::swap(deps, env, info, amount, asset_info)?
         }
@@ -201,9 +204,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Role { kind } => to_json_binary(&crate::query::role(&deps, kind)?),
         QueryMsg::OracleTokensList {} => to_json_binary(&crate::query::oracle_tokens_list(&deps)?),
         QueryMsg::OraclePrices {} => to_json_binary(&crate::query::oracle_prices(&deps)?),
-        QueryMsg::VaultExchangeRate {} => {
-            to_json_binary(&crate::query::vault_exchange_rate(&this, &deps)?)
-        }
+        QueryMsg::ExchangeRate {} => to_json_binary(&crate::query::exchange_rate(&this, &deps)?),
         //
         // CW4626
         //

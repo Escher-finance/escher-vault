@@ -48,6 +48,8 @@ pub enum ExecuteMsg {
     Unbond { amount: Uint128 },
     /// Manager add liquidity
     AddLiquidity { underlying_token_amount: Uint128 },
+    /// Manager remove liquidity
+    RemoveLiquidity { lp_token_amount: Uint128 },
     /// Manager swap
     Swap {
         amount: Uint128,
@@ -160,7 +162,7 @@ pub struct OraclePricesResponse {
 }
 
 #[cw_serde]
-pub struct VaultExchangeRateResponse {
+pub struct ExchangeRateResponse {
     pub exchange_rate: Decimal,
 }
 
@@ -184,8 +186,8 @@ pub enum QueryMsg {
     #[returns(OracleTokensListResponse)]
     OraclePrices {},
     /// Returns vault underlying asset exchange rate (total_assets / total_shares) as string
-    #[returns(VaultExchangeRateResponse)]
-    VaultExchangeRate {},
+    #[returns(ExchangeRateResponse)]
+    ExchangeRate {},
 
     //
     // CW4626
