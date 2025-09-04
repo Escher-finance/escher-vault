@@ -7,13 +7,13 @@ use crate::{
     },
     msg::{
         AccessControlRoleResponse, ConfigResponse, ExchangeRateResponse, GitInfoResponse,
-        OraclePricesResponse, OracleTokensListResponse,
+        LpPositionResponse, OraclePricesResponse, OracleTokensListResponse,
     },
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
-    tower::calculate_total_assets,
+    tower::{calculate_total_assets, get_tower_lp_token_deposit},
 };
 
 pub fn git_info() -> StdResult<GitInfoResponse> {
@@ -152,4 +152,10 @@ pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse
     let shares_dec = Decimal::from_ratio(total_shares, Uint128::one());
     let exchange_rate = assets_dec / shares_dec;
     Ok(ExchangeRateResponse { exchange_rate })
+}
+
+pub fn lp_position(this: &Addr, deps: &Deps) -> StdResult<LpPositionResponse> {
+    let tower_config = TOWER_CONFIG.load(deps.storage)?;
+    let lp_token_amount = get_tower_lp_token_deposit(&deps.querier, &tower_config, this)?;
+    Ok(LpPositionResponse { lp_token_amount })
 }
