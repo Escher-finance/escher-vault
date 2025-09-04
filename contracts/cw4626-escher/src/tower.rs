@@ -180,10 +180,9 @@ pub fn add_tower_liquidity(
 }
 
 pub fn remove_tower_liquidity(
-    storage: &dyn Storage,
+    tower_config: &TowerConfig,
     lp_token_amount: Uint128,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
-    let tower_config = TOWER_CONFIG.load(storage)?;
     let incentives_execute_msg = IncentivesExecuteMsg::Withdraw {
         lp_token: tower_config.lp_token.to_string(),
         amount: lp_token_amount,

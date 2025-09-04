@@ -15,7 +15,7 @@ use crate::{
     responses::{
         add_liquidity_event, generate_add_role_response, generate_bond_response,
         generate_oracle_update_prices_response, generate_remove_role_response,
-        generate_unbond_response, swap_event,
+        generate_unbond_response, remove_liquidity_event, swap_event,
     },
     staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
     state::{
@@ -297,9 +297,10 @@ pub fn remove_liquidity(
         return Err(ContractError::InsufficientFunds {});
     }
 
-    let msgs = remove_tower_liquidity(deps.storage, lp_token_amount)?;
+    let msgs = remove_tower_liquidity(&tower_config, lp_token_amount)?;
 
-    Ok(Response::new().add_messages(msgs))
+    let event = remove_liquidity_event(&info.sender, lp_token_amount, &tower_config.lp);
+    Ok(Response::new().add_event(event).add_messages(msgs))
 }
 
 pub fn swap(
