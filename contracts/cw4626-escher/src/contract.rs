@@ -207,6 +207,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::OraclePrices {} => to_json_binary(&crate::query::oracle_prices(&deps)?),
         QueryMsg::ExchangeRate {} => to_json_binary(&crate::query::exchange_rate(&this, &deps)?),
         QueryMsg::LpPosition {} => to_json_binary(&crate::query::lp_position(&this, &deps)?),
+        QueryMsg::AllPendingIncentives {} => {
+            to_json_binary(&crate::query::all_pending_incentives(&this, &deps)?)
+        }
         //
         // CW4626
         //

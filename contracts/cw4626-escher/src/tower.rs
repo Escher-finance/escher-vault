@@ -346,3 +346,17 @@ pub fn get_tower_lp_token_deposit(
         },
     )
 }
+
+pub fn get_tower_pending_rewards(
+    querier: &QuerierWrapper,
+    tower_config: &TowerConfig,
+    addr: &Addr,
+) -> StdResult<Vec<Asset>> {
+    querier.query_wasm_smart::<Vec<Asset>>(
+        tower_config.tower_incentives.clone(),
+        &IncentivesQueryMsg::PendingRewards {
+            lp_token: tower_config.lp_token.to_string(),
+            user: addr.to_string(),
+        },
+    )
+}

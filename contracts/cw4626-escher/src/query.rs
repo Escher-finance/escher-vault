@@ -8,12 +8,13 @@ use crate::{
     msg::{
         AccessControlRoleResponse, ConfigResponse, ExchangeRateResponse, GitInfoResponse,
         LpPositionResponse, OraclePricesResponse, OracleTokensListResponse,
+        PendingIncentivesResponse,
     },
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
-    tower::{calculate_total_assets, get_tower_lp_token_deposit},
+    tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
 };
 
 pub fn git_info() -> StdResult<GitInfoResponse> {
@@ -158,4 +159,10 @@ pub fn lp_position(this: &Addr, deps: &Deps) -> StdResult<LpPositionResponse> {
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let lp_token_amount = get_tower_lp_token_deposit(&deps.querier, &tower_config, this)?;
     Ok(LpPositionResponse { lp_token_amount })
+}
+
+pub fn all_pending_incentives(this: &Addr, deps: &Deps) -> StdResult<PendingIncentivesResponse> {
+    let tower_config = TOWER_CONFIG.load(deps.storage)?;
+    let incentives = get_tower_pending_rewards(&deps.querier, &tower_config, this)?;
+    Ok(PendingIncentivesResponse { incentives })
 }
