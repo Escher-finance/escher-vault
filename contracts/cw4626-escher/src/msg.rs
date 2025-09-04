@@ -160,6 +160,12 @@ pub struct OraclePricesResponse {
 }
 
 #[cw_serde]
+pub struct VaultExchangeRateResponse {
+    // Stringified Decimal (e.g., "1.798318764916358821")
+    pub exchange_rate: String,
+}
+
+#[cw_serde]
 pub struct GitInfoResponse {
     pub git: String,
 }
@@ -178,6 +184,9 @@ pub enum QueryMsg {
     /// NOTE: We might want to keep prices "private"
     #[returns(OracleTokensListResponse)]
     OraclePrices {},
+    /// Returns vault underlying asset exchange rate (total_assets / total_shares) as string
+    #[returns(VaultExchangeRateResponse)]
+    VaultExchangeRate {},
 
     //
     // CW4626
