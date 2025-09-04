@@ -199,7 +199,7 @@ pub fn deposit(
         .into());
     }
     let cw4626::PreviewDepositResponse { shares } =
-        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets, true)?;
     _deposit(deps, env, info, receiver, assets, shares)
 }
 
@@ -373,7 +373,7 @@ pub fn receive_deposit(
     // For now, just delegate to the base implementation
     // This is a simplified version that works with the escher contract
     let assets = received_balance.amount;
-    let preview = query::preview_deposit(&env.contract.address, &deps.as_ref(), assets)?;
+    let preview = query::preview_deposit(&env.contract.address, &deps.as_ref(), assets, true)?;
 
     // Create a mock MessageInfo for the _deposit function
     let info = MessageInfo {

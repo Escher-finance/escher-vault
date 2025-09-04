@@ -48,10 +48,6 @@ pub fn _convert_to_shares(
     assets: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
-    // If vault is in zero state, mint 1:1 shares for assets
-    if total_shares.is_zero() || total_assets.is_zero() {
-        return Ok(assets);
-    }
     let frac = (total_shares + Uint128::one(), total_assets + Uint128::one());
     match rounding {
         Rounding::Ceil => assets.checked_mul_ceil(frac),
@@ -80,12 +76,16 @@ pub fn _preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
+    apply_total_assets_correction: bool,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
     let Tokens {
         total_shares,
-        total_assets,
+        mut total_assets,
         ..
     } = get_tokens(this, deps)?;
+    if apply_total_assets_correction {
+        total_assets -= assets;
+    }
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(cw4626::PreviewDepositResponse { shares })
 }
@@ -180,16 +180,14 @@ mod tests {
         let assets = Uint128::new(60000);
 
         // Test when total_shares is zero
-        let shares =
-            _convert_to_shares(Uint128::zero(), Uint128::new(1000), assets, Rounding::Floor)
-                .unwrap();
-        assert_eq!(shares, assets);
-
-        // Test when total_assets is zero
-        let shares =
-            _convert_to_shares(Uint128::new(1000), Uint128::zero(), assets, Rounding::Floor)
-                .unwrap();
-        assert_eq!(shares, assets);
+        let shares = _convert_to_shares(
+            Uint128::zero(),
+            Uint128::new(60000),
+            assets,
+            Rounding::Floor,
+        )
+        .unwrap();
+        assert_eq!(shares, Uint128::zero());
 
         // Test when both are zero
         let shares =

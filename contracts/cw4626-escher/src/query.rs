@@ -116,8 +116,10 @@ pub fn preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
+    // NOTE: This needs to be adapted to the CW20 case; now will only work with underlying
+    is_execute: bool,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
-    _preview_deposit(this, deps, assets)
+    _preview_deposit(this, deps, assets, is_execute)
 }
 
 pub fn preview_mint(
@@ -135,22 +137,14 @@ pub fn preview_mint(
 }
 
 pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse> {
-    // Check total supply first to avoid requiring oracle prices for zero-state
-    let token_info = cw20_base::contract::query_token_info(*deps)?;
-    if token_info.total_supply.is_zero() {
-        return Ok(ExchangeRateResponse {
-            exchange_rate: Decimal::one(),
-        });
-    }
-
     let Tokens {
         total_shares,
         total_assets,
         ..
     } = get_tokens(this, deps)?;
 
-    let assets_dec = Decimal::from_ratio(total_assets, Uint128::one());
-    let shares_dec = Decimal::from_ratio(total_shares, Uint128::one());
+    let assets_dec = Decimal::from_ratio(total_assets + Uint128::one(), Uint128::one());
+    let shares_dec = Decimal::from_ratio(total_shares + Uint128::one(), Uint128::one());
     let exchange_rate = assets_dec / shares_dec;
     Ok(ExchangeRateResponse { exchange_rate })
 }

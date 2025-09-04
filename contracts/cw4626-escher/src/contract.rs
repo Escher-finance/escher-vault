@@ -223,7 +223,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::MaxDeposit { receiver } => to_json_binary(&crate::query::max_deposit(receiver)?),
         QueryMsg::PreviewDeposit { assets } => {
-            to_json_binary(&crate::query::preview_deposit(&this, &deps, assets)?)
+            to_json_binary(&crate::query::preview_deposit(&this, &deps, assets, false)?)
         }
         QueryMsg::MaxMint { receiver } => to_json_binary(&crate::query::max_mint(receiver)?),
         QueryMsg::PreviewMint { shares } => {
