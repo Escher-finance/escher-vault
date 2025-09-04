@@ -22,7 +22,7 @@ use crate::{
         AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
-    tower::{add_tower_liquidity, tower_swap, update_and_validate_prices},
+    tower::{add_tower_liquidity, remove_tower_liquidity, tower_swap, update_and_validate_prices},
     ContractError,
 };
 
@@ -273,6 +273,33 @@ pub fn add_liquidity(
         &tower_config.lp,
     );
     Ok(Response::new().add_event(event).add_messages(msgs))
+}
+
+pub fn remove_liquidity(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    lp_token_amount: Uint128,
+) -> Result<Response, ContractError> {
+    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+
+    let tower_config = TOWER_CONFIG.load(deps.storage)?;
+    let this = env.contract.address;
+    let lp_token_balance = query_asset_info_balance(
+        &deps.querier,
+        AssetInfo::Token {
+            contract_addr: tower_config.lp_token.clone(),
+        },
+        this.clone(),
+    )?;
+
+    if lp_token_amount.is_zero() || lp_token_balance < lp_token_amount {
+        return Err(ContractError::InsufficientFunds {});
+    }
+
+    let msgs = remove_tower_liquidity(deps.storage, lp_token_amount)?;
+
+    Ok(Response::new().add_messages(msgs))
 }
 
 pub fn swap(

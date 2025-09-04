@@ -48,6 +48,8 @@ pub enum ExecuteMsg {
     Unbond { amount: Uint128 },
     /// Manager add liquidity
     AddLiquidity { underlying_token_amount: Uint128 },
+    /// Manager remove liquidity
+    RemoveLiquidity { lp_token_amount: Uint128 },
     /// Manager swap
     Swap {
         amount: Uint128,
