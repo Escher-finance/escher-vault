@@ -333,6 +333,92 @@ fn instantiates_properly() {
 }
 
 #[test]
+fn vault_exchange_rate_query_returns_pps_string() {
+    let mut app = get_app();
+    let vault = proper_instantiate(&mut app);
+
+    // Initially no deposits: define PPS as 1.0
+    let rate: VaultExchangeRateResponse = app
+        .wrap()
+        .query_wasm_smart(&vault, &QueryMsg::VaultExchangeRate {})
+        .unwrap();
+    assert_eq!(rate.exchange_rate, Decimal::from_str("1.0").unwrap());
+
+    // Set minimal non-zero oracle prices required by escher
+    let api = app.api();
+    let oracle = addr(api, ORACLE);
+    let prices = HashMap::from_iter(
+        [
+            (
+                "other_lp_tkn".to_string(),
+                Decimal::from_str("1.0").unwrap(),
+            ),
+            ("incentive1".to_string(), Decimal::from_str("1.0").unwrap()),
+            ("incentive2".to_string(), Decimal::from_str("1.0").unwrap()),
+        ]
+        .into_iter(),
+    );
+    app.execute_contract(
+        oracle.clone(),
+        vault.clone(),
+        &ExecuteMsg::OracleUpdatePrices { prices },
+        &[],
+    )
+    .unwrap();
+
+    // Deposit 1000 underlying, expect PPS ~ 1.0 (1:1)
+    let user = addr(app.api(), USER);
+    let deposit = Uint128::from(1000u64);
+    app.execute_contract(
+        user.clone(),
+        vault.clone(),
+        &ExecuteMsg::Deposit {
+            assets: deposit,
+            receiver: user.clone(),
+        },
+        &Vec::from([Coin::new(deposit, UNDERLYING_TOKEN)]),
+    )
+    .unwrap();
+
+    let rate2: VaultExchangeRateResponse = app
+        .wrap()
+        .query_wasm_smart(&vault, &QueryMsg::VaultExchangeRate {})
+        .unwrap();
+    println!("rate after 1000 deposit: {}", rate2.exchange_rate);
+    // Should be very close to 1.0; string compare allows 1 or 1.0 depending on formatting
+    assert!(rate2.exchange_rate.to_string().starts_with("1"));
+
+    // Now add incentive tokens to the vault to simulate yield and check PPS increases
+    // Use large amounts so value >= 1 ubbn after pricing
+    let incentive_amount = Uint128::from(1_000_000u64);
+    app.sudo(cw_multi_test::SudoMsg::Bank(
+        cw_multi_test::BankSudo::Mint {
+            to_address: vault.to_string(),
+            amount: Vec::from([
+                Coin::new(incentive_amount, "incentive1"),
+                Coin::new(incentive_amount, "incentive2"),
+            ]),
+        },
+    ))
+    .unwrap();
+
+    let rate3: VaultExchangeRateResponse = app
+        .wrap()
+        .query_wasm_smart(&vault, &QueryMsg::VaultExchangeRate {})
+        .unwrap();
+    println!("rate after incentives: {}", rate3.exchange_rate);
+
+    let r2 = rate2.exchange_rate;
+    let r3 = rate3.exchange_rate;
+    assert!(
+        r3 > r2,
+        "exchange rate should increase after incentives: {} > {}",
+        r3,
+        r2
+    );
+}
+
+#[test]
 fn deposit_no_yield_must_be_one_to_one() {
     let mut app = get_app();
     let vault = proper_instantiate(&mut app);

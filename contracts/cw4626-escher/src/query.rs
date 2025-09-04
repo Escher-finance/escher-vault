@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 
 use crate::{
     asset::get_asset_info_address,
@@ -7,7 +7,7 @@ use crate::{
     },
     msg::{
         AccessControlRoleResponse, ConfigResponse, GitInfoResponse, OraclePricesResponse,
-        OracleTokensListResponse,
+        OracleTokensListResponse, VaultExchangeRateResponse,
     },
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, STAKING_CONTRACT, TOWER_CONFIG,
@@ -131,4 +131,25 @@ pub fn preview_mint(
     } = get_tokens(this, deps)?;
     let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Ceil)?;
     Ok(cw4626::PreviewMintResponse { assets })
+}
+
+pub fn vault_exchange_rate(this: &Addr, deps: &Deps) -> StdResult<VaultExchangeRateResponse> {
+    // Check total supply first to avoid requiring oracle prices for zero-state
+    let token_info = cw20_base::contract::query_token_info(*deps)?;
+    if token_info.total_supply.is_zero() {
+        return Ok(VaultExchangeRateResponse {
+            exchange_rate: Decimal::one(),
+        });
+    }
+
+    let Tokens {
+        total_shares,
+        total_assets,
+        ..
+    } = get_tokens(this, deps)?;
+
+    let assets_dec = Decimal::from_ratio(total_assets, Uint128::one());
+    let shares_dec = Decimal::from_ratio(total_shares, Uint128::one());
+    let exchange_rate = assets_dec / shares_dec;
+    Ok(VaultExchangeRateResponse { exchange_rate })
 }
