@@ -342,7 +342,7 @@ fn vault_exchange_rate_query_returns_pps_string() {
         .wrap()
         .query_wasm_smart(&vault, &QueryMsg::VaultExchangeRate {})
         .unwrap();
-    assert_eq!(rate.exchange_rate, "1.0");
+    assert_eq!(rate.exchange_rate, Decimal::from_str("1.0").unwrap());
 
     // Set minimal non-zero oracle prices required by escher
     let api = app.api();
@@ -372,9 +372,13 @@ fn vault_exchange_rate_query_returns_pps_string() {
     app.execute_contract(
         user.clone(),
         vault.clone(),
-        &ExecuteMsg::Deposit { assets: deposit, receiver: user.clone() },
+        &ExecuteMsg::Deposit {
+            assets: deposit,
+            receiver: user.clone(),
+        },
         &Vec::from([Coin::new(deposit, UNDERLYING_TOKEN)]),
-    ).unwrap();
+    )
+    .unwrap();
 
     let rate2: VaultExchangeRateResponse = app
         .wrap()
@@ -382,7 +386,7 @@ fn vault_exchange_rate_query_returns_pps_string() {
         .unwrap();
     println!("rate after 1000 deposit: {}", rate2.exchange_rate);
     // Should be very close to 1.0; string compare allows 1 or 1.0 depending on formatting
-    assert!(rate2.exchange_rate.starts_with("1"));
+    assert!(rate2.exchange_rate.to_string().starts_with("1"));
 
     // Now add incentive tokens to the vault to simulate yield and check PPS increases
     // Use large amounts so value >= 1 ubbn after pricing
@@ -404,9 +408,14 @@ fn vault_exchange_rate_query_returns_pps_string() {
         .unwrap();
     println!("rate after incentives: {}", rate3.exchange_rate);
 
-    let r2 = Decimal::from_str(&rate2.exchange_rate).unwrap();
-    let r3 = Decimal::from_str(&rate3.exchange_rate).unwrap();
-    assert!(r3 > r2, "exchange rate should increase after incentives: {} > {}", r3, r2);
+    let r2 = rate2.exchange_rate;
+    let r3 = rate3.exchange_rate;
+    assert!(
+        r3 > r2,
+        "exchange rate should increase after incentives: {} > {}",
+        r3,
+        r2
+    );
 }
 
 #[test]

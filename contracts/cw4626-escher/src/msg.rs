@@ -161,8 +161,7 @@ pub struct OraclePricesResponse {
 
 #[cw_serde]
 pub struct VaultExchangeRateResponse {
-    // Stringified Decimal (e.g., "1.798318764916358821")
-    pub exchange_rate: String,
+    pub exchange_rate: Decimal,
 }
 
 #[cw_serde]

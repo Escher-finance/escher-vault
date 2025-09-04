@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, StdError, StdResult, Uint128, Decimal256};
+use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 
 use crate::{
     asset::get_asset_info_address,
@@ -138,7 +138,7 @@ pub fn vault_exchange_rate(this: &Addr, deps: &Deps) -> StdResult<VaultExchangeR
     let token_info = cw20_base::contract::query_token_info(*deps)?;
     if token_info.total_supply.is_zero() {
         return Ok(VaultExchangeRateResponse {
-            exchange_rate: "1.0".to_string(),
+            exchange_rate: Decimal::one(),
         });
     }
 
@@ -148,11 +148,8 @@ pub fn vault_exchange_rate(this: &Addr, deps: &Deps) -> StdResult<VaultExchangeR
         ..
     } = get_tokens(this, deps)?;
 
-    // Convert to Decimal256 for high-precision division
-    let assets_dec = Decimal256::from_ratio(total_assets, Uint128::one());
-    let shares_dec = Decimal256::from_ratio(total_shares, Uint128::one());
-    let rate = assets_dec / shares_dec; // Decimal256
-    Ok(VaultExchangeRateResponse {
-        exchange_rate: rate.to_string(),
-    })
+    let assets_dec = Decimal::from_ratio(total_assets, Uint128::one());
+    let shares_dec = Decimal::from_ratio(total_shares, Uint128::one());
+    let exchange_rate = assets_dec / shares_dec;
+    Ok(VaultExchangeRateResponse { exchange_rate })
 }
