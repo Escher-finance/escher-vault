@@ -7,6 +7,7 @@ const EVENT_DEPOSIT: &str = "deposit";
 const EVENT_WITHDRAW: &str = "withdraw";
 const EVENT_ADD_LIQUIDITY: &str = "add_liquidity";
 const EVENT_REMOVE_LIQUIDITY: &str = "remove_liquidity";
+const EVENT_CLAIM_INCENTIVES: &str = "claim_incentives";
 const EVENT_SWAP: &str = "swap";
 const EVENT_ADD_ROLE: &str = "add_role";
 const EVENT_REMOVE_ROLE: &str = "remove_role";
@@ -89,6 +90,12 @@ pub fn remove_liquidity_event(
     Event::new(EVENT_REMOVE_LIQUIDITY)
         .add_attribute("sender", sender)
         .add_attribute("lp_token_amount", lp_token_amount)
+        .add_attribute("lp_contract", lp_contract)
+}
+
+pub fn claim_incentives_event(sender: &Addr, lp_contract: &Addr) -> Event {
+    Event::new(EVENT_CLAIM_INCENTIVES)
+        .add_attribute("sender", sender)
         .add_attribute("lp_contract", lp_contract)
 }
 

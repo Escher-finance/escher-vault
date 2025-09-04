@@ -1,4 +1,4 @@
-use astroport::asset::AssetInfo;
+use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
@@ -50,6 +50,8 @@ pub enum ExecuteMsg {
     AddLiquidity { underlying_token_amount: Uint128 },
     /// Manager remove liquidity
     RemoveLiquidity { lp_token_amount: Uint128 },
+    /// Manager claim incentives
+    ClaimIncentives {},
     /// Manager swap
     Swap {
         amount: Uint128,
@@ -177,6 +179,11 @@ pub struct LpPositionResponse {
 }
 
 #[cw_serde]
+pub struct PendingIncentivesResponse {
+    pub incentives: Vec<Asset>,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GitInfoResponse)]
@@ -195,6 +202,8 @@ pub enum QueryMsg {
     ExchangeRate {},
     #[returns(LpPositionResponse)]
     LpPosition {},
+    #[returns(PendingIncentivesResponse)]
+    AllPendingIncentives {},
 
     //
     // CW4626
