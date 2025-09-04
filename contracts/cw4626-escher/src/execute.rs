@@ -22,7 +22,10 @@ use crate::{
         AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
-    tower::{add_tower_liquidity, remove_tower_liquidity, tower_swap, update_and_validate_prices},
+    tower::{
+        add_tower_liquidity, get_tower_lp_token_deposit, remove_tower_liquidity, tower_swap,
+        update_and_validate_prices,
+    },
     ContractError,
 };
 
@@ -285,15 +288,9 @@ pub fn remove_liquidity(
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let this = env.contract.address;
-    let lp_token_balance = query_asset_info_balance(
-        &deps.querier,
-        AssetInfo::Token {
-            contract_addr: tower_config.lp_token.clone(),
-        },
-        this.clone(),
-    )?;
+    let lp_amount = get_tower_lp_token_deposit(&deps.querier, &tower_config, &this)?;
 
-    if lp_token_amount.is_zero() || lp_token_balance < lp_token_amount {
+    if lp_token_amount.is_zero() || lp_amount < lp_token_amount {
         return Err(ContractError::InsufficientFunds {});
     }
 
