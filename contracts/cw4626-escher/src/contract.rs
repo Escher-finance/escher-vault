@@ -131,6 +131,17 @@ pub fn execute(
             receiver,
             owner,
         } => cw4626_base_executes::redeem(deps, env, sender, shares, receiver, owner)?,
+        ExecuteMsg::RequestRedeem {
+            shares,
+            receiver,
+            owner,
+        } => crate::execute::request_redemption(deps, env, info, shares, receiver, owner)?,
+        ExecuteMsg::CollectRedeem { redemption_id } => {
+            crate::execute::collect_redemption(deps, env, info, redemption_id)?
+        }
+        ExecuteMsg::CompleteRedemption { redemption_id, tx_hash } => {
+            crate::execute::complete_redemption(deps, env, info, redemption_id, tx_hash)?
+        }
         ExecuteMsg::Receive(cw20_receive_msg) => {
             crate::execute::receive(deps, env, sender, cw20_receive_msg)?
         }
@@ -209,6 +220,21 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::LpPosition {} => to_json_binary(&crate::query::lp_position(&this, &deps)?),
         QueryMsg::AllPendingIncentives {} => {
             to_json_binary(&crate::query::all_pending_incentives(&this, &deps)?)
+        }
+        //
+        // Redemption System
+        //
+        QueryMsg::RedemptionRequest { id } => {
+            to_json_binary(&crate::query::redemption_request(&deps, id)?)
+        }
+        QueryMsg::UserRedemptionRequests { user } => {
+            to_json_binary(&crate::query::user_redemption_requests(&deps, user)?)
+        }
+        QueryMsg::PreviewRedeemMultiAsset { shares } => {
+            to_json_binary(&crate::query::preview_redeem_multi_asset(deps, shares)?)
+        }
+        QueryMsg::RedemptionStats => {
+            to_json_binary(&crate::query::redemption_stats(deps)?)
         }
         //
         // CW4626

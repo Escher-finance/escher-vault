@@ -1,5 +1,5 @@
-# Use official Nix image
-FROM nixos/nix:2.31.0
+# Use official Nix image with latest stable version
+FROM nixos/nix:2.22.0
 
 # Set working directory
 WORKDIR /workspace

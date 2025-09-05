@@ -384,6 +384,36 @@ pub fn receive_deposit(
     _deposit(deps, env, info, receiver, assets, preview.shares)
 }
 
+pub fn request_redemption(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    shares: Uint128,
+    receiver: Addr,
+    owner: Addr,
+) -> Result<Response, ContractError> {
+    crate::redemption::request_redemption(deps, env, info, shares, receiver, owner)
+}
+
+pub fn collect_redemption(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    redemption_id: u64,
+) -> Result<Response, ContractError> {
+    crate::redemption::collect_redemption(deps, env, info, redemption_id)
+}
+
+pub fn complete_redemption(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    redemption_id: u64,
+    tx_hash: String,
+) -> Result<Response, ContractError> {
+    crate::redemption::complete_redemption(deps, env, info, redemption_id, tx_hash)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

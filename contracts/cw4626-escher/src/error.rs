@@ -59,4 +59,14 @@ pub enum ContractError {
 
     #[error("asset amount cannot be zero")]
     ZeroAssetAmount {},
+
+    // Redemption system errors
+    #[error("insufficient shares: requested {requested}, available {available}")]
+    InsufficientShares { requested: cosmwasm_std::Uint128, available: cosmwasm_std::Uint128 },
+
+    #[error("redemption request {id} not found")]
+    RedemptionNotFound { id: u64 },
+
+    #[error("redemption request {id} already completed")]
+    RedemptionAlreadyCompleted { id: u64 },
 }

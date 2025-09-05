@@ -4,7 +4,7 @@ use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
 use cw4626::*;
 
-use crate::state::{AccessControlRole, PricesMap, TowerConfig};
+use crate::state::{AccessControlRole, PricesMap, TowerConfig, RedemptionRequest};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -76,6 +76,21 @@ pub enum ExecuteMsg {
         shares: Uint128,
         receiver: Addr,
         owner: Addr,
+    },
+    /// Request redemption with proper multi-asset distribution
+    RequestRedeem {
+        shares: Uint128,
+        receiver: Addr,
+        owner: Addr,
+    },
+    /// Collect completed redemption (distribute all assets)
+    CollectRedeem {
+        redemption_id: u64,
+    },
+    /// Manager complete redemption after manual asset distribution
+    CompleteRedemption {
+        redemption_id: u64,
+        tx_hash: String,
     },
     /// CW20 receive
     Receive(cw20::Cw20ReceiveMsg),
@@ -184,6 +199,32 @@ pub struct PendingIncentivesResponse {
 }
 
 #[cw_serde]
+pub struct RedemptionRequestResponse {
+    pub request: Option<RedemptionRequest>,
+}
+
+#[cw_serde]
+pub struct UserRedemptionRequestsResponse {
+    pub requests: Vec<RedemptionRequest>,
+}
+
+#[cw_serde]
+pub struct PreviewRedeemMultiAssetResponse {
+    pub expected_assets: Vec<Asset>,
+    pub total_value_in_underlying: Uint128,
+}
+
+#[cw_serde]
+pub struct RedemptionStatsResponse {
+    pub total_redemptions: u64,
+    pub pending_redemptions: u64,
+    pub completed_redemptions: u64,
+    pub total_shares_burned: Uint128,
+    pub total_assets_distributed: Vec<Asset>,
+    pub total_value_distributed: Uint128,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GitInfoResponse)]
@@ -204,6 +245,22 @@ pub enum QueryMsg {
     LpPosition {},
     #[returns(PendingIncentivesResponse)]
     AllPendingIncentives {},
+
+    //
+    // Redemption System
+    //
+    /// Get redemption request details
+    #[returns(RedemptionRequestResponse)]
+    RedemptionRequest { id: u64 },
+    /// Get all redemption requests for a user
+    #[returns(UserRedemptionRequestsResponse)]
+    UserRedemptionRequests { user: Addr },
+    /// Preview redemption with multi-asset distribution
+    #[returns(PreviewRedeemMultiAssetResponse)]
+    PreviewRedeemMultiAsset { shares: Uint128 },
+    /// Get redemption statistics and summary
+    #[returns(RedemptionStatsResponse)]
+    RedemptionStats,
 
     //
     // CW4626
