@@ -143,6 +143,7 @@ pub fn _deposit(
     receiver: Addr,
     assets: Uint128,
     shares: Uint128,
+    via_receive: bool,
 ) -> Result<Response, ContractError> {
     if assets.is_zero() {
         return Err(ContractError::ZeroAssetAmount {});
@@ -156,10 +157,12 @@ pub fn _deposit(
         amount: assets,
         info: asset_info,
     };
-    let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
     let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
-    if let Some(msg) = transfer_msg {
-        res = res.add_message(msg);
+    if !via_receive {
+        let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
+        if let Some(msg) = transfer_msg {
+            res = res.add_message(msg);
+        }
     }
     _mint(deps.branch(), receiver.to_string(), shares)?;
     Ok(res)

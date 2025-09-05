@@ -208,7 +208,7 @@ pub fn deposit(
         },
     )?;
     let sender = info.sender.clone();
-    _deposit(deps, env, info, sender, receiver, assets, shares)
+    _deposit(deps, env, info, sender, receiver, assets, shares, false)
 }
 
 pub fn mint(
@@ -231,7 +231,7 @@ pub fn mint(
     let cw4626::PreviewMintResponse { assets } =
         query::preview_mint(&env.contract.address, &deps_ref, shares)?;
     let sender = info.sender.clone();
-    _deposit(deps, env, info, sender, receiver, assets, shares)
+    _deposit(deps, env, info, sender, receiver, assets, shares, false)
 }
 
 pub fn add_liquidity(
@@ -388,8 +388,16 @@ pub fn receive_deposit(
         assets,
         PreviewDepositKind::Cw20ViaReceive {},
     )?;
-
-    _deposit(deps, env, info, sender, receiver, assets, preview.shares)
+    _deposit(
+        deps,
+        env,
+        info,
+        sender,
+        receiver,
+        assets,
+        preview.shares,
+        true,
+    )
 }
 
 #[cfg(test)]
