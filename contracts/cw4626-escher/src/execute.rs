@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use crate::{
     access_control::only_role,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
-    helpers::{_deposit, validate_addrs, validate_salt},
+    helpers::{_deposit, validate_addrs, validate_salt, PreviewDepositKind},
     query,
     responses::{
         add_liquidity_event, claim_incentives_event, generate_add_role_response,
@@ -198,9 +198,17 @@ pub fn deposit(
         }
         .into());
     }
-    let cw4626::PreviewDepositResponse { shares } =
-        query::preview_deposit(&env.contract.address, &deps.as_ref(), assets, true)?;
-    _deposit(deps, env, info, receiver, assets, shares)
+    let cw4626::PreviewDepositResponse { shares } = query::preview_deposit(
+        &env.contract.address,
+        &deps.as_ref(),
+        assets,
+        match UNDERLYING_ASSET.load(deps.storage)? {
+            AssetInfo::Token { .. } => PreviewDepositKind::Cw20ViaTransferFrom {},
+            AssetInfo::NativeToken { .. } => PreviewDepositKind::Native {},
+        },
+    )?;
+    let sender = info.sender.clone();
+    _deposit(deps, env, info, sender, receiver, assets, shares)
 }
 
 pub fn mint(
@@ -222,7 +230,8 @@ pub fn mint(
     }
     let cw4626::PreviewMintResponse { assets } =
         query::preview_mint(&env.contract.address, &deps_ref, shares)?;
-    _deposit(deps, env, info, receiver, assets, shares)
+    let sender = info.sender.clone();
+    _deposit(deps, env, info, sender, receiver, assets, shares)
 }
 
 pub fn add_liquidity(
@@ -346,6 +355,7 @@ pub fn swap(
 pub fn receive(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     cw20_contract: Addr,
     cw20_receive_msg: cw4626::cw20::Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
@@ -358,7 +368,7 @@ pub fn receive(
 
     match msg {
         cw4626::Cw4626ReceiveMsg::Deposit { receiver } => {
-            crate::execute::receive_deposit(deps, env, sender, received_balance, receiver)
+            crate::execute::receive_deposit(deps, env, info, sender, received_balance, receiver)
         }
     }
 }
@@ -366,22 +376,20 @@ pub fn receive(
 pub fn receive_deposit(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     sender: Addr,
     received_balance: cw4626::cw20::Cw20CoinVerified,
     receiver: Addr,
 ) -> Result<Response, ContractError> {
-    // For now, just delegate to the base implementation
-    // This is a simplified version that works with the escher contract
     let assets = received_balance.amount;
-    let preview = query::preview_deposit(&env.contract.address, &deps.as_ref(), assets, true)?;
+    let preview = query::preview_deposit(
+        &env.contract.address,
+        &deps.as_ref(),
+        assets,
+        PreviewDepositKind::Cw20ViaReceive {},
+    )?;
 
-    // Create a mock MessageInfo for the _deposit function
-    let info = MessageInfo {
-        sender: sender.clone(),
-        funds: vec![],
-    };
-
-    _deposit(deps, env, info, receiver, assets, preview.shares)
+    _deposit(deps, env, info, sender, receiver, assets, preview.shares)
 }
 
 #[cfg(test)]
@@ -389,7 +397,7 @@ mod tests {
     use super::*;
     use crate::state::{TowerConfig, ACCESS_CONTROL, TOWER_CONFIG};
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env},
+        testing::{message_info, mock_dependencies, mock_env},
         to_json_binary, Addr, Uint128,
     };
     use cw4626::Cw4626ReceiveMsg;
@@ -436,6 +444,7 @@ mod tests {
         let cw20_contract = Addr::unchecked("cw20_token");
         let sender = Addr::unchecked("user");
         let receiver = Addr::unchecked("receiver");
+        let info = message_info(&sender, &[]);
 
         let deposit_msg = Cw4626ReceiveMsg::Deposit { receiver };
         let cw20_receive_msg = cw4626::cw20::Cw20ReceiveMsg {
@@ -445,7 +454,7 @@ mod tests {
         };
 
         // This might fail due to missing underlying asset setup, but should not panic
-        let result = receive(deps.as_mut(), env, cw20_contract, cw20_receive_msg);
+        let result = receive(deps.as_mut(), env, info, cw20_contract, cw20_receive_msg);
 
         // We expect this to fail due to missing setup, but the function should handle it gracefully
         assert!(result.is_err());

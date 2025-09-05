@@ -4,6 +4,7 @@ use crate::{
     asset::get_asset_info_address,
     helpers::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
+        PreviewDepositKind,
     },
     msg::{
         AccessControlRoleResponse, ConfigResponse, ExchangeRateResponse, GitInfoResponse,
@@ -116,10 +117,9 @@ pub fn preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
-    // NOTE: This needs to be adapted to the CW20 case; now will only work with underlying
-    is_execute: bool,
+    preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
-    _preview_deposit(this, deps, assets, is_execute)
+    _preview_deposit(this, deps, assets, preview_deposit_kind)
 }
 
 pub fn preview_mint(

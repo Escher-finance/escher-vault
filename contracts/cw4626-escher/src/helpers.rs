@@ -71,19 +71,38 @@ pub fn _convert_to_assets(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-/// Preview deposit calculation - now matches convert_to_shares logic
+#[derive(Debug, Clone)]
+pub enum PreviewDepositKind {
+    OnlyQuery {},
+    Cw20ViaTransferFrom {},
+    Cw20ViaReceive {},
+    Native {},
+}
+
+impl PreviewDepositKind {
+    pub fn needs_correction(&self) -> bool {
+        match self {
+            Self::OnlyQuery {} => false,
+            Self::Cw20ViaTransferFrom {} => false,
+            Self::Cw20ViaReceive {} => true,
+            Self::Native {} => true,
+        }
+    }
+}
+
+/// Preview deposit calculation
 pub fn _preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
-    apply_total_assets_correction: bool,
+    preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
     let Tokens {
         total_shares,
         mut total_assets,
         ..
     } = get_tokens(this, deps)?;
-    if apply_total_assets_correction {
+    if preview_deposit_kind.needs_correction() {
         total_assets -= assets;
     }
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
@@ -120,6 +139,7 @@ pub fn _deposit(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    sender: Addr,
     receiver: Addr,
     assets: Uint128,
     shares: Uint128,
@@ -131,14 +151,13 @@ pub fn _deposit(
         return Err(ContractError::ZeroShareAmount {});
     }
 
-    let caller = info.sender.clone();
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     let asset = Asset {
         amount: assets,
         info: asset_info,
     };
     let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
-    let mut res = generate_deposit_response(&caller, &receiver, assets, shares);
+    let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
     if let Some(msg) = transfer_msg {
         res = res.add_message(msg);
     }
