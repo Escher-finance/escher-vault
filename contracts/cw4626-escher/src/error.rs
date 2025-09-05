@@ -59,4 +59,7 @@ pub enum ContractError {
 
     #[error("asset amount cannot be zero")]
     ZeroAssetAmount {},
+
+    #[error("wrong cw20 received")]
+    WrongCw20Received {},
 }

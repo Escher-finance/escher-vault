@@ -145,13 +145,6 @@ pub fn _deposit(
     shares: Uint128,
     via_receive: bool,
 ) -> Result<Response, ContractError> {
-    if assets.is_zero() {
-        return Err(ContractError::ZeroAssetAmount {});
-    }
-    if shares.is_zero() {
-        return Err(ContractError::ZeroShareAmount {});
-    }
-
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     let asset = Asset {
         amount: assets,

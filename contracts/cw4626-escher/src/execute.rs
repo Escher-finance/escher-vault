@@ -6,6 +6,7 @@ use cosmwasm_std::{
     from_json, to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response,
     StdError, Uint128,
 };
+use cw4626::PreviewDepositResponse;
 
 use crate::{
     access_control::only_role,
@@ -381,23 +382,26 @@ pub fn receive_deposit(
     received_balance: cw4626::cw20::Cw20CoinVerified,
     receiver: Addr,
 ) -> Result<Response, ContractError> {
+    if received_balance.address.to_string() != UNDERLYING_ASSET.load(deps.storage)?.to_string() {
+        return Err(ContractError::WrongCw20Received {});
+    }
     let assets = received_balance.amount;
-    let preview = query::preview_deposit(
+    let cw4626::MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
+    if assets > max_assets {
+        return Err(cw4626_base::ContractError::ExceededMaxDeposit {
+            receiver: receiver.clone(),
+            assets,
+            max_assets,
+        }
+        .into());
+    }
+    let PreviewDepositResponse { shares } = query::preview_deposit(
         &env.contract.address,
         &deps.as_ref(),
         assets,
         PreviewDepositKind::Cw20ViaReceive {},
     )?;
-    _deposit(
-        deps,
-        env,
-        info,
-        sender,
-        receiver,
-        assets,
-        preview.shares,
-        true,
-    )
+    _deposit(deps, env, info, sender, receiver, assets, shares, true)
 }
 
 #[cfg(test)]
