@@ -48,10 +48,6 @@ pub fn _convert_to_shares(
     assets: Uint128,
     rounding: Rounding,
 ) -> Result<Uint128, StdError> {
-    // If vault is in zero state, mint 1:1 shares for assets
-    if total_shares.is_zero() || total_assets.is_zero() {
-        return Ok(assets);
-    }
     let frac = (total_shares + Uint128::one(), total_assets + Uint128::one());
     match rounding {
         Rounding::Ceil => assets.checked_mul_ceil(frac),
@@ -75,17 +71,40 @@ pub fn _convert_to_assets(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-/// Preview deposit calculation - now matches convert_to_shares logic
+#[derive(Debug, Clone)]
+pub enum PreviewDepositKind {
+    OnlyQuery {},
+    Cw20ViaTransferFrom {},
+    Cw20ViaReceive {},
+    Native {},
+}
+
+impl PreviewDepositKind {
+    pub fn needs_correction(&self) -> bool {
+        match self {
+            Self::OnlyQuery {} => false,
+            Self::Cw20ViaTransferFrom {} => false,
+            Self::Cw20ViaReceive {} => true,
+            Self::Native {} => true,
+        }
+    }
+}
+
+/// Preview deposit calculation
 pub fn _preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
+    preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
     let Tokens {
         total_shares,
-        total_assets,
+        mut total_assets,
         ..
     } = get_tokens(this, deps)?;
+    if preview_deposit_kind.needs_correction() {
+        total_assets -= assets;
+    }
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(cw4626::PreviewDepositResponse { shares })
 }
@@ -120,27 +139,23 @@ pub fn _deposit(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    sender: Addr,
     receiver: Addr,
     assets: Uint128,
     shares: Uint128,
+    via_receive: bool,
 ) -> Result<Response, ContractError> {
-    if assets.is_zero() {
-        return Err(ContractError::ZeroAssetAmount {});
-    }
-    if shares.is_zero() {
-        return Err(ContractError::ZeroShareAmount {});
-    }
-
-    let caller = info.sender.clone();
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     let asset = Asset {
         amount: assets,
         info: asset_info,
     };
-    let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
-    let mut res = generate_deposit_response(&caller, &receiver, assets, shares);
-    if let Some(msg) = transfer_msg {
-        res = res.add_message(msg);
+    let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
+    if !via_receive {
+        let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
+        if let Some(msg) = transfer_msg {
+            res = res.add_message(msg);
+        }
     }
     _mint(deps.branch(), receiver.to_string(), shares)?;
     Ok(res)
@@ -180,16 +195,14 @@ mod tests {
         let assets = Uint128::new(60000);
 
         // Test when total_shares is zero
-        let shares =
-            _convert_to_shares(Uint128::zero(), Uint128::new(1000), assets, Rounding::Floor)
-                .unwrap();
-        assert_eq!(shares, assets);
-
-        // Test when total_assets is zero
-        let shares =
-            _convert_to_shares(Uint128::new(1000), Uint128::zero(), assets, Rounding::Floor)
-                .unwrap();
-        assert_eq!(shares, assets);
+        let shares = _convert_to_shares(
+            Uint128::zero(),
+            Uint128::new(60000),
+            assets,
+            Rounding::Floor,
+        )
+        .unwrap();
+        assert_eq!(shares, Uint128::zero());
 
         // Test when both are zero
         let shares =

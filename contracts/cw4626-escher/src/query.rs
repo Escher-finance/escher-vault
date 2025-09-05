@@ -4,6 +4,7 @@ use crate::{
     asset::get_asset_info_address,
     helpers::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
+        PreviewDepositKind,
     },
     msg::{
         AccessControlRoleResponse, ConfigResponse, ExchangeRateResponse, GitInfoResponse,
@@ -116,8 +117,9 @@ pub fn preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
+    preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
-    _preview_deposit(this, deps, assets)
+    _preview_deposit(this, deps, assets, preview_deposit_kind)
 }
 
 pub fn preview_mint(
@@ -135,22 +137,14 @@ pub fn preview_mint(
 }
 
 pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse> {
-    // Check total supply first to avoid requiring oracle prices for zero-state
-    let token_info = cw20_base::contract::query_token_info(*deps)?;
-    if token_info.total_supply.is_zero() {
-        return Ok(ExchangeRateResponse {
-            exchange_rate: Decimal::one(),
-        });
-    }
-
     let Tokens {
         total_shares,
         total_assets,
         ..
     } = get_tokens(this, deps)?;
 
-    let assets_dec = Decimal::from_ratio(total_assets, Uint128::one());
-    let shares_dec = Decimal::from_ratio(total_shares, Uint128::one());
+    let assets_dec = Decimal::from_ratio(total_assets + Uint128::one(), Uint128::one());
+    let shares_dec = Decimal::from_ratio(total_shares + Uint128::one(), Uint128::one());
     let exchange_rate = assets_dec / shares_dec;
     Ok(ExchangeRateResponse { exchange_rate })
 }

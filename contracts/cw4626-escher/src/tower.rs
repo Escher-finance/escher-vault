@@ -180,6 +180,7 @@ pub fn add_tower_liquidity(
     Ok(msgs)
 }
 
+/// NOTE: This also claims incentives everytime
 pub fn remove_tower_liquidity(
     tower_config: &TowerConfig,
     lp_token_amount: Uint128,
@@ -241,26 +242,27 @@ pub fn calculate_total_assets(
         };
         total_balance += asset_balance.mul_floor(*asset_price);
     }
-    let mut assets: Vec<Asset> = get_tower_pending_rewards(querier, &tower_config, &this)?
-        .into_iter()
-        .filter(|a| tower_config.lp_incentives.contains(&a.info))
-        .collect();
     let lp_amount = get_tower_lp_token_deposit(querier, &tower_config, &this)?;
     if !lp_amount.is_zero() {
-        assets.extend(querier.query_wasm_smart::<Vec<Asset>>(
+        let mut assets: Vec<Asset> = querier.query_wasm_smart::<Vec<Asset>>(
             tower_config.lp.clone(),
             &PairConcentratedQueryMsg::SimulateWithdraw { lp_amount },
-        )?);
-    }
-    for asset in assets {
-        if asset.info == tower_config.lp_underlying_asset {
-            total_balance += asset.amount;
-            continue;
+        )?;
+        assets.extend(
+            get_tower_pending_rewards(querier, &tower_config, &this)?
+                .into_iter()
+                .filter(|a| tower_config.lp_incentives.contains(&a.info)),
+        );
+        for asset in assets {
+            if asset.info == tower_config.lp_underlying_asset {
+                total_balance += asset.amount;
+                continue;
+            }
+            let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
+                return Err(ContractError::OracleInvalidPrices {});
+            };
+            total_balance += asset.amount.mul_floor(*asset_price);
         }
-        let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
-            return Err(ContractError::OracleInvalidPrices {});
-        };
-        total_balance += asset.amount.mul_floor(*asset_price);
     }
     Ok(total_balance)
 }
@@ -339,6 +341,8 @@ pub fn get_tower_lp_token_deposit(
     )
 }
 
+/// NOTE: This query errors if the user has not created a position yet
+/// https://github.com/quasar-finance/babydex/blob/8fce1b955a1769a1f4286c73cbfd36701753ac1e/contracts/tokenomics/incentives/src/query.rs#L174
 pub fn get_tower_pending_rewards(
     querier: &QuerierWrapper,
     tower_config: &TowerConfig,
