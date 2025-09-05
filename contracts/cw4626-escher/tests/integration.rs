@@ -485,6 +485,16 @@ fn deposit_cw20_no_yield_must_be_one_to_one() {
 
     let asset_deposit_amount = Uint128::from(50000_u32);
 
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
     // do first deposit via transfer from
     app.execute_contract(
         user.clone(),
@@ -520,6 +530,7 @@ fn deposit_cw20_no_yield_must_be_one_to_one() {
             .balance,
         asset_deposit_amount
     );
+    assert_eq!(preview_amount, asset_deposit_amount);
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
@@ -528,6 +539,16 @@ fn deposit_cw20_no_yield_must_be_one_to_one() {
         Decimal::one()
     );
 
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
     // do second deposit via send
     app.execute_contract(
         user.clone(),
@@ -557,6 +578,7 @@ fn deposit_cw20_no_yield_must_be_one_to_one() {
             .balance,
         asset_deposit_amount * Uint128::new(2)
     );
+    assert_eq!(preview_amount, asset_deposit_amount);
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
@@ -610,6 +632,16 @@ fn deposit_native_no_yield_must_be_one_to_one() {
 
     let asset_deposit_amount = Uint128::from(50000_u32);
 
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
     // do first deposit
     app.execute_contract(
         user.clone(),
@@ -634,6 +666,7 @@ fn deposit_native_no_yield_must_be_one_to_one() {
             .balance,
         asset_deposit_amount
     );
+    assert_eq!(preview_amount, asset_deposit_amount);
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
@@ -642,6 +675,16 @@ fn deposit_native_no_yield_must_be_one_to_one() {
         Decimal::one()
     );
 
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
     // do second deposit
     app.execute_contract(
         user.clone(),
@@ -666,6 +709,7 @@ fn deposit_native_no_yield_must_be_one_to_one() {
             .balance,
         asset_deposit_amount * Uint128::new(2)
     );
+    assert_eq!(preview_amount, asset_deposit_amount);
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
