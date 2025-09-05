@@ -36,6 +36,9 @@ pub enum ContractError {
     #[error("insufficient funds for operation")]
     InsufficientFunds {},
 
+    #[error("wrong fund amount provided")]
+    WrongFundAmountProvided {},
+
     #[error("invalid token type for this operation")]
     InvalidTokenType {},
 
