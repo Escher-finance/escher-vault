@@ -69,4 +69,7 @@ pub enum ContractError {
 
     #[error("redemption request {id} already completed")]
     RedemptionAlreadyCompleted { id: u64 },
+
+    #[error("fee calculation too early: current block {current_block}, required block {required_block}")]
+    FeeCalculationTooEarly { current_block: u64, required_block: u64 },
 }

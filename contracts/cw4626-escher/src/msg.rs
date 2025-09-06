@@ -19,6 +19,11 @@ pub struct InstantiateMsg {
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
     pub staking_contract: Option<Addr>,
+    // Performance fee configuration
+    pub performance_fee_rate: Decimal,           // e.g., 0.1 (10%)
+    pub fee_recipient: Addr,                     // Manager address to receive fees
+    pub fee_calculation_interval: u64,           // Blocks between fee calculations (e.g., 17280 for 24h)
+    pub initial_assets: Uint128,                 // Initial assets baseline for fee calculation
 }
 
 #[cw_serde]
@@ -97,6 +102,10 @@ pub enum ExecuteMsg {
         redemption_id: u64,
         tx_hash: String,
     },
+    /// Calculate and charge performance fees (manager only)
+    CalculatePerformanceFees {},
+    /// Distribute pending fee (sends actual LP tokens and incentives)
+    DistributeFee {},
     /// CW20 receive
     Receive(cw20::Cw20ReceiveMsg),
 
@@ -230,6 +239,28 @@ pub struct RedemptionStatsResponse {
 }
 
 #[cw_serde]
+pub struct PerformanceFeeConfigResponse {
+    pub fee_rate: Decimal,
+    pub fee_recipient: Addr,
+    pub initial_assets: Uint128,
+    pub last_fee_calculation: u64,
+    pub fee_calculation_interval: u64,
+    pub last_assets_snapshot: Uint128,
+}
+
+#[cw_serde]
+pub struct AssetGrowthResponse {
+    pub current_assets: Uint128,
+    pub initial_assets: Uint128,
+    pub last_assets_snapshot: Uint128,
+    pub asset_growth: Uint128,
+    pub exchange_rate: Decimal,
+    pub blocks_since_last_fee: u64,
+    pub next_fee_calculation_block: u64,
+    pub can_charge_fee: bool,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GitInfoResponse)]
@@ -266,6 +297,12 @@ pub enum QueryMsg {
     /// Get redemption statistics and summary
     #[returns(RedemptionStatsResponse)]
     RedemptionStats,
+    /// Get performance fee configuration
+    #[returns(PerformanceFeeConfigResponse)]
+    PerformanceFeeConfig,
+    /// Get asset growth information
+    #[returns(AssetGrowthResponse)]
+    AssetGrowth,
 
     //
     // CW4626

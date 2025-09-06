@@ -28,6 +28,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
+    let current_block_height = env.block.height;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -74,7 +75,19 @@ pub fn instantiate(
         msg.incentives,
         msg.underlying_token,
     )?;
-    init_oracle_prices(deps, &tower_config)?;
+    init_oracle_prices(deps.branch(), &tower_config)?;
+    
+    // Initialize performance fee configuration
+    let performance_fee_config = crate::state::PerformanceFeeConfig {
+        fee_rate: msg.performance_fee_rate,
+        fee_recipient: msg.fee_recipient,
+        initial_assets: msg.initial_assets,
+        last_fee_calculation: current_block_height,
+        fee_calculation_interval: msg.fee_calculation_interval,
+        last_assets_snapshot: msg.initial_assets, // Start with initial assets
+    };
+    crate::state::PERFORMANCE_FEE_CONFIG.save(deps.storage, &performance_fee_config)?;
+    
     Ok(Response::new())
 }
 
@@ -144,6 +157,12 @@ pub fn execute(
         }
         ExecuteMsg::CompleteRedemptionWithDistribution { redemption_id, tx_hash } => {
             crate::execute::complete_redemption_with_distribution(deps, env, info, redemption_id, tx_hash)?
+        }
+        ExecuteMsg::CalculatePerformanceFees {} => {
+            crate::performance_fees::calculate_performance_fees(deps, env, info)?
+        }
+        ExecuteMsg::DistributeFee {} => {
+            crate::performance_fees::distribute_fee(deps, env, info)?
         }
         ExecuteMsg::Receive(cw20_receive_msg) => {
             crate::execute::receive(deps, env, sender, cw20_receive_msg)?
@@ -238,6 +257,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::RedemptionStats => {
             to_json_binary(&crate::query::redemption_stats(deps)?)
+        }
+        QueryMsg::PerformanceFeeConfig => {
+            to_json_binary(&crate::performance_fees::query_performance_fee_config(deps)?)
+        }
+        QueryMsg::AssetGrowth => {
+            to_json_binary(&crate::performance_fees::query_asset_growth(deps, &env)?)
         }
         //
         // CW4626

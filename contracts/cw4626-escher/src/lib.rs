@@ -5,6 +5,7 @@ mod error;
 pub mod execute;
 pub mod helpers;
 pub mod msg;
+pub mod performance_fees;
 pub mod query;
 pub mod redemption;
 pub mod responses;

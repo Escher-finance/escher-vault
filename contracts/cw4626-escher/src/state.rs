@@ -70,6 +70,32 @@ pub struct LockedShares {
     pub redemption_ids: Vec<u64>,
 }
 
+#[cw_serde]
+pub struct PerformanceFeeConfig {
+    pub fee_rate: Decimal,           // e.g., 0.1 (10%)
+    pub fee_recipient: Addr,         // Manager address
+    pub initial_assets: Uint128,     // Assets at vault start (baseline)
+    pub last_fee_calculation: u64,   // Block height of last fee calculation
+    pub fee_calculation_interval: u64, // Blocks between fee calculations (e.g., 17280 for 24h)
+    pub last_assets_snapshot: Uint128, // Assets at last fee calculation
+}
+
+#[cw_serde]
+pub struct FeeCalculationResult {
+    pub fee_shares: Uint128,
+    pub profit_per_share: Decimal,
+    pub new_hwm_pps: Decimal,
+    pub calculation_block: u64,
+}
+
+#[cw_serde]
+pub struct FeeInfo {
+    pub amount: Uint128,           // Fee amount in underlying asset terms
+    pub percentage: Decimal,       // Percentage of total assets
+    pub calculated_at: u64,        // Block when fee was calculated
+    pub distributed: bool,         // Whether fee has been distributed
+}
+
 pub const UNDERLYING_ASSET: Item<AssetInfo> = Item::new("asset");
 pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
 pub const ACCESS_CONTROL: Map<String, Vec<Addr>> = Map::new("access-control");
@@ -85,3 +111,6 @@ pub const REDEMPTION_REQUESTS: Map<u64, RedemptionRequest> = Map::new("redemptio
 pub const USER_REDEMPTION_IDS: Map<Addr, Vec<u64>> = Map::new("user_redemption_ids");
 // Locked shares system
 pub const LOCKED_SHARES: Item<LockedShares> = Item::new("locked_shares");
+// Performance fee system
+pub const PERFORMANCE_FEE_CONFIG: Item<PerformanceFeeConfig> = Item::new("performance_fee_config");
+pub const PENDING_FEE: Item<FeeInfo> = Item::new("pending_fee");
