@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128, Timestamp};
 
 use crate::{
     asset::get_asset_info_address,
@@ -182,8 +182,8 @@ pub fn user_redemption_requests(deps: &Deps, user: Addr) -> StdResult<UserRedemp
     Ok(UserRedemptionRequestsResponse { requests })
 }
 
-pub fn preview_redeem_multi_asset(deps: Deps, shares: Uint128) -> StdResult<PreviewRedeemMultiAssetResponse> {
-    let (expected_assets, total_value) = crate::redemption::preview_redeem_multi_asset(deps, shares)
+pub fn preview_redeem_multi_asset(deps: Deps, shares: Uint128, contract_addr: Addr) -> StdResult<PreviewRedeemMultiAssetResponse> {
+    let (expected_assets, total_value) = crate::redemption::preview_redeem_multi_asset(deps, shares, contract_addr)
         .map_err(|e| StdError::generic_err(e.to_string()))?;
     Ok(PreviewRedeemMultiAssetResponse {
         expected_assets,
@@ -205,13 +205,13 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
     // Iterate through all redemption requests
     for i in 1..=total_redemptions {
         if let Ok(Some(request)) = REDEMPTION_REQUESTS.may_load(deps.storage, i) {
-            total_shares_burned += request.shares_burned;
+            total_shares_burned += request.shares_locked;
             
             match request.status {
                 crate::state::RedemptionStatus::Pending => {
                     pending_redemptions += 1;
                 }
-                crate::state::RedemptionStatus::Completed => {
+                crate::state::RedemptionStatus::Completed(_) => {
                     completed_redemptions += 1;
                     
                     // Aggregate completed redemptions' assets
@@ -323,7 +323,7 @@ mod tests {
             id: 1,
             owner: Addr::unchecked("cosmos1user1234567890123456789012345678901234567890"),
             receiver: Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890"),
-            shares_burned: Uint128::new(100),
+            shares_locked: Uint128::new(100),
             expected_assets: vec![Asset {
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
@@ -373,7 +373,7 @@ mod tests {
             id: 1,
             owner: user.clone(),
             receiver: Addr::unchecked("cosmos1receiver11234567890123456789012345678901234567890"),
-            shares_burned: Uint128::new(100),
+            shares_locked: Uint128::new(100),
             expected_assets: vec![],
             status: RedemptionStatus::Pending,
             created_at: 1234567890,
@@ -385,9 +385,9 @@ mod tests {
             id: 2,
             owner: user.clone(),
             receiver: Addr::unchecked("cosmos1receiver21234567890123456789012345678901234567890"),
-            shares_burned: Uint128::new(200),
+            shares_locked: Uint128::new(200),
             expected_assets: vec![],
-            status: RedemptionStatus::Completed,
+            status: RedemptionStatus::Completed(Timestamp::from_seconds(1234567891)),
             created_at: 1234567890,
             completed_at: Some(1234567891),
             completion_tx_hash: Some("ABC123".to_string()),
@@ -429,7 +429,7 @@ mod tests {
 
         let shares = Uint128::zero();
 
-        let result = preview_redeem_multi_asset(deps.as_ref(), shares);
+        let result = preview_redeem_multi_asset(deps.as_ref(), shares, Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"));
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -444,7 +444,7 @@ mod tests {
 
         let shares = Uint128::new(100);
 
-        let result = preview_redeem_multi_asset(deps.as_ref(), shares);
+        let result = preview_redeem_multi_asset(deps.as_ref(), shares, Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"));
 
         // This test might fail due to mock setup, but we can test the structure
         match result {

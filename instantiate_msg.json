@@ -1,0 +1,28 @@
+{
+  "managers": ["cosmos1manager1234567890123456789012345678901234567890"],
+  "oracles": ["cosmos1oracle1234567890123456789012345678901234567890"],
+  "underlying_token": {
+    "native_token": {
+      "denom": "ubbn"
+    }
+  },
+  "share_name": "CW4626 Test Vault",
+  "share_symbol": "VAULT",
+  "share_marketing": null,
+  "tower_incentives": "bbn1j27qdcfxpuccyp92exm8e0zqs220k3x9d4cdfjhwk57qs8lcx8esakd8m2",
+  "lp": "bbn10tjmwp8h2qqm53ke23fxdz2xu75r2p00gzkh0346yt7lqskgjv4svsm23j",
+  "slippage_tolerance": "0.01",
+  "incentives": [
+    {
+      "native_token": {
+        "denom": "ibc/3AA6631D204C192DDB757935A4C49A0E83EEEE14AC045E8A180CCB4EE08B6196"
+      }
+    },
+    {
+      "native_token": {
+        "denom": "ibc/2278567FFA6D754BDD8C159CE1770D8AF27649BFB58E5132CF530460591E479D"
+      }
+    }
+  ],
+  "staking_contract": "bbn1ug4tume0pw6d4u7r6rhae6cp3udyrv7cr0angx8qegw7ur25sdxq4krcss"
+}

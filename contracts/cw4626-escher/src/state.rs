@@ -4,6 +4,7 @@ use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
+use cosmwasm_std::Timestamp;
 
 #[cw_serde]
 pub enum AccessControlRole {
@@ -47,7 +48,7 @@ pub type PricesMap = HashMap<String, Decimal>;
 #[cw_serde]
 pub enum RedemptionStatus {
     Pending,
-    Completed,
+    Completed(Timestamp),
 }
 
 #[cw_serde]
@@ -55,12 +56,18 @@ pub struct RedemptionRequest {
     pub id: u64,
     pub owner: Addr,
     pub receiver: Addr,
-    pub shares_burned: Uint128,
+    pub shares_locked: Uint128,  // Changed from shares_burned to shares_locked
     pub expected_assets: Vec<Asset>,
     pub status: RedemptionStatus,
     pub created_at: u64,
     pub completed_at: Option<u64>,
     pub completion_tx_hash: Option<String>,
+}
+
+#[cw_serde]
+pub struct LockedShares {
+    pub total_locked: Uint128,
+    pub redemption_ids: Vec<u64>,
 }
 
 pub const UNDERLYING_ASSET: Item<AssetInfo> = Item::new("asset");
@@ -76,3 +83,5 @@ pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
 pub const REDEMPTION_COUNTER: Item<u64> = Item::new("redemption_counter");
 pub const REDEMPTION_REQUESTS: Map<u64, RedemptionRequest> = Map::new("redemption_requests");
 pub const USER_REDEMPTION_IDS: Map<Addr, Vec<u64>> = Map::new("user_redemption_ids");
+// Locked shares system
+pub const LOCKED_SHARES: Item<LockedShares> = Item::new("locked_shares");

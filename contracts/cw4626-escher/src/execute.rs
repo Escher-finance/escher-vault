@@ -414,6 +414,16 @@ pub fn complete_redemption(
     crate::redemption::complete_redemption(deps, env, info, redemption_id, tx_hash)
 }
 
+pub fn complete_redemption_with_distribution(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    redemption_id: u64,
+    tx_hash: String,
+) -> Result<Response, ContractError> {
+    crate::redemption::complete_redemption_with_distribution(deps, env, info, redemption_id, tx_hash)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

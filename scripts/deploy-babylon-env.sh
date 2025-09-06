@@ -72,7 +72,7 @@ if [ ${#MISSING_VARS[@]} -ne 0 ]; then
     echo "Example .env file:"
     cat << 'EOF'
 BABYLON_CHAIN_ID=bbn-test-5
-BABYLON_RPC_NODE=https://babylon-testnet-rpc.polkachu.com
+BABYLON_RPC_NODE=https://babylon-testnet-rpc-archive-1.nodes.guru 
 BABYLON_GAS_PRICES=0.025ubbn
 BABYLON_POOL_ADDRESS=bbn1hkmstu883spzwj4k92g90fga3jv3n7ywswn6yr5nq3j4gas
 BABYLON_KEY_NAME=my-key
