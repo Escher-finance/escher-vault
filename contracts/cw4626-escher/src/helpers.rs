@@ -252,7 +252,7 @@ mod tests {
     use crate::state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET};
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env},
-        Addr, Decimal, MessageInfo,
+        Decimal, MessageInfo,
     };
 
     #[test]
@@ -352,7 +352,7 @@ mod tests {
         let depositor = deps.api.addr_make("depositor");
         let receiver = deps.api.addr_make("receiver");
         let info = MessageInfo {
-            sender: depositor,
+            sender: depositor.clone(),
             funds: vec![],
         };
         let assets = Uint128::new(1000);
@@ -360,7 +360,17 @@ mod tests {
         // Assume preview produced 910 shares (net_assets with 10% fee_on_total is 910)
         let shares = Uint128::new(910);
 
-        let res = _deposit(deps.as_mut(), env, info, receiver.clone(), assets, shares).unwrap();
+        let res = _deposit(
+            deps.as_mut(),
+            env,
+            info,
+            depositor,
+            receiver.clone(),
+            assets,
+            shares,
+            false,
+        )
+        .unwrap();
         // Verify attributes present
         assert!(res
             .attributes
@@ -420,13 +430,23 @@ mod tests {
         let depositor = deps.api.addr_make("depositor");
         let receiver = deps.api.addr_make("receiver");
         let info = MessageInfo {
-            sender: depositor,
+            sender: depositor.clone(),
             funds: vec![],
         };
         let assets = Uint128::new(1000);
         let shares = Uint128::new(1000);
 
-        let res = _deposit(deps.as_mut(), env, info, receiver.clone(), assets, shares).unwrap();
+        let res = _deposit(
+            deps.as_mut(),
+            env,
+            info,
+            depositor,
+            receiver.clone(),
+            assets,
+            shares,
+            false,
+        )
+        .unwrap();
         // No fee attributes present
         assert!(!res.attributes.iter().any(|a| a.key == "fee_shares"));
 
