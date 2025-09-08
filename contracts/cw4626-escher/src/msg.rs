@@ -4,7 +4,7 @@ use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
 use cw4626::*;
 
-use crate::state::{AccessControlRole, PricesMap, TowerConfig, RedemptionRequest};
+use crate::state::{AccessControlRole, PricesMap, RedemptionRequest, TowerConfig};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -84,19 +84,11 @@ pub enum ExecuteMsg {
         owner: Addr,
     },
     /// Collect completed redemption (distribute all assets)
-    CollectRedeem {
-        redemption_id: u64,
-    },
+    CollectRedeem { redemption_id: u64 },
     /// Manager complete redemption after manual asset distribution
-    CompleteRedemption {
-        redemption_id: u64,
-        tx_hash: String,
-    },
+    CompleteRedemption { redemption_id: u64, tx_hash: String },
     /// Complete redemption by burning shares AND distributing assets in one transaction
-    CompleteRedemptionWithDistribution {
-        redemption_id: u64,
-        tx_hash: String,
-    },
+    CompleteRedemptionWithDistribution { redemption_id: u64, tx_hash: String },
     /// CW20 receive
     Receive(cw20::Cw20ReceiveMsg),
 

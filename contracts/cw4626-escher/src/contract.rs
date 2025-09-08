@@ -140,12 +140,20 @@ pub fn execute(
         ExecuteMsg::CollectRedeem { redemption_id } => {
             crate::execute::collect_redemption(deps, env, info, redemption_id)?
         }
-        ExecuteMsg::CompleteRedemption { redemption_id, tx_hash } => {
-            crate::execute::complete_redemption(deps, env, info, redemption_id, tx_hash)?
-        }
-        ExecuteMsg::CompleteRedemptionWithDistribution { redemption_id, tx_hash } => {
-            crate::execute::complete_redemption_with_distribution(deps, env, info, redemption_id, tx_hash)?
-        }
+        ExecuteMsg::CompleteRedemption {
+            redemption_id,
+            tx_hash,
+        } => crate::execute::complete_redemption(deps, env, info, redemption_id, tx_hash)?,
+        ExecuteMsg::CompleteRedemptionWithDistribution {
+            redemption_id,
+            tx_hash,
+        } => crate::execute::complete_redemption_with_distribution(
+            deps,
+            env,
+            info,
+            redemption_id,
+            tx_hash,
+        )?,
         ExecuteMsg::Receive(cw20_receive_msg) => {
             crate::execute::receive(deps, env, info, sender, cw20_receive_msg)?
         }
@@ -234,12 +242,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::UserRedemptionRequests { user } => {
             to_json_binary(&crate::query::user_redemption_requests(&deps, user)?)
         }
-        QueryMsg::PreviewRedeemMultiAsset { shares } => {
-            to_json_binary(&crate::query::preview_redeem_multi_asset(deps, shares, env.contract.address.clone())?)
-        }
-        QueryMsg::RedemptionStats => {
-            to_json_binary(&crate::query::redemption_stats(deps)?)
-        }
+        QueryMsg::PreviewRedeemMultiAsset { shares } => to_json_binary(
+            &crate::query::preview_redeem_multi_asset(deps, shares, env.contract.address.clone())?,
+        ),
+        QueryMsg::RedemptionStats => to_json_binary(&crate::query::redemption_stats(deps)?),
         //
         // CW4626
         //

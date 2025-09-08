@@ -1,13 +1,12 @@
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_std::{
-    Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128, to_json_binary,
-};
+use cosmwasm_std::{to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
     asset::query_asset_info_balance,
     state::{
-        AccessControlRole, RedemptionRequest, RedemptionStatus, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
-        USER_REDEMPTION_IDS, UNDERLYING_ASSET, TOWER_CONFIG, LOCKED_SHARES, LockedShares,
+        AccessControlRole, LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES,
+        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
+        USER_REDEMPTION_IDS,
     },
     tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
     ContractError,
@@ -31,7 +30,8 @@ pub fn calculate_user_asset_share(
 
     // Calculate user's share of underlying asset
     let underlying_asset = UNDERLYING_ASSET.load(deps.storage)?;
-    let underlying_balance = query_asset_info_balance(&deps.querier, underlying_asset.clone(), this.clone())?;
+    let underlying_balance =
+        query_asset_info_balance(&deps.querier, underlying_asset.clone(), this.clone())?;
     let user_underlying_share = user_shares.multiply_ratio(underlying_balance, total_shares);
     if !user_underlying_share.is_zero() {
         user_assets.push(Asset {
@@ -43,9 +43,10 @@ pub fn calculate_user_asset_share(
     // Calculate user's share of other LP assets
     let mut other_assets = tower_config.lp_incentives.clone();
     other_assets.push(tower_config.lp_other_asset.clone());
-    
+
     for asset_info in other_assets {
-        let asset_balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
+        let asset_balance =
+            query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
         let user_asset_share = user_shares.multiply_ratio(asset_balance, total_shares);
         if !user_asset_share.is_zero() {
             user_assets.push(Asset {
@@ -63,11 +64,11 @@ pub fn calculate_user_asset_share(
             // Simulate withdrawal to get the actual assets
             let mut lp_assets: Vec<Asset> = deps.querier.query_wasm_smart::<Vec<Asset>>(
                 tower_config.lp.clone(),
-                &astroport::pair_concentrated::QueryMsg::SimulateWithdraw { 
-                    lp_amount: user_lp_share 
+                &astroport::pair_concentrated::QueryMsg::SimulateWithdraw {
+                    lp_amount: user_lp_share,
                 },
             )?;
-            
+
             // Add pending rewards for this LP share
             let pending_rewards = get_tower_pending_rewards(&deps.querier, &tower_config, &this)?;
             let user_pending_rewards: Vec<Asset> = pending_rewards
@@ -79,7 +80,7 @@ pub fn calculate_user_asset_share(
                 })
                 .filter(|a| !a.amount.is_zero())
                 .collect();
-            
+
             lp_assets.extend(user_pending_rewards);
             user_assets.extend(lp_assets);
         }
@@ -97,18 +98,16 @@ pub fn lock_shares(
     contract_addr: Addr,
 ) -> Result<(), ContractError> {
     // Update locked shares tracking
-    let mut locked_shares = LOCKED_SHARES
-        .may_load(storage)?
-        .unwrap_or(LockedShares {
-            total_locked: Uint128::zero(),
-            redemption_ids: vec![],
-        });
-    
+    let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
+        total_locked: Uint128::zero(),
+        redemption_ids: vec![],
+    });
+
     locked_shares.total_locked += shares;
     locked_shares.redemption_ids.push(redemption_id);
-    
+
     LOCKED_SHARES.save(storage, &locked_shares)?;
-    
+
     // Transfer shares from user to contract (locking them)
     cw20_base::state::BALANCES.update(
         storage,
@@ -121,7 +120,7 @@ pub fn lock_shares(
             Ok(current - shares)
         },
     )?;
-    
+
     cw20_base::state::BALANCES.update(
         storage,
         &contract_addr,
@@ -129,7 +128,7 @@ pub fn lock_shares(
             Ok(balance.unwrap_or_default() + shares)
         },
     )?;
-    
+
     Ok(())
 }
 
@@ -141,19 +140,19 @@ pub fn burn_locked_shares(
     contract_addr: Addr,
 ) -> Result<(), ContractError> {
     // Update locked shares tracking
-    let mut locked_shares = LOCKED_SHARES
-        .may_load(storage)?
-        .unwrap_or(LockedShares {
-            total_locked: Uint128::zero(),
-            redemption_ids: vec![],
-        });
-    
+    let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
+        total_locked: Uint128::zero(),
+        redemption_ids: vec![],
+    });
+
     // Remove this redemption from locked shares
     locked_shares.total_locked = locked_shares.total_locked.saturating_sub(shares);
-    locked_shares.redemption_ids.retain(|&id| id != redemption_id);
-    
+    locked_shares
+        .redemption_ids
+        .retain(|&id| id != redemption_id);
+
     LOCKED_SHARES.save(storage, &locked_shares)?;
-    
+
     // Burn the shares from the contract
     cw20_base::state::BALANCES.update(
         storage,
@@ -161,12 +160,14 @@ pub fn burn_locked_shares(
         |balance: Option<Uint128>| -> Result<Uint128, cosmwasm_std::StdError> {
             let current = balance.unwrap_or_default();
             if current < shares {
-                return Err(cosmwasm_std::StdError::generic_err("Insufficient locked shares"));
+                return Err(cosmwasm_std::StdError::generic_err(
+                    "Insufficient locked shares",
+                ));
             }
             Ok(current - shares)
         },
     )?;
-    
+
     // Update total supply
     cw20_base::state::TOKEN_INFO.update(
         storage,
@@ -175,7 +176,7 @@ pub fn burn_locked_shares(
             Ok(info)
         },
     )?;
-    
+
     Ok(())
 }
 
@@ -215,7 +216,9 @@ pub fn request_redemption(
     }
 
     // Calculate expected assets before locking
-    let total_shares = cw20_base::state::TOKEN_INFO.load(deps.storage)?.total_supply;
+    let total_shares = cw20_base::state::TOKEN_INFO
+        .load(deps.storage)?
+        .total_supply;
     let expected_assets = if cfg!(test) {
         // Mock expected assets for testing
         vec![Asset {
@@ -225,7 +228,12 @@ pub fn request_redemption(
             amount: shares,
         }]
     } else {
-        calculate_user_asset_share(deps.as_ref(), shares, total_shares, env.contract.address.clone())?
+        calculate_user_asset_share(
+            deps.as_ref(),
+            shares,
+            total_shares,
+            env.contract.address.clone(),
+        )?
     };
 
     // Generate redemption ID
@@ -233,14 +241,20 @@ pub fn request_redemption(
     REDEMPTION_COUNTER.save(deps.storage, &redemption_id)?;
 
     // Lock the shares instead of burning them
-    lock_shares(deps.storage, shares, redemption_id, owner.clone(), env.contract.address.clone())?;
+    lock_shares(
+        deps.storage,
+        shares,
+        redemption_id,
+        owner.clone(),
+        env.contract.address.clone(),
+    )?;
 
     // Create redemption request
     let request = RedemptionRequest {
         id: redemption_id,
         owner: owner.clone(),
         receiver: receiver.clone(),
-        shares_locked: shares,  // Changed from shares_burned to shares_locked
+        shares_locked: shares, // Changed from shares_burned to shares_locked
         expected_assets: expected_assets.clone(),
         status: RedemptionStatus::Pending,
         created_at: env.block.time.seconds(),
@@ -264,7 +278,7 @@ pub fn request_redemption(
         .add_attribute("redemption_id", redemption_id.to_string())
         .add_attribute("owner", owner.to_string())
         .add_attribute("receiver", receiver.to_string())
-        .add_attribute("shares_locked", shares.to_string())  // Changed from shares_burned to shares_locked
+        .add_attribute("shares_locked", shares.to_string()) // Changed from shares_burned to shares_locked
         .add_attribute("expected_assets_count", expected_assets.len().to_string())
         .add_attribute("created_at", env.block.time.seconds().to_string());
 
@@ -272,7 +286,8 @@ pub fn request_redemption(
     let mut response = response;
     for (i, asset) in expected_assets.iter().enumerate() {
         let asset_key = format!("expected_asset_{}", i);
-        let asset_value = format!("{}:{}", 
+        let asset_value = format!(
+            "{}:{}",
             match &asset.info {
                 AssetInfo::NativeToken { denom } => denom.clone(),
                 AssetInfo::Token { contract_addr } => format!("token:{}", contract_addr),
@@ -320,7 +335,10 @@ pub fn collect_redemption(
         .add_attribute("owner", request.owner.to_string())
         .add_attribute("receiver", request.receiver.to_string())
         .add_attribute("shares_locked", request.shares_locked.to_string())
-        .add_attribute("expected_assets_count", request.expected_assets.len().to_string())
+        .add_attribute(
+            "expected_assets_count",
+            request.expected_assets.len().to_string(),
+        )
         .add_attribute("status", "pending")
         .add_attribute("created_at", request.created_at.to_string())
         .add_attribute("note", "Assets must be distributed manually by managers");
@@ -328,7 +346,8 @@ pub fn collect_redemption(
     // Add detailed asset information
     for (i, asset) in request.expected_assets.iter().enumerate() {
         let asset_key = format!("expected_asset_{}", i);
-        let asset_value = format!("{}:{}", 
+        let asset_value = format!(
+            "{}:{}",
             match &asset.info {
                 AssetInfo::NativeToken { denom } => denom.clone(),
                 AssetInfo::Token { contract_addr } => format!("token:{}", contract_addr),
@@ -402,16 +421,17 @@ pub fn complete_redemption_with_distribution(
                 messages.push(cosmwasm_std::CosmosMsg::Wasm(transfer_msg));
             }
         }
-        
+
         response = response.add_attribute(
             format!("distributed_asset_{}", i),
-            format!("{}:{}", 
+            format!(
+                "{}:{}",
                 match &asset.info {
                     AssetInfo::NativeToken { denom } => denom.clone(),
                     AssetInfo::Token { contract_addr } => format!("token:{}", contract_addr),
                 },
                 asset.amount
-            )
+            ),
         );
     }
 
@@ -422,7 +442,12 @@ pub fn complete_redemption_with_distribution(
     REDEMPTION_REQUESTS.save(deps.storage, redemption_id, &request)?;
 
     // Burn the locked shares after successful distribution
-    burn_locked_shares(deps.storage, request.shares_locked, redemption_id, env.contract.address.clone())?;
+    burn_locked_shares(
+        deps.storage,
+        request.shares_locked,
+        redemption_id,
+        env.contract.address.clone(),
+    )?;
 
     Ok(response.add_messages(messages))
 }
@@ -455,7 +480,12 @@ pub fn complete_redemption(
     REDEMPTION_REQUESTS.save(deps.storage, redemption_id, &request)?;
 
     // Burn the locked shares after successful distribution
-    burn_locked_shares(deps.storage, request.shares_locked, redemption_id, env.contract.address.clone())?;
+    burn_locked_shares(
+        deps.storage,
+        request.shares_locked,
+        redemption_id,
+        env.contract.address.clone(),
+    )?;
 
     // Create detailed response with asset breakdown
     let mut response = Response::new()
@@ -467,12 +497,16 @@ pub fn complete_redemption(
         .add_attribute("shares_locked", request.shares_locked.to_string())
         .add_attribute("completed_at", env.block.time.seconds().to_string())
         .add_attribute("tx_hash", tx_hash.clone())
-        .add_attribute("expected_assets_count", request.expected_assets.len().to_string());
+        .add_attribute(
+            "expected_assets_count",
+            request.expected_assets.len().to_string(),
+        );
 
     // Add detailed asset information that was distributed
     for (i, asset) in request.expected_assets.iter().enumerate() {
         let asset_key = format!("distributed_asset_{}", i);
-        let asset_value = format!("{}:{}", 
+        let asset_value = format!(
+            "{}:{}",
             match &asset.info {
                 AssetInfo::NativeToken { denom } => denom.clone(),
                 AssetInfo::Token { contract_addr } => format!("token:{}", contract_addr),
@@ -499,8 +533,11 @@ pub fn preview_redeem_multi_asset(
         return Ok((vec![], Uint128::zero()));
     }
 
-    let total_shares = cw20_base::state::TOKEN_INFO.load(deps.storage)?.total_supply;
-    let expected_assets = calculate_user_asset_share(deps, shares, total_shares, contract_addr.clone())?;
+    let total_shares = cw20_base::state::TOKEN_INFO
+        .load(deps.storage)?
+        .total_supply;
+    let expected_assets =
+        calculate_user_asset_share(deps, shares, total_shares, contract_addr.clone())?;
 
     // Calculate total value in underlying asset terms
     let total_value = if cfg!(test) {
@@ -516,12 +553,15 @@ pub fn preview_redeem_multi_asset(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env},
-        Addr, Uint128, MessageInfo,
+    use crate::state::{
+        TowerConfig, ACCESS_CONTROL, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG,
+        UNDERLYING_ASSET, USER_REDEMPTION_IDS,
     };
     use astroport::asset::AssetInfo;
-    use crate::state::{TowerConfig, ACCESS_CONTROL, TOWER_CONFIG, UNDERLYING_ASSET, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, USER_REDEMPTION_IDS};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Addr, MessageInfo, Uint128,
+    };
 
     fn setup_test_contract(deps: &mut DepsMut) {
         // Set up a manager
@@ -535,7 +575,9 @@ mod tests {
         let underlying_asset = AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         };
-        UNDERLYING_ASSET.save(deps.storage, &underlying_asset).unwrap();
+        UNDERLYING_ASSET
+            .save(deps.storage, &underlying_asset)
+            .unwrap();
 
         // Set up tower config
         let tower_config = TowerConfig {
@@ -589,7 +631,7 @@ mod tests {
             sender: Addr::unchecked("cosmos1user1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         let shares = Uint128::new(100);
@@ -648,25 +690,21 @@ mod tests {
             sender: Addr::unchecked("cosmos1user1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         let shares = Uint128::new(2000); // More than user has
         let receiver = Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890");
         let owner = Addr::unchecked("cosmos1user1234567890123456789012345678901234567890");
 
-        let result = request_redemption(
-            deps.as_mut(),
-            env,
-            info,
-            shares,
-            receiver,
-            owner,
-        );
+        let result = request_redemption(deps.as_mut(), env, info, shares, receiver, owner);
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            ContractError::InsufficientShares { requested, available } => {
+            ContractError::InsufficientShares {
+                requested,
+                available,
+            } => {
                 assert_eq!(requested, Uint128::new(2000));
                 assert_eq!(available, Uint128::new(1000));
             }
@@ -685,21 +723,14 @@ mod tests {
             sender: Addr::unchecked("cosmos1user1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         let shares = Uint128::zero();
         let receiver = Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890");
         let owner = Addr::unchecked("cosmos1user1234567890123456789012345678901234567890");
 
-        let result = request_redemption(
-            deps.as_mut(),
-            env,
-            info,
-            shares,
-            receiver,
-            owner,
-        );
+        let result = request_redemption(deps.as_mut(), env, info, shares, receiver, owner);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -716,7 +747,7 @@ mod tests {
             sender: Addr::unchecked("cosmos1manager1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         // First create a redemption request
@@ -734,7 +765,8 @@ mod tests {
             shares,
             receiver.clone(),
             owner,
-        ).unwrap();
+        )
+        .unwrap();
 
         // Now complete it
         let redemption_id = 1;
@@ -768,7 +800,7 @@ mod tests {
             sender: Addr::unchecked("cosmos1unauthorized1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         // Create a redemption request
@@ -786,19 +818,14 @@ mod tests {
             shares,
             receiver,
             owner,
-        ).unwrap();
+        )
+        .unwrap();
 
         // Try to complete with unauthorized user
         let redemption_id = 1;
         let tx_hash = "ABC123DEF456".to_string();
 
-        let result = complete_redemption(
-            deps.as_mut(),
-            env,
-            info,
-            redemption_id,
-            tx_hash,
-        );
+        let result = complete_redemption(deps.as_mut(), env, info, redemption_id, tx_hash);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -815,19 +842,13 @@ mod tests {
             sender: Addr::unchecked("cosmos1manager1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         let redemption_id = 999; // Non-existent ID
         let tx_hash = "ABC123DEF456".to_string();
 
-        let result = complete_redemption(
-            deps.as_mut(),
-            env,
-            info,
-            redemption_id,
-            tx_hash,
-        );
+        let result = complete_redemption(deps.as_mut(), env, info, redemption_id, tx_hash);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -846,7 +867,7 @@ mod tests {
             sender: Addr::unchecked("cosmos1manager1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         // Create and complete a redemption
@@ -864,7 +885,8 @@ mod tests {
             shares,
             receiver,
             owner,
-        ).unwrap();
+        )
+        .unwrap();
 
         let redemption_id = 1;
         let tx_hash = "ABC123DEF456".to_string();
@@ -875,16 +897,11 @@ mod tests {
             info.clone(),
             redemption_id,
             tx_hash.clone(),
-        ).unwrap();
+        )
+        .unwrap();
 
         // Try to complete again
-        let result = complete_redemption(
-            deps.as_mut(),
-            env,
-            info,
-            redemption_id,
-            tx_hash,
-        );
+        let result = complete_redemption(deps.as_mut(), env, info, redemption_id, tx_hash);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -903,7 +920,7 @@ mod tests {
             sender: Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         // Create a redemption request
@@ -921,24 +938,26 @@ mod tests {
             shares,
             receiver.clone(),
             owner,
-        ).unwrap();
+        )
+        .unwrap();
 
         let redemption_id = 1;
 
-        let result = collect_redemption(
-            deps.as_mut(),
-            env,
-            info,
-            redemption_id,
-        );
+        let result = collect_redemption(deps.as_mut(), env, info, redemption_id);
 
         assert!(result.is_ok());
-        
+
         let response = result.unwrap();
         assert_eq!(response.attributes[0].value, "collect_redemption");
         assert_eq!(response.attributes[1].value, "1");
-        assert_eq!(response.attributes[2].value, "cosmos1user1234567890123456789012345678901234567890");
-        assert_eq!(response.attributes[3].value, "cosmos1receiver1234567890123456789012345678901234567890");
+        assert_eq!(
+            response.attributes[2].value,
+            "cosmos1user1234567890123456789012345678901234567890"
+        );
+        assert_eq!(
+            response.attributes[3].value,
+            "cosmos1receiver1234567890123456789012345678901234567890"
+        );
     }
 
     #[test]
@@ -949,7 +968,7 @@ mod tests {
             sender: Addr::unchecked("cosmos1wrongreceiver1234567890123456789012345678901234567890"),
             funds: vec![],
         };
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         // Create a redemption request
@@ -967,16 +986,12 @@ mod tests {
             shares,
             receiver,
             owner,
-        ).unwrap();
+        )
+        .unwrap();
 
         let redemption_id = 1;
 
-        let result = collect_redemption(
-            deps.as_mut(),
-            env,
-            info,
-            redemption_id,
-        );
+        let result = collect_redemption(deps.as_mut(), env, info, redemption_id);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -988,12 +1003,16 @@ mod tests {
     #[test]
     fn test_preview_redeem_multi_asset() {
         let mut deps = mock_dependencies();
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         let shares = Uint128::new(100);
 
-        let result = preview_redeem_multi_asset(deps.as_ref(), shares, Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"));
+        let result = preview_redeem_multi_asset(
+            deps.as_ref(),
+            shares,
+            Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
+        );
 
         // This test might fail due to mock setup, but we can test the structure
         match result {
@@ -1013,12 +1032,16 @@ mod tests {
     #[test]
     fn test_preview_redeem_multi_asset_zero_shares() {
         let mut deps = mock_dependencies();
-        
+
         setup_test_contract(&mut deps.as_mut());
 
         let shares = Uint128::zero();
 
-        let result = preview_redeem_multi_asset(deps.as_ref(), shares, Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"));
+        let result = preview_redeem_multi_asset(
+            deps.as_ref(),
+            shares,
+            Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
+        );
 
         assert!(result.is_ok());
         let (expected_assets, total_value) = result.unwrap();
