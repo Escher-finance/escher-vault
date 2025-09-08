@@ -274,7 +274,7 @@ mod tests {
         REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
     };
     use astroport::asset::{Asset, AssetInfo};
-    use cosmwasm_std::{testing::mock_dependencies, Addr, DepsMut, Uint128};
+    use cosmwasm_std::{testing::mock_dependencies, Addr, DepsMut, Timestamp, Uint128};
 
     fn setup_test_contract(deps: &mut DepsMut) {
         // Set up a manager
