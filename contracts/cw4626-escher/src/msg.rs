@@ -78,7 +78,7 @@ pub enum ExecuteMsg {
         owner: Addr,
     },
     /// Request redemption with proper multi-asset distribution
-    RequestRedemption {
+    RequestRedeem {
         shares: Uint128,
         receiver: Addr,
         owner: Addr,

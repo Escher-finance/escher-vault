@@ -132,7 +132,7 @@ pub fn execute(
             receiver,
             owner,
         } => cw4626_base_executes::redeem(deps, env, sender, shares, receiver, owner)?,
-        ExecuteMsg::RequestRedemption {
+        ExecuteMsg::RequestRedeem {
             shares,
             receiver,
             owner,
