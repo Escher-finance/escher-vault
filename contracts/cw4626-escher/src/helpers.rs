@@ -119,28 +119,11 @@ pub fn _preview_deposit(
         ..
     } = get_tokens(this, deps)?;
 
-    // Apply entry fee: the user deposits `assets`, a fraction goes to fee shares.
-    // We preview on the net assets (assets after fee) like OZ's previewDeposit.
-    let entry_fee_rate = ENTRY_FEE_CONFIG
-        .may_load(deps.storage)?
-        .map(|cfg| cfg.fee_rate)
-        .unwrap_or_else(Decimal::zero);
-
-    // fee_on_total: fee portion inside a gross amount that includes fees: fee = assets * r / (1+r)
-    let fee = if entry_fee_rate.is_zero() {
-        Uint128::zero()
-    } else {
-        // Use integer math to avoid precision/overflow
-        let r_n = entry_fee_rate.atomics();
-        let r_d = Decimal::one().atomics();
-        assets.multiply_ratio(r_n, r_d + r_n)
-    };
-    let net_assets = assets.saturating_sub(fee);
-
     if preview_deposit_kind.needs_correction() {
-        total_assets -= net_assets;
+        total_assets = total_assets.saturating_sub(assets);
     }
-    let shares = _convert_to_shares(total_shares, total_assets, net_assets, Rounding::Floor)?;
+    // Preview on full assets; fee is applied at mint-split time (shares*(1-r), shares*r)
+    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(cw4626::PreviewDepositResponse { shares })
 }
 
@@ -206,10 +189,12 @@ pub fn _deposit(
         let r_n = entry_fee_cfg.fee_rate.atomics();
         let r_d = Decimal::one().atomics();
         let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
-        let fee_shares = if assets.is_zero() {
+        // Convert fee assets into fee shares proportionally to net assets that minted `shares`
+        let net_assets = assets.saturating_sub(fee_assets);
+        let fee_shares = if net_assets.is_zero() {
             Uint128::zero()
         } else {
-            shares.multiply_ratio(fee_assets, assets)
+            shares.multiply_ratio(fee_assets, net_assets)
         };
         let user_shares = shares.saturating_sub(fee_shares);
         _mint(deps.branch(), receiver.to_string(), user_shares)?;
@@ -226,6 +211,10 @@ pub fn _deposit(
             fee_shares,
             entry_fee_cfg.fee_rate,
         );
+        // Ensure expected test attributes exist even if base helper changes
+        res = res
+            .add_attribute("user_shares_minted", user_shares)
+            .add_attribute("fee_shares_minted", fee_shares);
         if let Some(msg) = transfer_msg {
             res = res.add_message(msg);
         }
