@@ -2,6 +2,7 @@ use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
+    msg::PreviewRedeemMultiAssetResponse,
     state::{
         AccessControlRole, LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES,
         REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
@@ -319,9 +320,12 @@ pub fn preview_redeem_multi_asset(
     deps: Deps,
     shares: Uint128,
     contract_addr: Addr,
-) -> Result<(Vec<Asset>, Uint128), ContractError> {
+) -> Result<PreviewRedeemMultiAssetResponse, ContractError> {
     if shares.is_zero() {
-        return Ok((vec![], Uint128::zero()));
+        return Ok(PreviewRedeemMultiAssetResponse {
+            expected_assets: Vec::new(),
+            total_value_in_underlying: Uint128::zero(),
+        });
     }
 
     let total_shares = cw20_base::state::TOKEN_INFO
@@ -336,9 +340,12 @@ pub fn preview_redeem_multi_asset(
     } else {
         calculate_total_assets(&deps.querier, deps.storage, contract_addr.clone())?
     };
-    let user_value = shares.multiply_ratio(total_value, total_shares);
+    let total_value_in_underlying = shares.multiply_ratio(total_value, total_shares);
 
-    Ok((expected_assets, user_value))
+    Ok(PreviewRedeemMultiAssetResponse {
+        expected_assets,
+        total_value_in_underlying,
+    })
 }
 
 #[cfg(test)]
@@ -546,11 +553,14 @@ mod tests {
 
         // This test might fail due to mock setup, but we can test the structure
         match result {
-            Ok((expected_assets, total_value)) => {
+            Ok(PreviewRedeemMultiAssetResponse {
+                expected_assets,
+                total_value_in_underlying,
+            }) => {
                 // In a real test, we'd verify the expected_assets and total_value
                 // For now, just ensure the function doesn't panic
                 assert!(!expected_assets.is_empty() || expected_assets.is_empty());
-                assert!(total_value >= Uint128::zero());
+                assert!(total_value_in_underlying >= Uint128::zero());
             }
             Err(_) => {
                 // Expected in mock environment due to missing oracle prices
@@ -574,8 +584,11 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        let (expected_assets, total_value) = result.unwrap();
+        let PreviewRedeemMultiAssetResponse {
+            expected_assets,
+            total_value_in_underlying,
+        } = result.unwrap();
         assert!(expected_assets.is_empty());
-        assert_eq!(total_value, Uint128::zero());
+        assert_eq!(total_value_in_underlying, Uint128::zero());
     }
 }

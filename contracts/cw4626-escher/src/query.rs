@@ -193,13 +193,8 @@ pub fn preview_redeem_multi_asset(
     shares: Uint128,
     contract_addr: Addr,
 ) -> StdResult<PreviewRedeemMultiAssetResponse> {
-    let (expected_assets, total_value) =
-        crate::redemption::preview_redeem_multi_asset(deps, shares, contract_addr)
-            .map_err(|e| StdError::generic_err(e.to_string()))?;
-    Ok(PreviewRedeemMultiAssetResponse {
-        expected_assets,
-        total_value_in_underlying: total_value,
-    })
+    crate::redemption::preview_redeem_multi_asset(deps, shares, contract_addr)
+        .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
 pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
