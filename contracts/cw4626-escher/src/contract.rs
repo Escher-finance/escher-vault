@@ -82,15 +82,11 @@ pub fn instantiate(
     init_oracle_prices(deps.branch(), &tower_config)?;
 
     // Initialize entry fee configuration
-    let entry_fee_rate = msg
-        .entry_fee_rate
-        .unwrap_or_else(cosmwasm_std::Decimal::zero);
-    let entry_fee_recipient = msg.entry_fee_recipient.unwrap_or(msg.fee_recipient.clone());
     ENTRY_FEE_CONFIG.save(
         deps.storage,
         &EntryFeeConfig {
-            fee_rate: entry_fee_rate,
-            fee_recipient: entry_fee_recipient,
+            fee_rate: msg.entry_fee_rate.unwrap_or_default(),
+            fee_recipient: msg.entry_fee_recipient,
         },
     )?;
 

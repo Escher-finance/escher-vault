@@ -19,12 +19,9 @@ pub struct InstantiateMsg {
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
     pub staking_contract: Option<Addr>,
-    // Performance fee configuration (removed). Keep fee_recipient for entry/exit fees
-    pub fee_recipient: Addr,     // Address to receive entry/exit fees
-    pub initial_assets: Uint128, // (Kept if needed elsewhere; can be deprecated)
     // Entry fee configuration (applied on deposit/mint)
     pub entry_fee_rate: Option<Decimal>, // e.g., 0.1 (10%); None => 0
-    pub entry_fee_recipient: Option<Addr>, // If None, defaults to fee_recipient
+    pub entry_fee_recipient: Addr,       // If None, defaults to fee_recipient
 }
 
 #[cw_serde]

@@ -291,6 +291,7 @@ fn instantiate_vault(
     staking_address: Addr,
     lp_address: Addr,
     incentives_address: Addr,
+    // with_fee: bool,
 ) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         contract::execute,
@@ -320,8 +321,6 @@ fn instantiate_vault(
         lp: lp_address,
         tower_incentives: incentives_address,
         // Entry fee configuration
-        fee_recipient: admin.clone(),
-        initial_assets: Uint128::new(1000000), // kept for backward compatibility
         entry_fee_rate: Some(Decimal::zero()),
         entry_fee_recipient: None,
     };
@@ -339,6 +338,10 @@ fn proper_instantiate(app: &mut App, cw20_underlying: bool) -> Addr {
     let lp = instantiate_lp(app, asset.clone());
     let tower_incentives = instantiate_incentives(app);
     instantiate_vault(app, asset, staking, lp, tower_incentives)
+}
+
+fn proper_instantiate_with_fees(app: &mut App) -> Addr {
+    todo!()
 }
 
 #[test]
@@ -746,43 +749,4 @@ fn git_info_must_return_valid_data() {
     );
     let hash = parts.next().unwrap();
     assert!(hash.len() == 40 && hash.chars().all(|c| c.is_ascii_hexdigit()))
-}
-
-// Helper function to instantiate without performance fees (using entry fee cfg)
-fn proper_instantiate_with_fees(app: &mut App) -> Addr {
-    let code_id = app.store_code(Box::new(ContractWrapper::new(
-        contract::execute,
-        contract::instantiate,
-        contract::query,
-    )));
-    let vault = app
-        .instantiate_contract(
-            code_id,
-            Addr::unchecked(ADMIN),
-            &InstantiateMsg {
-                managers: vec![Addr::unchecked(ADMIN)],
-                oracles: vec![Addr::unchecked(ORACLE)],
-                underlying_token: AssetInfo::NativeToken {
-                    denom: UNDERLYING_TOKEN.to_string(),
-                },
-                share_name: "Test Vault".to_string(),
-                share_symbol: "VAULT".to_string(),
-                share_marketing: None,
-                tower_incentives: Addr::unchecked("tower_incentives"),
-                lp: Addr::unchecked("lp"),
-                slippage_tolerance: Decimal::from_str("0.01").unwrap(),
-                incentives: vec![],
-                staking_contract: None,
-                // Entry fee configuration
-                fee_recipient: Addr::unchecked(ADMIN),
-                initial_assets: Uint128::new(1000000),
-                entry_fee_rate: Some(Decimal::zero()),
-                entry_fee_recipient: None,
-            },
-            &[],
-            "test",
-            None,
-        )
-        .unwrap();
-    vault
 }
