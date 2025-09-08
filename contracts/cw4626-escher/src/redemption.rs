@@ -1,7 +1,8 @@
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_std::{to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
+    asset::send_asset_from_contract,
     msg::PreviewRedeemMultiAssetResponse,
     responses::{generate_complete_redemption_response, generate_request_redemption_response},
     state::{
@@ -253,32 +254,8 @@ pub fn complete_redemption_with_distribution(
 
     // Create transfer messages for each asset
     for asset in request.expected_assets.iter() {
-        match &asset.info {
-            AssetInfo::NativeToken { denom } => {
-                // For native tokens, we need to send them directly
-                let transfer_msg = cosmwasm_std::BankMsg::Send {
-                    to_address: request.receiver.to_string(),
-                    amount: vec![cosmwasm_std::Coin {
-                        denom: denom.clone(),
-                        amount: asset.amount,
-                    }],
-                };
-                messages.push(cosmwasm_std::CosmosMsg::Bank(transfer_msg));
-            }
-            AssetInfo::Token { contract_addr } => {
-                // For CW20 tokens, we need to send them via the token contract
-                let transfer_msg = cosmwasm_std::WasmMsg::Execute {
-                    contract_addr: contract_addr.to_string(),
-                    msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                        recipient: request.receiver.to_string(),
-                        amount: asset.amount,
-                    })?,
-                    funds: vec![],
-                };
-                messages.push(cosmwasm_std::CosmosMsg::Wasm(transfer_msg));
-            }
-        }
-
+        let transfer_msg = send_asset_from_contract(asset.clone(), request.receiver.clone())?;
+        messages.push(transfer_msg);
         distributed_assets.push(asset.clone());
     }
 
