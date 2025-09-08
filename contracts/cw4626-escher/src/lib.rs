@@ -6,6 +6,7 @@ pub mod execute;
 pub mod helpers;
 pub mod msg;
 pub mod query;
+pub mod redemption;
 pub mod responses;
 pub mod staking;
 pub mod state;

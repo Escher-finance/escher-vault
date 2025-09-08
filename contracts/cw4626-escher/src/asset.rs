@@ -3,8 +3,8 @@ use astroport::{
     querier::{query_balance, query_token_balance},
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper, StdResult,
-    Uint128, WasmMsg,
+    to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper,
+    StdResult, Uint128, WasmMsg,
 };
 use cw4626::cw20;
 use cw4626_base::helpers::validate_cw20;
@@ -68,6 +68,27 @@ pub fn assert_send_asset_to_contract(
             Ok(None)
         }
     }
+}
+
+pub fn send_asset_from_contract(asset: Asset, receiver: Addr) -> Result<CosmosMsg, ContractError> {
+    let cosmos_msg = match asset.info {
+        AssetInfo::NativeToken { denom } => CosmosMsg::Bank(BankMsg::Send {
+            to_address: receiver.to_string(),
+            amount: vec![cosmwasm_std::Coin {
+                denom: denom.clone(),
+                amount: asset.amount,
+            }],
+        }),
+        AssetInfo::Token { contract_addr } => CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_addr.to_string(),
+            msg: to_json_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                recipient: receiver.to_string(),
+                amount: asset.amount,
+            })?,
+            funds: vec![],
+        }),
+    };
+    Ok(cosmos_msg)
 }
 
 /// If `AssetInfo::Token` it uses cw20 Send

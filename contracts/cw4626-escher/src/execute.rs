@@ -135,7 +135,7 @@ pub fn bond(
         })?,
     )?;
 
-    Ok(generate_bond_response(&this, expected, &staking_contract).add_message(bond_msg))
+    Ok(generate_bond_response(&this, amount, expected, &staking_contract).add_message(bond_msg))
 }
 
 pub fn unbond(
@@ -402,6 +402,33 @@ pub fn receive_deposit(
         PreviewDepositKind::Cw20ViaReceive {},
     )?;
     _deposit(deps, env, info, sender, receiver, assets, shares, true)
+}
+
+pub fn request_redeem(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    shares: Uint128,
+    receiver: Addr,
+    owner: Addr,
+) -> Result<Response, ContractError> {
+    crate::redemption::request_redemption(deps, env, info, shares, receiver, owner)
+}
+
+pub fn complete_redemption_with_distribution(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    redemption_id: u64,
+    tx_hash: String,
+) -> Result<Response, ContractError> {
+    crate::redemption::complete_redemption_with_distribution(
+        deps,
+        env,
+        info,
+        redemption_id,
+        tx_hash,
+    )
 }
 
 #[cfg(test)]

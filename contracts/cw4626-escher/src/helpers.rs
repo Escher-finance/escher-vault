@@ -5,7 +5,9 @@ use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, St
 use cw4626_base::helpers::generate_deposit_response;
 
 use crate::{
-    asset::assert_send_asset_to_contract, state::UNDERLYING_ASSET, tower::calculate_total_assets,
+    asset::assert_send_asset_to_contract,
+    state::{LOCKED_SHARES, UNDERLYING_ASSET},
+    tower::calculate_total_assets,
     ContractError,
 };
 
@@ -22,9 +24,21 @@ pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
         contract_addr: this.clone(),
     };
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
-    let total_shares = cw20_base::state::TOKEN_INFO
+    let total_supply = cw20_base::state::TOKEN_INFO
         .load(deps.storage)?
         .total_supply;
+
+    // Subtract locked shares from total supply for exchange rate calculation
+    let locked_shares =
+        LOCKED_SHARES
+            .may_load(deps.storage)?
+            .unwrap_or(crate::state::LockedShares {
+                total_locked: Uint128::zero(),
+                redemption_ids: vec![],
+            });
+
+    let total_shares = total_supply.saturating_sub(locked_shares.total_locked);
+
     let total_assets = calculate_total_assets(&deps.querier, deps.storage, this.clone())
         .map_err(|err| StdError::generic_err(err.to_string()))?;
     Ok(Tokens {

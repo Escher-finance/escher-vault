@@ -1,42 +1,12 @@
 # CW4626 Escher
 
-```mermaid
-sequenceDiagram
-    box rgb(35, 47, 48) ETHEREUM
-    actor User
-    participant EscherHub
-    end
-    box rgb(48, 48, 48) UNION
-    participant UnionLST
-    end
-    box rgb(35, 36, 48) OFFCHAIN
-    participant Oracle
-    end
-    box rgb(48, 43, 35) BABYLON
-    participant Vault
-    participant Tower
-    end
+Opinionated `CW4626` implementation adapted from Ethereum's
+[ERC4626](https://eips.ethereum.org/EIPS/eip-4626) and its
+[OpenZeppelin implementation](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/extensions/ERC4626.sol).
 
-    Note over User: Deposit
-    User->>Oracle: Read LP ratio
-    Oracle-->>Tower: Read LP ratio
-    Tower-->>Oracle: Return LP ratio
-    Oracle-->>User: Return LP ratio
-    User->>EscherHub: ZKGM stake U (+ LP ratio payload)
-    EscherHub->>Vault: ZKGM deposit U + eU
-    Vault-->>Tower: Read LP ratio
-    Tower-->>Vault: Return LP ratio
-    Vault->>Tower: Provide liquidity accordingly (any U/eU dust remains in the vault)
-    Tower-->>Vault: Return current position
-    Note over Vault: Mint vU
-    Vault->>User: ZKGM Send vU
+- Just like on Ethereum vault contract _is_ also the share token (fully
+  implements `CW20`, via `cw20_base`)
+- All other assets in the contract (including the underlying asset) can be
+  either `CW20` or native (using `astroport::Asset` and `astroport::AssetInfo`)
 
-    Note over User: Redeem
-    User->>Vault: ZKGM Send vU
-    Note over Vault: Burn vU
-    Vault-->>Tower: Read position
-    Tower-->>Vault: Return position
-    Vault->>Tower: Withdraw % LP accordingly + all incentives (BABY, etc.)
-    Tower-->>Vault: Return position
-    Vault->>User: ZKGM Send U + eU + BABY + etc. accordingly
-```
+<img width="2850" height="1789" alt="cw4626-escher-diagram" src="https://github.com/user-attachments/assets/c482689d-f51e-4049-81ce-32c4b64a7214" />

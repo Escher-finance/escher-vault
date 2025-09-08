@@ -1,5 +1,5 @@
 use astroport::asset::AssetInfo;
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw20_base::ContractError as Cw20ContractError;
 use cw4626_base::ContractError as Cw4626BaseContractError;
 use cw_utils::PaymentError;
@@ -65,4 +65,22 @@ pub enum ContractError {
 
     #[error("wrong cw20 received")]
     WrongCw20Received {},
+
+    #[error("insufficient shares: requested {requested}, available {available}")]
+    InsufficientShares {
+        requested: Uint128,
+        available: Uint128,
+    },
+
+    #[error("insufficient locked shares: requested {requested}, available {available}")]
+    InsufficientLockedShares {
+        requested: Uint128,
+        available: Uint128,
+    },
+
+    #[error("redemption request {id} not found")]
+    RedemptionNotFound { id: u64 },
+
+    #[error("redemption request {id} already completed")]
+    RedemptionAlreadyCompleted { id: u64 },
 }

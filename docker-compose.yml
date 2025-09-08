@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   cw4626-nix:
     build: .

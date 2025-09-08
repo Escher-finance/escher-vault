@@ -1,5 +1,5 @@
-use astroport::asset::AssetInfo;
-use cosmwasm_std::{Addr, Event, Response, Uint128};
+use astroport::asset::{Asset, AssetInfo};
+use cosmwasm_std::{Addr, Event, Response, Timestamp, Uint128};
 
 const EVENT_BOND: &str = "bond";
 const EVENT_UNBOND: &str = "unbond";
@@ -12,6 +12,8 @@ const EVENT_SWAP: &str = "swap";
 const EVENT_ADD_ROLE: &str = "add_role";
 const EVENT_REMOVE_ROLE: &str = "remove_role";
 const EVENT_ORACLE_UPDATE_PRICES: &str = "oracle_update_prices";
+const EVENT_REQUEST_REDEMPTION: &str = "request_redemption";
+const EVENT_COMPLETE_REDEMPTION: &str = "complete_redemption";
 
 pub fn generate_withdraw_response(
     caller: &Addr,
@@ -30,12 +32,14 @@ pub fn generate_withdraw_response(
 
 pub fn generate_bond_response(
     sender: &Addr,
+    amount: Uint128,
     expected: Uint128,
     staking_contract: &Addr,
 ) -> Response {
     Response::new().add_event(
         Event::new(EVENT_BOND)
             .add_attribute("sender", sender)
+            .add_attribute("amount", amount)
             .add_attribute("expected", expected)
             .add_attribute("staking_contract", staking_contract),
     )
@@ -122,6 +126,55 @@ pub fn generate_remove_role_response(sender: &str, role: &str, address: &str) ->
             .add_attribute("role", role)
             .add_attribute("address", address),
     )
+}
+
+pub fn generate_request_redemption_response(
+    redemption_id: u64,
+    owner: &Addr,
+    receiver: &Addr,
+    shares_locked: Uint128,
+    created_at: Timestamp,
+    expected_assets: &[Asset],
+) -> Response {
+    let mut e = Event::new(EVENT_REQUEST_REDEMPTION)
+        .add_attribute("redemption_id", redemption_id.to_string())
+        .add_attribute("owner", owner)
+        .add_attribute("receiver", receiver)
+        .add_attribute("shares_locked", shares_locked)
+        .add_attribute("expected_assets_count", expected_assets.len().to_string())
+        .add_attribute("created_at", created_at.to_string());
+    for (i, asset) in expected_assets.iter().enumerate() {
+        e = e.add_attribute(format!("expected_asset_{}", i), asset.to_string());
+    }
+    e = e.add_attribute(
+        "total_expected_value",
+        expected_assets.iter().map(|a| a.amount).sum::<Uint128>(),
+    );
+    Response::new().add_event(e)
+}
+
+pub fn generate_complete_redemption_response(
+    redemption_id: u64,
+    receiver: &Addr,
+    shares_burned: Uint128,
+    completed_at: Timestamp,
+    tx_hash: &str,
+    distributed_assets: &[Asset],
+) -> Response {
+    let mut e = Event::new(EVENT_COMPLETE_REDEMPTION)
+        .add_attribute("redemption_id", redemption_id.to_string())
+        .add_attribute("receiver", receiver)
+        .add_attribute("shares_burned", shares_burned)
+        .add_attribute("completed_at", completed_at.to_string())
+        .add_attribute("tx_hash", tx_hash)
+        .add_attribute(
+            "distributed_assets_count",
+            distributed_assets.len().to_string(),
+        );
+    for (i, asset) in distributed_assets.iter().enumerate() {
+        e = e.add_attribute(format!("distributed_asset_{}", i), asset.to_string());
+    }
+    Response::new().add_event(e)
 }
 
 pub fn generate_oracle_update_prices_response(

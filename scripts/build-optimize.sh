@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Build the contract
-cargo wasm -p cw4626-escher
+# Build the contract with reference types disabled for Babylon compatibility
+RUSTFLAGS="-C target-feature=-reference-types" cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
 
 # Create artifacts directory
 mkdir -p artifacts
