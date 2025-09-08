@@ -52,10 +52,13 @@ pub fn _lock_shares(
     cw20_base::state::BALANCES.update(
         storage,
         &owner,
-        |balance: Option<Uint128>| -> Result<Uint128, cosmwasm_std::StdError> {
+        |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
             let current = balance.unwrap_or_default();
             if current < shares {
-                return Err(cosmwasm_std::StdError::generic_err("Insufficient balance"));
+                return Err(ContractError::InsufficientShares {
+                    requested: shares,
+                    available: current,
+                });
             }
             Ok(current - shares)
         },
@@ -64,7 +67,7 @@ pub fn _lock_shares(
     cw20_base::state::BALANCES.update(
         storage,
         &contract_addr,
-        |balance: Option<Uint128>| -> Result<Uint128, cosmwasm_std::StdError> {
+        |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
             Ok(balance.unwrap_or_default() + shares)
         },
     )?;
@@ -97,12 +100,13 @@ pub fn _burn_locked_shares(
     cw20_base::state::BALANCES.update(
         storage,
         &contract_addr,
-        |balance: Option<Uint128>| -> Result<Uint128, cosmwasm_std::StdError> {
+        |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
             let current = balance.unwrap_or_default();
             if current < shares {
-                return Err(cosmwasm_std::StdError::generic_err(
-                    "Insufficient locked shares",
-                ));
+                return Err(ContractError::InsufficientLockedShares {
+                    requested: shares,
+                    available: current,
+                });
             }
             Ok(current - shares)
         },

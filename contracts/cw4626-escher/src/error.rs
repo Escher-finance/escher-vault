@@ -72,6 +72,12 @@ pub enum ContractError {
         available: Uint128,
     },
 
+    #[error("insufficient locked shares: requested {requested}, available {available}")]
+    InsufficientLockedShares {
+        requested: Uint128,
+        available: Uint128,
+    },
+
     #[error("redemption request {id} not found")]
     RedemptionNotFound { id: u64 },
 
