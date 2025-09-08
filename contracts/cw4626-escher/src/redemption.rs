@@ -2,13 +2,11 @@ use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
-    asset::query_asset_info_balance,
     state::{
         AccessControlRole, LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES,
-        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
-        USER_REDEMPTION_IDS,
+        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
     },
-    tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
+    tower::{calculate_assets_ownership, calculate_total_assets},
     ContractError,
 };
 
@@ -17,73 +15,14 @@ pub fn calculate_user_asset_share(
     deps: Deps,
     user_shares: Uint128,
     total_shares: Uint128,
-    contract_addr: Addr,
+    this: Addr,
 ) -> Result<Vec<Asset>, ContractError> {
-    if total_shares.is_zero() {
-        return Ok(vec![]);
-    }
-
-    // Use the passed contract address
-    let this = contract_addr;
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let mut user_assets = Vec::new();
 
-    // Calculate user's share of underlying asset
-    let underlying_asset = UNDERLYING_ASSET.load(deps.storage)?;
-    let underlying_balance =
-        query_asset_info_balance(&deps.querier, underlying_asset.clone(), this.clone())?;
-    let user_underlying_share = user_shares.multiply_ratio(underlying_balance, total_shares);
-    if !user_underlying_share.is_zero() {
-        user_assets.push(Asset {
-            info: underlying_asset,
-            amount: user_underlying_share,
-        });
-    }
-
-    // Calculate user's share of other LP assets
-    let mut other_assets = tower_config.lp_incentives.clone();
-    other_assets.push(tower_config.lp_other_asset.clone());
-
-    for asset_info in other_assets {
-        let asset_balance =
-            query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
-        let user_asset_share = user_shares.multiply_ratio(asset_balance, total_shares);
-        if !user_asset_share.is_zero() {
-            user_assets.push(Asset {
-                info: asset_info,
-                amount: user_asset_share,
-            });
-        }
-    }
-
-    // Calculate user's share of LP position
-    let lp_amount = get_tower_lp_token_deposit(&deps.querier, &tower_config, &this)?;
-    if !lp_amount.is_zero() {
-        let user_lp_share = user_shares.multiply_ratio(lp_amount, total_shares);
-        if !user_lp_share.is_zero() {
-            // Simulate withdrawal to get the actual assets
-            let mut lp_assets: Vec<Asset> = deps.querier.query_wasm_smart::<Vec<Asset>>(
-                tower_config.lp.clone(),
-                &astroport::pair_concentrated::QueryMsg::SimulateWithdraw {
-                    lp_amount: user_lp_share,
-                },
-            )?;
-
-            // Add pending rewards for this LP share
-            let pending_rewards = get_tower_pending_rewards(&deps.querier, &tower_config, &this)?;
-            let user_pending_rewards: Vec<Asset> = pending_rewards
-                .into_iter()
-                .filter(|a| tower_config.lp_incentives.contains(&a.info))
-                .map(|a| Asset {
-                    info: a.info,
-                    amount: user_shares.multiply_ratio(a.amount, total_shares),
-                })
-                .filter(|a| !a.amount.is_zero())
-                .collect();
-
-            lp_assets.extend(user_pending_rewards);
-            user_assets.extend(lp_assets);
-        }
+    for mut asset in calculate_assets_ownership(&deps.querier, &tower_config, this.clone())? {
+        asset.amount = user_shares.multiply_ratio(asset.amount, total_shares);
+        user_assets.push(asset);
     }
 
     Ok(user_assets)

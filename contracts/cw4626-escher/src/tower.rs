@@ -221,6 +221,72 @@ pub fn claim_tower_incentives(tower_config: &TowerConfig) -> Result<CosmosMsg, C
     }))
 }
 
+/// Calculates all available balances
+pub fn calculate_assets_ownership(
+    querier: &QuerierWrapper,
+    tower_config: &TowerConfig,
+    this: Addr,
+) -> Result<Vec<Asset>, ContractError> {
+    let mut assets: HashMap<AssetInfo, Asset> = HashMap::new();
+
+    // underlying asset balance
+    assets.insert(
+        tower_config.lp_underlying_asset.clone(),
+        Asset {
+            info: tower_config.lp_underlying_asset.clone(),
+            amount: query_asset_info_balance(
+                querier,
+                tower_config.lp_underlying_asset.clone(),
+                this.clone(),
+            )?,
+        },
+    );
+
+    // related assets balance
+    let mut asset_infos = tower_config.lp_incentives.clone();
+    asset_infos.push(tower_config.lp_other_asset.clone());
+    for asset_info in asset_infos {
+        let asset_balance = query_asset_info_balance(querier, asset_info.clone(), this.clone())?;
+        assets.insert(
+            asset_info.clone(),
+            Asset {
+                info: asset_info.clone(),
+                amount: asset_balance,
+            },
+        );
+    }
+
+    let lp_amount = get_tower_lp_token_deposit(querier, tower_config, &this)?;
+    if !lp_amount.is_zero() {
+        let mut lp_assets: Vec<Asset> = querier.query_wasm_smart::<Vec<Asset>>(
+            tower_config.lp.clone(),
+            &PairConcentratedQueryMsg::SimulateWithdraw { lp_amount },
+        )?;
+        lp_assets.extend(
+            get_tower_pending_rewards(querier, tower_config, &this)?
+                .into_iter()
+                .filter(|a| tower_config.lp_incentives.contains(&a.info)),
+        );
+        for asset in lp_assets {
+            assets
+                .entry(asset.info.clone())
+                .and_modify(|a| {
+                    a.amount += asset.amount;
+                })
+                .or_insert(Asset {
+                    info: asset.info,
+                    amount: asset.amount,
+                });
+        }
+    }
+
+    Ok(assets
+        .into_values()
+        .filter(|a| !a.amount.is_zero())
+        .collect())
+}
+
+/// Calculates total assets in terms of the underlying asset price
 pub fn calculate_total_assets(
     querier: &QuerierWrapper,
     storage: &dyn Storage,
@@ -228,40 +294,15 @@ pub fn calculate_total_assets(
 ) -> Result<Uint128, ContractError> {
     let prices = get_and_validate_oracle_prices(storage)?;
     let tower_config = TOWER_CONFIG.load(storage)?;
-    let mut total_balance = query_asset_info_balance(
-        querier,
-        tower_config.lp_underlying_asset.clone(),
-        this.clone(),
-    )?;
-    let mut asset_infos = tower_config.lp_incentives.clone();
-    asset_infos.push(tower_config.lp_other_asset.clone());
-    for asset_info in asset_infos {
-        let asset_balance = query_asset_info_balance(querier, asset_info.clone(), this.clone())?;
-        let Some(asset_price) = prices.get(&get_asset_info_address(&asset_info)) else {
-            return Err(ContractError::OracleInvalidPrices {});
-        };
-        total_balance += asset_balance.mul_floor(*asset_price);
-    }
-    let lp_amount = get_tower_lp_token_deposit(querier, &tower_config, &this)?;
-    if !lp_amount.is_zero() {
-        let mut assets: Vec<Asset> = querier.query_wasm_smart::<Vec<Asset>>(
-            tower_config.lp.clone(),
-            &PairConcentratedQueryMsg::SimulateWithdraw { lp_amount },
-        )?;
-        assets.extend(
-            get_tower_pending_rewards(querier, &tower_config, &this)?
-                .into_iter()
-                .filter(|a| tower_config.lp_incentives.contains(&a.info)),
-        );
-        for asset in assets {
-            if asset.info == tower_config.lp_underlying_asset {
-                total_balance += asset.amount;
-                continue;
-            }
+    let mut total_balance = Uint128::zero();
+    for asset in calculate_assets_ownership(querier, &tower_config, this.clone())? {
+        total_balance += if asset.info == tower_config.lp_underlying_asset {
+            asset.amount
+        } else {
             let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
                 return Err(ContractError::OracleInvalidPrices {});
             };
-            total_balance += asset.amount.mul_floor(*asset_price);
+            asset.amount.mul_floor(*asset_price)
         }
     }
     Ok(total_balance)
