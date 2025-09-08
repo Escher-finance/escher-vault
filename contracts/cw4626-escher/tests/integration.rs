@@ -291,7 +291,7 @@ fn instantiate_vault(
     staking_address: Addr,
     lp_address: Addr,
     incentives_address: Addr,
-    // with_fee: bool,
+    fee: Option<Decimal>,
 ) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         contract::execute,
@@ -320,15 +320,14 @@ fn instantiate_vault(
         staking_contract: Some(staking_address),
         lp: lp_address,
         tower_incentives: incentives_address,
-        // Entry fee configuration
-        entry_fee_rate: Some(Decimal::zero()),
-        entry_fee_recipient: None,
+        entry_fee_rate: fee,
+        entry_fee_recipient: admin.clone(),
     };
     app.instantiate_contract(code, admin, &msg, &[], "cw4626-escher", None)
         .unwrap()
 }
 
-fn proper_instantiate(app: &mut App, cw20_underlying: bool) -> Addr {
+fn proper_instantiate(app: &mut App, cw20_underlying: bool, with_fee: bool) -> Addr {
     let asset = if cw20_underlying {
         instantiate_cw20_asset(app)
     } else {
@@ -337,29 +336,36 @@ fn proper_instantiate(app: &mut App, cw20_underlying: bool) -> Addr {
     let staking = instantiate_staking(app);
     let lp = instantiate_lp(app, asset.clone());
     let tower_incentives = instantiate_incentives(app);
-    instantiate_vault(app, asset, staking, lp, tower_incentives)
-}
-
-fn proper_instantiate_with_fees(app: &mut App) -> Addr {
-    todo!()
+    instantiate_vault(
+        app,
+        asset,
+        staking,
+        lp,
+        tower_incentives,
+        if with_fee {
+            Some(Decimal::from_ratio(Uint128::new(5), Uint128::new(100)))
+        } else {
+            None
+        },
+    )
 }
 
 #[test]
 fn instantiates_properly_underlying_native() {
     let mut app = get_app();
-    proper_instantiate(&mut app, false);
+    proper_instantiate(&mut app, false, false);
 }
 
 #[test]
 fn instantiates_properly_underlying_cw20() {
     let mut app = get_app();
-    proper_instantiate(&mut app, true);
+    proper_instantiate(&mut app, true, false);
 }
 
 #[test]
 fn vault_exchange_rate_query_returns_pps_string() {
     let mut app = get_app();
-    let vault = proper_instantiate(&mut app, false);
+    let vault = proper_instantiate(&mut app, false, false);
 
     // Set minimal non-zero oracle prices required by escher
     let api = app.api();
@@ -445,7 +451,7 @@ fn vault_exchange_rate_query_returns_pps_string() {
 #[test]
 fn deposit_cw20_no_yield_must_be_one_to_one() {
     let mut app = get_app();
-    let vault = proper_instantiate(&mut app, true);
+    let vault = proper_instantiate(&mut app, true, false);
     let api = app.api();
     let oracle = addr(api, ORACLE);
     let user = addr(api, USER);
@@ -599,7 +605,7 @@ fn deposit_cw20_no_yield_must_be_one_to_one() {
 #[test]
 fn deposit_native_no_yield_must_be_one_to_one() {
     let mut app = get_app();
-    let vault = proper_instantiate(&mut app, false);
+    let vault = proper_instantiate(&mut app, false, false);
     let api = app.api();
     let oracle = addr(api, ORACLE);
     let user = addr(api, USER);
@@ -730,7 +736,7 @@ fn deposit_native_no_yield_must_be_one_to_one() {
 #[test]
 fn git_info_must_return_valid_data() {
     let mut app = get_app();
-    let vault = proper_instantiate(&mut app, false);
+    let vault = proper_instantiate(&mut app, false, false);
     let git_info = app
         .wrap()
         .query_wasm_smart::<GitInfoResponse>(&vault, &QueryMsg::GitInfo {})
