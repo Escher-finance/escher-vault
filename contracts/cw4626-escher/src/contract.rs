@@ -132,12 +132,12 @@ pub fn execute(
             receiver,
             owner,
         } => cw4626_base_executes::redeem(deps, env, sender, shares, receiver, owner)?,
-        ExecuteMsg::RequestRedeem {
+        ExecuteMsg::RequestRedemption {
             shares,
             receiver,
             owner,
         } => crate::execute::request_redeem(deps, env, info, shares, receiver, owner)?,
-        ExecuteMsg::CompleteRedemptionWithDistribution {
+        ExecuteMsg::CompleteRedemption {
             redemption_id,
             tx_hash,
         } => crate::execute::complete_redemption_with_distribution(

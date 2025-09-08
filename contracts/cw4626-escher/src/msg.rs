@@ -78,13 +78,13 @@ pub enum ExecuteMsg {
         owner: Addr,
     },
     /// Request redemption with proper multi-asset distribution
-    RequestRedeem {
+    RequestRedemption {
         shares: Uint128,
         receiver: Addr,
         owner: Addr,
     },
     /// Complete redemption by burning shares AND distributing assets in one transaction
-    CompleteRedemptionWithDistribution { redemption_id: u64, tx_hash: String },
+    CompleteRedemption { redemption_id: u64, tx_hash: String },
     /// CW20 receive
     Receive(cw20::Cw20ReceiveMsg),
 
