@@ -138,7 +138,7 @@ pub fn _preview_deposit(
     let net_assets = assets.saturating_sub(fee);
 
     if preview_deposit_kind.needs_correction() {
-        total_assets -= assets;
+        total_assets -= net_assets;
     }
     let shares = _convert_to_shares(total_shares, total_assets, net_assets, Rounding::Floor)?;
     Ok(cw4626::PreviewDepositResponse { shares })
