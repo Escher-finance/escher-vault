@@ -661,7 +661,6 @@ dependencies = [
  "cw4626-base",
  "schemars",
  "serde",
- "serde_json",
  "thiserror 1.0.69",
  "vergen-git2",
 ]
