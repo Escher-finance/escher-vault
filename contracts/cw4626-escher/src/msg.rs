@@ -4,7 +4,7 @@ use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 
 use cw4626::*;
 
-use crate::state::{AccessControlRole, PricesMap, TowerConfig, RedemptionRequest};
+use crate::state::{AccessControlRole, PricesMap, RedemptionRequest, TowerConfig};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -20,11 +20,11 @@ pub struct InstantiateMsg {
     pub incentives: Vec<AssetInfo>,
     pub staking_contract: Option<Addr>,
     // Performance fee configuration (removed). Keep fee_recipient for entry/exit fees
-    pub fee_recipient: Addr,                     // Address to receive entry/exit fees
-    pub initial_assets: Uint128,                 // (Kept if needed elsewhere; can be deprecated)
+    pub fee_recipient: Addr,     // Address to receive entry/exit fees
+    pub initial_assets: Uint128, // (Kept if needed elsewhere; can be deprecated)
     // Entry fee configuration (applied on deposit/mint)
-    pub entry_fee_rate: Option<Decimal>,         // e.g., 0.1 (10%); None => 0
-    pub entry_fee_recipient: Option<Addr>,       // If None, defaults to fee_recipient
+    pub entry_fee_rate: Option<Decimal>, // e.g., 0.1 (10%); None => 0
+    pub entry_fee_recipient: Option<Addr>, // If None, defaults to fee_recipient
 }
 
 #[cw_serde]
@@ -89,21 +89,8 @@ pub enum ExecuteMsg {
         receiver: Addr,
         owner: Addr,
     },
-    /// Collect completed redemption (distribute all assets)
-    CollectRedeem {
-        redemption_id: u64,
-    },
-    /// Manager complete redemption after manual asset distribution
-    CompleteRedemption {
-        redemption_id: u64,
-        tx_hash: String,
-    },
     /// Complete redemption by burning shares AND distributing assets in one transaction
-    CompleteRedemptionWithDistribution {
-        redemption_id: u64,
-        tx_hash: String,
-    },
-    
+    CompleteRedemption { redemption_id: u64, tx_hash: String },
     /// CW20 receive
     Receive(cw20::Cw20ReceiveMsg),
 
@@ -277,7 +264,6 @@ pub enum QueryMsg {
     /// Get redemption statistics and summary
     #[returns(RedemptionStatsResponse)]
     RedemptionStats,
-    
 
     //
     // CW4626

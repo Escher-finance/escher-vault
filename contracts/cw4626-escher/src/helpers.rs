@@ -25,17 +25,18 @@ pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
     let total_supply = cw20_base::state::TOKEN_INFO
         .load(deps.storage)?
         .total_supply;
-    
+
     // Subtract locked shares from total supply for exchange rate calculation
-    let locked_shares = LOCKED_SHARES
-        .may_load(deps.storage)?
-        .unwrap_or(crate::state::LockedShares {
-            total_locked: Uint128::zero(),
-            redemption_ids: vec![],
-        });
-    
+    let locked_shares =
+        LOCKED_SHARES
+            .may_load(deps.storage)?
+            .unwrap_or(crate::state::LockedShares {
+                total_locked: Uint128::zero(),
+                redemption_ids: vec![],
+            });
+
     let total_shares = total_supply.saturating_sub(locked_shares.total_locked);
-    
+
     let total_assets = calculate_total_assets(&deps.querier, deps.storage, this.clone())
         .map_err(|err| StdError::generic_err(err.to_string()))?;
     Ok(Tokens {
@@ -82,12 +83,31 @@ pub fn _convert_to_assets(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-/// Preview deposit calculation - now matches convert_to_shares logic
+#[derive(Debug, Clone)]
+pub enum PreviewDepositKind {
+    OnlyQuery {},
+    Cw20ViaTransferFrom {},
+    Cw20ViaReceive {},
+    Native {},
+}
+
+impl PreviewDepositKind {
+    pub fn needs_correction(&self) -> bool {
+        match self {
+            Self::OnlyQuery {} => false,
+            Self::Cw20ViaTransferFrom {} => false,
+            Self::Cw20ViaReceive {} => true,
+            Self::Native {} => true,
+        }
+    }
+}
+
+/// Preview deposit calculation
 pub fn _preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
-    apply_total_assets_correction: bool,
+    preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<cw4626::PreviewDepositResponse> {
     let Tokens {
         total_shares,
@@ -113,7 +133,7 @@ pub fn _preview_deposit(
     };
     let net_assets = assets.saturating_sub(fee);
 
-    if apply_total_assets_correction {
+    if preview_deposit_kind.needs_correction() {
         total_assets -= assets;
     }
     let shares = _convert_to_shares(total_shares, total_assets, net_assets, Rounding::Floor)?;
@@ -150,27 +170,23 @@ pub fn _deposit(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    sender: Addr,
     receiver: Addr,
     assets: Uint128,
     shares: Uint128,
+    via_receive: bool,
 ) -> Result<Response, ContractError> {
-    if assets.is_zero() {
-        return Err(ContractError::ZeroAssetAmount {});
-    }
-    if shares.is_zero() {
-        return Err(ContractError::ZeroShareAmount {});
-    }
-
-    let caller = info.sender.clone();
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     let asset = Asset {
         amount: assets,
         info: asset_info,
     };
-    let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
-    let mut res = generate_deposit_response(&caller, &receiver, assets, shares);
-    if let Some(msg) = transfer_msg {
-        res = res.add_message(msg);
+    let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
+    if !via_receive {
+        let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
+        if let Some(msg) = transfer_msg {
+            res = res.add_message(msg);
+        }
     }
     // Mint shares to receiver minus fee, and fee shares to fee recipient if configured
     let entry_fee_cfg = ENTRY_FEE_CONFIG.may_load(deps.storage)?;

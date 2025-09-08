@@ -2,9 +2,9 @@ use std::{collections::HashMap, fmt::Display};
 
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::Timestamp;
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
-use cosmwasm_std::Timestamp;
 
 #[cw_serde]
 pub enum AccessControlRole {
@@ -56,7 +56,7 @@ pub struct RedemptionRequest {
     pub id: u64,
     pub owner: Addr,
     pub receiver: Addr,
-    pub shares_locked: Uint128,  // Changed from shares_burned to shares_locked
+    pub shares_locked: Uint128,
     pub expected_assets: Vec<Asset>,
     pub status: RedemptionStatus,
     pub created_at: u64,

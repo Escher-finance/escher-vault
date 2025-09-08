@@ -7,11 +7,15 @@ use cw4626_base::query as cw4626_base_queries;
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractError;
 use crate::helpers::validate_addrs;
+use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::EscherHubQueryMsg;
 use crate::staking::EscherHubStakingLiquidity;
-use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS, ENTRY_FEE_CONFIG, EntryFeeConfig};
+use crate::state::{
+    AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
+    UNDERLYING_DECIMALS,
+};
 use crate::tower::{init_oracle_prices, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -76,9 +80,11 @@ pub fn instantiate(
         msg.underlying_token,
     )?;
     init_oracle_prices(deps.branch(), &tower_config)?;
-    
+
     // Initialize entry fee configuration
-    let entry_fee_rate = msg.entry_fee_rate.unwrap_or_else(cosmwasm_std::Decimal::zero);
+    let entry_fee_rate = msg
+        .entry_fee_rate
+        .unwrap_or_else(cosmwasm_std::Decimal::zero);
     let entry_fee_recipient = msg.entry_fee_recipient.unwrap_or(msg.fee_recipient.clone());
     ENTRY_FEE_CONFIG.save(
         deps.storage,
@@ -87,7 +93,7 @@ pub fn instantiate(
             fee_recipient: entry_fee_recipient,
         },
     )?;
-    
+
     Ok(Response::new())
 }
 
@@ -148,19 +154,19 @@ pub fn execute(
             shares,
             receiver,
             owner,
-        } => crate::execute::request_redemption(deps, env, info, shares, receiver, owner)?,
-        ExecuteMsg::CollectRedeem { redemption_id } => {
-            crate::execute::collect_redemption(deps, env, info, redemption_id)?
-        }
-        ExecuteMsg::CompleteRedemption { redemption_id, tx_hash } => {
-            crate::execute::complete_redemption(deps, env, info, redemption_id, tx_hash)?
-        }
-        ExecuteMsg::CompleteRedemptionWithDistribution { redemption_id, tx_hash } => {
-            crate::execute::complete_redemption_with_distribution(deps, env, info, redemption_id, tx_hash)?
-        }
-        
+        } => crate::execute::request_redeem(deps, env, info, shares, receiver, owner)?,
+        ExecuteMsg::CompleteRedemption {
+            redemption_id,
+            tx_hash,
+        } => crate::execute::complete_redemption_with_distribution(
+            deps,
+            env,
+            info,
+            redemption_id,
+            tx_hash,
+        )?,
         ExecuteMsg::Receive(cw20_receive_msg) => {
-            crate::execute::receive(deps, env, sender, cw20_receive_msg)?
+            crate::execute::receive(deps, env, info, sender, cw20_receive_msg)?
         }
         //
         // CW20
@@ -247,13 +253,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::UserRedemptionRequests { user } => {
             to_json_binary(&crate::query::user_redemption_requests(&deps, user)?)
         }
-        QueryMsg::PreviewRedeemMultiAsset { shares } => {
-            to_json_binary(&crate::query::preview_redeem_multi_asset(deps, shares, env.contract.address.clone())?)
-        }
-        QueryMsg::RedemptionStats => {
-            to_json_binary(&crate::query::redemption_stats(deps)?)
-        }
-        
+        QueryMsg::PreviewRedeemMultiAsset { shares } => to_json_binary(
+            &crate::query::preview_redeem_multi_asset(deps, shares, env.contract.address.clone())?,
+        ),
+        QueryMsg::RedemptionStats => to_json_binary(&crate::query::redemption_stats(deps)?),
         //
         // CW4626
         //
@@ -266,9 +269,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&crate::query::convert_to_assets(&this, &deps, shares)?)
         }
         QueryMsg::MaxDeposit { receiver } => to_json_binary(&crate::query::max_deposit(receiver)?),
-        QueryMsg::PreviewDeposit { assets } => {
-            to_json_binary(&crate::query::preview_deposit(&this, &deps, assets, false)?)
-        }
+        QueryMsg::PreviewDeposit { assets } => to_json_binary(&crate::query::preview_deposit(
+            &this,
+            &deps,
+            assets,
+            PreviewDepositKind::OnlyQuery {},
+        )?),
         QueryMsg::MaxMint { receiver } => to_json_binary(&crate::query::max_mint(receiver)?),
         QueryMsg::PreviewMint { shares } => {
             to_json_binary(&crate::query::preview_mint(&this, &deps, shares)?)
