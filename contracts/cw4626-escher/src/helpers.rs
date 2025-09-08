@@ -390,11 +390,11 @@ mod tests {
         assert!(res
             .attributes
             .iter()
-            .any(|a| a.key == "fee_shares" && a.value == "90"));
+            .any(|a| a.key == "fee_shares_minted" && a.value == "90"));
         assert!(res
             .attributes
             .iter()
-            .any(|a| a.key == "user_shares" && a.value == "820"));
+            .any(|a| a.key == "user_shares_minted" && a.value == "820"));
 
         // Check balances
         let user_balance = cw20_base::state::BALANCES
@@ -427,7 +427,15 @@ mod tests {
             )
             .unwrap();
 
-        // No entry fee config -> treated as zero
+        ENTRY_FEE_CONFIG
+            .save(
+                deps.as_mut().storage,
+                &EntryFeeConfig {
+                    fee_rate: Decimal::zero(),
+                    fee_recipient: Addr::unchecked("0"),
+                },
+            )
+            .unwrap();
         // Init token info
         cw20_base::state::TOKEN_INFO
             .save(
