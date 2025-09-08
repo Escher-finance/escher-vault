@@ -225,14 +225,7 @@ pub fn request_redemption(
     let mut response = response;
     for (i, asset) in expected_assets.iter().enumerate() {
         let asset_key = format!("expected_asset_{}", i);
-        let asset_value = format!(
-            "{}:{}",
-            match &asset.info {
-                AssetInfo::NativeToken { denom } => denom.clone(),
-                AssetInfo::Token { contract_addr } => format!("token:{}", contract_addr),
-            },
-            asset.amount
-        );
+        let asset_value = asset.to_string();
         response = response.add_attribute(asset_key, asset_value);
     }
 
@@ -301,17 +294,7 @@ pub fn complete_redemption_with_distribution(
             }
         }
 
-        response = response.add_attribute(
-            format!("distributed_asset_{}", i),
-            format!(
-                "{}:{}",
-                match &asset.info {
-                    AssetInfo::NativeToken { denom } => denom.clone(),
-                    AssetInfo::Token { contract_addr } => format!("token:{}", contract_addr),
-                },
-                asset.amount
-            ),
-        );
+        response = response.add_attribute(format!("distributed_asset_{}", i), format!("{asset}"));
     }
 
     // Update request status
