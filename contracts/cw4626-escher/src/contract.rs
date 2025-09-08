@@ -7,6 +7,7 @@ use cw4626_base::query as cw4626_base_queries;
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractError;
 use crate::helpers::validate_addrs;
+use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::EscherHubQueryMsg;
@@ -146,7 +147,7 @@ pub fn execute(
             crate::execute::complete_redemption_with_distribution(deps, env, info, redemption_id, tx_hash)?
         }
         ExecuteMsg::Receive(cw20_receive_msg) => {
-            crate::execute::receive(deps, env, sender, cw20_receive_msg)?
+            crate::execute::receive(deps, env, info, sender, cw20_receive_msg)?
         }
         //
         // CW20
@@ -251,9 +252,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&crate::query::convert_to_assets(&this, &deps, shares)?)
         }
         QueryMsg::MaxDeposit { receiver } => to_json_binary(&crate::query::max_deposit(receiver)?),
-        QueryMsg::PreviewDeposit { assets } => {
-            to_json_binary(&crate::query::preview_deposit(&this, &deps, assets, false)?)
-        }
+        QueryMsg::PreviewDeposit { assets } => to_json_binary(&crate::query::preview_deposit(
+            &this,
+            &deps,
+            assets,
+            PreviewDepositKind::OnlyQuery {},
+        )?),
         QueryMsg::MaxMint { receiver } => to_json_binary(&crate::query::max_mint(receiver)?),
         QueryMsg::PreviewMint { shares } => {
             to_json_binary(&crate::query::preview_mint(&this, &deps, shares)?)

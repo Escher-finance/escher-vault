@@ -5,6 +5,7 @@ use std::str::FromStr;
 
 use astroport::asset::AssetInfo;
 use cosmwasm_std::testing::MockApi;
+use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
 use cosmwasm_std::Coin;
@@ -75,7 +76,7 @@ fn instantiate_denom_asset(app: &mut App) -> AssetInfo {
     }
 }
 
-fn instantiate_cw20_asset(app: &mut App) -> Addr {
+fn instantiate_cw20_asset(app: &mut App) -> AssetInfo {
     let code = app.store_code(Box::new(ContractWrapper::new(
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
@@ -107,8 +108,11 @@ fn instantiate_cw20_asset(app: &mut App) -> Addr {
         ]),
         marketing: None,
     };
-    app.instantiate_contract(code, admin, &msg, &[], "cw20-base-asset", None)
-        .unwrap()
+    AssetInfo::Token {
+        contract_addr: app
+            .instantiate_contract(code, admin, &msg, &[], "cw20-base-asset", None)
+            .unwrap(),
+    }
 }
 
 mod staking_mock {
@@ -320,8 +324,12 @@ fn instantiate_vault(
         .unwrap()
 }
 
-fn proper_instantiate(app: &mut App) -> Addr {
-    let asset = instantiate_denom_asset(app);
+fn proper_instantiate(app: &mut App, cw20_underlying: bool) -> Addr {
+    let asset = if cw20_underlying {
+        instantiate_cw20_asset(app)
+    } else {
+        instantiate_denom_asset(app)
+    };
     let staking = instantiate_staking(app);
     let lp = instantiate_lp(app, asset.clone());
     let tower_incentives = instantiate_incentives(app);
@@ -329,15 +337,21 @@ fn proper_instantiate(app: &mut App) -> Addr {
 }
 
 #[test]
-fn instantiates_properly() {
+fn instantiates_properly_underlying_native() {
     let mut app = get_app();
-    proper_instantiate(&mut app);
+    proper_instantiate(&mut app, false);
+}
+
+#[test]
+fn instantiates_properly_underlying_cw20() {
+    let mut app = get_app();
+    proper_instantiate(&mut app, true);
 }
 
 #[test]
 fn vault_exchange_rate_query_returns_pps_string() {
     let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
+    let vault = proper_instantiate(&mut app, false);
 
     // Set minimal non-zero oracle prices required by escher
     let api = app.api();
@@ -421,9 +435,163 @@ fn vault_exchange_rate_query_returns_pps_string() {
 }
 
 #[test]
-fn deposit_no_yield_must_be_one_to_one() {
+fn deposit_cw20_no_yield_must_be_one_to_one() {
     let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
+    let vault = proper_instantiate(&mut app, true);
+    let api = app.api();
+    let oracle = addr(api, ORACLE);
+    let user = addr(api, USER);
+    let prices = HashMap::from_iter(
+        [
+            (
+                "other_lp_tkn".to_string(),
+                Decimal::from_str("1.78786").unwrap(),
+            ),
+            ("incentive1".to_string(), Decimal::from_str("0.8").unwrap()),
+            ("incentive2".to_string(), Decimal::from_str("0.8").unwrap()),
+        ]
+        .into_iter(),
+    );
+    app.execute_contract(
+        oracle.clone(),
+        vault.clone(),
+        &ExecuteMsg::OracleUpdatePrices { prices },
+        &[],
+    )
+    .unwrap();
+    let oracle_prices = app
+        .wrap()
+        .query_wasm_smart::<OraclePricesResponse>(&vault, &QueryMsg::OraclePrices {})
+        .unwrap();
+    println!("prices after update {oracle_prices:?}");
+    let initial_share_balance = app
+        .wrap()
+        .query_wasm_smart::<cw20::BalanceResponse>(
+            &vault,
+            &QueryMsg::Balance {
+                address: user.to_string(),
+            },
+        )
+        .unwrap()
+        .balance;
+    assert!(initial_share_balance.is_zero());
+
+    let asset = Addr::unchecked(
+        app.wrap()
+            .query_wasm_smart::<AssetResponse>(&vault, &QueryMsg::Asset {})
+            .unwrap()
+            .asset_token_address,
+    );
+
+    let asset_deposit_amount = Uint128::from(50000_u32);
+
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
+    // do first deposit via transfer from
+    app.execute_contract(
+        user.clone(),
+        asset.clone(),
+        &Cw20ExecuteMsg::IncreaseAllowance {
+            spender: vault.to_string(),
+            amount: asset_deposit_amount,
+            expires: None,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        user.clone(),
+        vault.clone(),
+        &ExecuteMsg::Deposit {
+            assets: asset_deposit_amount,
+            receiver: user.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user.to_string(),
+                },
+            )
+            .unwrap()
+            .balance,
+        asset_deposit_amount
+    );
+    assert_eq!(preview_amount, asset_deposit_amount);
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
+            .unwrap()
+            .exchange_rate,
+        Decimal::one()
+    );
+
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
+    // do second deposit via send
+    app.execute_contract(
+        user.clone(),
+        asset.clone(),
+        &Cw20ExecuteMsg::Send {
+            contract: vault.to_string(),
+            amount: asset_deposit_amount,
+            msg: to_json_binary(&ExecuteMsg::Deposit {
+                assets: asset_deposit_amount,
+                receiver: user.clone(),
+            })
+            .unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user.to_string(),
+                },
+            )
+            .unwrap()
+            .balance,
+        asset_deposit_amount * Uint128::new(2)
+    );
+    assert_eq!(preview_amount, asset_deposit_amount);
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
+            .unwrap()
+            .exchange_rate,
+        Decimal::one()
+    );
+}
+
+#[test]
+fn deposit_native_no_yield_must_be_one_to_one() {
+    let mut app = get_app();
+    let vault = proper_instantiate(&mut app, false);
     let api = app.api();
     let oracle = addr(api, ORACLE);
     let user = addr(api, USER);
@@ -464,6 +632,16 @@ fn deposit_no_yield_must_be_one_to_one() {
 
     let asset_deposit_amount = Uint128::from(50000_u32);
 
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
     // do first deposit
     app.execute_contract(
         user.clone(),
@@ -488,6 +666,7 @@ fn deposit_no_yield_must_be_one_to_one() {
             .balance,
         asset_deposit_amount
     );
+    assert_eq!(preview_amount, asset_deposit_amount);
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
@@ -496,6 +675,16 @@ fn deposit_no_yield_must_be_one_to_one() {
         Decimal::one()
     );
 
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
     // do second deposit
     app.execute_contract(
         user.clone(),
@@ -520,6 +709,7 @@ fn deposit_no_yield_must_be_one_to_one() {
             .balance,
         asset_deposit_amount * Uint128::new(2)
     );
+    assert_eq!(preview_amount, asset_deposit_amount);
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
@@ -532,7 +722,7 @@ fn deposit_no_yield_must_be_one_to_one() {
 #[test]
 fn git_info_must_return_valid_data() {
     let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
+    let vault = proper_instantiate(&mut app, false);
     let git_info = app
         .wrap()
         .query_wasm_smart::<GitInfoResponse>(&vault, &QueryMsg::GitInfo {})

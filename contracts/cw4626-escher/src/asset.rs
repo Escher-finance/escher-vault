@@ -62,8 +62,8 @@ pub fn assert_send_asset_to_contract(
             funds: vec![],
         })),
         AssetInfo::NativeToken { denom } => {
-            if must_pay(&info, &denom)? < asset.amount {
-                return Err(ContractError::InsufficientFunds {});
+            if must_pay(&info, &denom)? != asset.amount {
+                return Err(ContractError::WrongFundAmountProvided {});
             }
             Ok(None)
         }
