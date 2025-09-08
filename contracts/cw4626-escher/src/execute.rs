@@ -135,7 +135,7 @@ pub fn bond(
         })?,
     )?;
 
-    Ok(generate_bond_response(&this, expected, &staking_contract).add_message(bond_msg))
+    Ok(generate_bond_response(&this, amount, expected, &staking_contract).add_message(bond_msg))
 }
 
 pub fn unbond(

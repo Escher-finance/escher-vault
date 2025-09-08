@@ -30,12 +30,14 @@ pub fn generate_withdraw_response(
 
 pub fn generate_bond_response(
     sender: &Addr,
+    amount: Uint128,
     expected: Uint128,
     staking_contract: &Addr,
 ) -> Response {
     Response::new().add_event(
         Event::new(EVENT_BOND)
             .add_attribute("sender", sender)
+            .add_attribute("amount", amount)
             .add_attribute("expected", expected)
             .add_attribute("staking_contract", staking_contract),
     )

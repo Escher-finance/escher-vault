@@ -29,7 +29,7 @@ pub fn calculate_user_asset_share(
 }
 
 /// Lock shares for redemption instead of burning them immediately
-pub fn lock_shares(
+pub fn _lock_shares(
     storage: &mut dyn cosmwasm_std::Storage,
     shares: Uint128,
     redemption_id: u64,
@@ -72,7 +72,7 @@ pub fn lock_shares(
 }
 
 /// Burn locked shares after successful redemption completion
-pub fn burn_locked_shares(
+pub fn _burn_locked_shares(
     storage: &mut dyn cosmwasm_std::Storage,
     shares: Uint128,
     redemption_id: u64,
@@ -180,7 +180,7 @@ pub fn request_redemption(
     REDEMPTION_COUNTER.save(deps.storage, &redemption_id)?;
 
     // Lock the shares instead of burning them
-    lock_shares(
+    _lock_shares(
         deps.storage,
         shares,
         redemption_id,
@@ -321,7 +321,7 @@ pub fn complete_redemption_with_distribution(
     REDEMPTION_REQUESTS.save(deps.storage, redemption_id, &request)?;
 
     // Burn the locked shares after successful distribution
-    burn_locked_shares(
+    _burn_locked_shares(
         deps.storage,
         request.shares_locked,
         redemption_id,
