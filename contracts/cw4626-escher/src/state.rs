@@ -117,8 +117,5 @@ pub const REDEMPTION_REQUESTS: Map<u64, RedemptionRequest> = Map::new("redemptio
 pub const USER_REDEMPTION_IDS: Map<Addr, Vec<u64>> = Map::new("user_redemption_ids");
 // Locked shares system
 pub const LOCKED_SHARES: Item<LockedShares> = Item::new("locked_shares");
-// Performance fee system
-pub const PERFORMANCE_FEE_CONFIG: Item<PerformanceFeeConfig> = Item::new("performance_fee_config");
-pub const PENDING_FEE: Item<FeeInfo> = Item::new("pending_fee");
 // Entry fee configuration for deposits/mints
 pub const ENTRY_FEE_CONFIG: Item<EntryFeeConfig> = Item::new("entry_fee_config");
