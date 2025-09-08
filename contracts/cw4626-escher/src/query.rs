@@ -1,3 +1,4 @@
+use astroport::asset::AssetInfo;
 use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 
 use crate::{
@@ -210,7 +211,7 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
     let mut pending_redemptions = 0;
     let mut completed_redemptions = 0;
     let mut total_shares_burned = Uint128::zero();
-    let mut asset_totals: HashMap<String, Uint128> = HashMap::new();
+    let mut asset_totals: HashMap<AssetInfo, Uint128> = HashMap::new();
 
     // Iterate through all redemption requests
     for i in 1..=total_redemptions {
@@ -226,13 +227,9 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
 
                     // Aggregate completed redemptions' assets
                     for asset in request.expected_assets {
-                        let key = match &asset.info {
-                            astroport::asset::AssetInfo::NativeToken { denom } => denom.clone(),
-                            astroport::asset::AssetInfo::Token { contract_addr } => {
-                                format!("token:{}", contract_addr)
-                            }
-                        };
-                        *asset_totals.entry(key).or_insert(Uint128::zero()) += asset.amount;
+                        *asset_totals
+                            .entry(asset.info.clone())
+                            .or_insert(Uint128::zero()) += asset.amount;
                     }
                 }
             }
@@ -242,16 +239,7 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
     // Convert aggregated assets back to Asset format
     let total_assets_distributed: Vec<astroport::asset::Asset> = asset_totals
         .into_iter()
-        .map(|(key, amount)| {
-            let info = if key.starts_with("token:") {
-                astroport::asset::AssetInfo::Token {
-                    contract_addr: Addr::unchecked(key.strip_prefix("token:").unwrap_or(&key)),
-                }
-            } else {
-                astroport::asset::AssetInfo::NativeToken { denom: key }
-            };
-            astroport::asset::Asset { info, amount }
-        })
+        .map(|(info, amount)| astroport::asset::Asset { info, amount })
         .collect();
 
     let total_value_distributed: Uint128 = total_assets_distributed.iter().map(|a| a.amount).sum();
