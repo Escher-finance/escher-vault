@@ -83,10 +83,6 @@ pub enum ExecuteMsg {
         receiver: Addr,
         owner: Addr,
     },
-    /// Collect completed redemption (distribute all assets)
-    CollectRedeem { redemption_id: u64 },
-    /// Manager complete redemption after manual asset distribution
-    CompleteRedemption { redemption_id: u64, tx_hash: String },
     /// Complete redemption by burning shares AND distributing assets in one transaction
     CompleteRedemptionWithDistribution { redemption_id: u64, tx_hash: String },
     /// CW20 receive
