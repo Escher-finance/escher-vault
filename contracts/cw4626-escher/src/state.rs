@@ -81,6 +81,12 @@ pub struct PerformanceFeeConfig {
 }
 
 #[cw_serde]
+pub struct EntryFeeConfig {
+    pub fee_rate: Decimal,   // Entry fee rate (e.g., 0.1 for 10%)
+    pub fee_recipient: Addr, // Address to receive entry fee shares
+}
+
+#[cw_serde]
 pub struct FeeCalculationResult {
     pub fee_shares: Uint128,
     pub profit_per_share: Decimal,
@@ -114,3 +120,5 @@ pub const LOCKED_SHARES: Item<LockedShares> = Item::new("locked_shares");
 // Performance fee system
 pub const PERFORMANCE_FEE_CONFIG: Item<PerformanceFeeConfig> = Item::new("performance_fee_config");
 pub const PENDING_FEE: Item<FeeInfo> = Item::new("pending_fee");
+// Entry fee configuration for deposits/mints
+pub const ENTRY_FEE_CONFIG: Item<EntryFeeConfig> = Item::new("entry_fee_config");

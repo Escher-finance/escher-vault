@@ -315,11 +315,11 @@ fn instantiate_vault(
         staking_contract: Some(staking_address),
         lp: lp_address,
         tower_incentives: incentives_address,
-        // Performance fee configuration
-        performance_fee_rate: Decimal::from_str("0.1").unwrap(), // 10%
+        // Entry fee configuration
         fee_recipient: admin.clone(),
-        fee_calculation_interval: 17280, // 24 hours
-        initial_assets: Uint128::new(1000000), // 1M ubbn baseline
+        initial_assets: Uint128::new(1000000), // kept for backward compatibility
+        entry_fee_rate: Some(Decimal::zero()),
+        entry_fee_recipient: None,
     };
     app.instantiate_contract(code, admin, &msg, &[], "cw4626-escher", None)
         .unwrap()
@@ -558,182 +558,7 @@ fn git_info_must_return_valid_data() {
     assert!(hash.len() == 40 && hash.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
-// ===== ASSET GROWTH FEE SYSTEM TESTS =====
-
-#[test]
-fn test_asset_growth_fee_initialization() {
-    let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
-    
-    // Query performance fee configuration
-    let fee_config = app
-        .wrap()
-        .query_wasm_smart::<PerformanceFeeConfigResponse>(&vault, &QueryMsg::PerformanceFeeConfig {})
-        .unwrap();
-    
-    assert_eq!(fee_config.fee_rate, Decimal::from_str("0.1").unwrap()); // 10%
-    // The fee recipient is the admin address from the instantiate function
-    assert_eq!(fee_config.fee_recipient, addr(app.api(), ADMIN));
-    assert_eq!(fee_config.initial_assets, Uint128::new(1000000)); // 1M ubbn
-    assert_eq!(fee_config.last_assets_snapshot, Uint128::new(1000000));
-    assert_eq!(fee_config.fee_calculation_interval, 17280); // 24 hours
-}
-
-#[test]
-fn test_asset_growth_fee_no_growth() {
-    let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
-    
-    // Set oracle prices first
-    let api = app.api();
-    let oracle = addr(api, ORACLE);
-    let prices = HashMap::from_iter([
-        ("other_lp_tkn".to_string(), Decimal::from_str("1.0").unwrap()),
-        ("incentive1".to_string(), Decimal::from_str("1.0").unwrap()),
-        ("incentive2".to_string(), Decimal::from_str("1.0").unwrap()),
-    ]);
-    app.execute_contract(
-        oracle.clone(),
-        vault.clone(),
-        &ExecuteMsg::OracleUpdatePrices { prices },
-        &[],
-    ).unwrap();
-    
-    // Try to calculate fees when there's no growth
-    let result = app.execute_contract(
-        addr(app.api(), ADMIN),
-        vault.clone(),
-        &ExecuteMsg::CalculatePerformanceFees {},
-        &[],
-    );
-    
-    // Should fail because it's too early (interval check)
-    assert!(result.is_err());
-    let error = result.unwrap_err();
-    assert!(error.to_string().contains("Error executing WasmMsg"));
-}
-
-#[test]
-fn test_asset_growth_fee_with_growth() {
-    let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
-    
-    // Set oracle prices first
-    let api = app.api();
-    let oracle = addr(api, ORACLE);
-    let prices = HashMap::from_iter([
-        ("other_lp_tkn".to_string(), Decimal::from_str("1.0").unwrap()),
-        ("incentive1".to_string(), Decimal::from_str("1.0").unwrap()),
-        ("incentive2".to_string(), Decimal::from_str("1.0").unwrap()),
-    ]);
-    app.execute_contract(
-        oracle.clone(),
-        vault.clone(),
-        &ExecuteMsg::OracleUpdatePrices { prices },
-        &[],
-    ).unwrap();
-    
-    // Test the query functionality without deposits
-    let growth_info = app
-        .wrap()
-        .query_wasm_smart::<AssetGrowthResponse>(&vault, &QueryMsg::AssetGrowth {})
-        .unwrap();
-    
-    assert_eq!(growth_info.initial_assets, Uint128::new(1000000));
-    assert_eq!(growth_info.exchange_rate, Decimal::one()); // 1:1 ratio
-    assert!(!growth_info.can_charge_fee); // Can't charge because exchange_rate = 1.0
-}
-
-#[test]
-fn test_asset_growth_fee_exchange_rate_check() {
-    let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
-    
-    // Set oracle prices first
-    let api = app.api();
-    let oracle = addr(api, ORACLE);
-    let prices = HashMap::from_iter([
-        ("other_lp_tkn".to_string(), Decimal::from_str("1.0").unwrap()),
-        ("incentive1".to_string(), Decimal::from_str("1.0").unwrap()),
-        ("incentive2".to_string(), Decimal::from_str("1.0").unwrap()),
-    ]);
-    app.execute_contract(
-        oracle.clone(),
-        vault.clone(),
-        &ExecuteMsg::OracleUpdatePrices { prices },
-        &[],
-    ).unwrap();
-    
-    // Test that exchange rate is 1.0 initially
-    let growth_info = app
-        .wrap()
-        .query_wasm_smart::<AssetGrowthResponse>(&vault, &QueryMsg::AssetGrowth {})
-        .unwrap();
-    
-    assert_eq!(growth_info.exchange_rate, Decimal::one());
-    assert!(!growth_info.can_charge_fee); // Can't charge because exchange_rate = 1.0
-}
-
-#[test]
-fn test_asset_growth_fee_too_early() {
-    let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
-    
-    // Try to calculate fees immediately (before interval)
-    let result = app.execute_contract(
-        addr(app.api(), ADMIN),
-        vault.clone(),
-        &ExecuteMsg::CalculatePerformanceFees {},
-        &[],
-    );
-    
-    // Should fail with "too early" error
-    assert!(result.is_err());
-    let error = result.unwrap_err();
-    let error_str = error.to_string();
-    println!("Error string: {}", error_str);
-    assert!(error_str.contains("Error executing WasmMsg"));
-}
-
-#[test]
-fn test_asset_growth_fee_unauthorized() {
-    let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
-    
-    // Try to calculate fees as non-manager
-    let result = app.execute_contract(
-        addr(app.api(), USER), // Not a manager
-        vault.clone(),
-        &ExecuteMsg::CalculatePerformanceFees {},
-        &[],
-    );
-    
-    // Should fail with unauthorized error
-    assert!(result.is_err());
-    let error = result.unwrap_err();
-    println!("Unauthorized error: {}", error);
-    assert!(error.to_string().contains("Error executing WasmMsg"));
-}
-
-#[test]
-fn test_asset_growth_query() {
-    let mut app = get_app();
-    let vault = proper_instantiate(&mut app);
-    
-    // Query asset growth information
-    let growth_info = app
-        .wrap()
-        .query_wasm_smart::<AssetGrowthResponse>(&vault, &QueryMsg::AssetGrowth {})
-        .unwrap();
-    
-    assert_eq!(growth_info.initial_assets, Uint128::new(1000000));
-    assert_eq!(growth_info.last_assets_snapshot, Uint128::new(1000000));
-    assert_eq!(growth_info.asset_growth, Uint128::zero()); // No growth yet
-    assert_eq!(growth_info.exchange_rate, Decimal::one()); // 1:1 ratio
-    assert!(!growth_info.can_charge_fee); // Can't charge yet
-}
-
-// Helper function to instantiate with performance fees
+// Helper function to instantiate without performance fees (using entry fee cfg)
 fn proper_instantiate_with_fees(app: &mut App) -> Addr {
     let code_id = app.store_code(Box::new(ContractWrapper::new(
         contract::execute,
@@ -758,11 +583,11 @@ fn proper_instantiate_with_fees(app: &mut App) -> Addr {
                 slippage_tolerance: Decimal::from_str("0.01").unwrap(),
                 incentives: vec![],
                 staking_contract: None,
-                // Performance fee configuration
-                performance_fee_rate: Decimal::from_str("0.1").unwrap(), // 10%
+                // Entry fee configuration
                 fee_recipient: Addr::unchecked(ADMIN),
-                fee_calculation_interval: 17280, // 24 hours
-                initial_assets: Uint128::new(1000000), // 1M ubbn baseline
+                initial_assets: Uint128::new(1000000),
+                entry_fee_rate: Some(Decimal::zero()),
+                entry_fee_recipient: None,
             },
             &[],
             "test",

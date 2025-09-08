@@ -11,7 +11,7 @@ use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::EscherHubQueryMsg;
 use crate::staking::EscherHubStakingLiquidity;
-use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
+use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS, ENTRY_FEE_CONFIG, EntryFeeConfig};
 use crate::tower::{init_oracle_prices, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -28,7 +28,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
-    let current_block_height = env.block.height;
+    let _current_block_height = env.block.height;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -77,16 +77,16 @@ pub fn instantiate(
     )?;
     init_oracle_prices(deps.branch(), &tower_config)?;
     
-    // Initialize performance fee configuration
-    let performance_fee_config = crate::state::PerformanceFeeConfig {
-        fee_rate: msg.performance_fee_rate,
-        fee_recipient: msg.fee_recipient,
-        initial_assets: msg.initial_assets,
-        last_fee_calculation: current_block_height,
-        fee_calculation_interval: msg.fee_calculation_interval,
-        last_assets_snapshot: msg.initial_assets, // Start with initial assets
-    };
-    crate::state::PERFORMANCE_FEE_CONFIG.save(deps.storage, &performance_fee_config)?;
+    // Initialize entry fee configuration
+    let entry_fee_rate = msg.entry_fee_rate.unwrap_or_else(cosmwasm_std::Decimal::zero);
+    let entry_fee_recipient = msg.entry_fee_recipient.unwrap_or(msg.fee_recipient.clone());
+    ENTRY_FEE_CONFIG.save(
+        deps.storage,
+        &EntryFeeConfig {
+            fee_rate: entry_fee_rate,
+            fee_recipient: entry_fee_recipient,
+        },
+    )?;
     
     Ok(Response::new())
 }
@@ -158,12 +158,7 @@ pub fn execute(
         ExecuteMsg::CompleteRedemptionWithDistribution { redemption_id, tx_hash } => {
             crate::execute::complete_redemption_with_distribution(deps, env, info, redemption_id, tx_hash)?
         }
-        ExecuteMsg::CalculatePerformanceFees {} => {
-            crate::performance_fees::calculate_performance_fees(deps, env, info)?
-        }
-        ExecuteMsg::DistributeFee {} => {
-            crate::performance_fees::distribute_fee(deps, env, info)?
-        }
+        
         ExecuteMsg::Receive(cw20_receive_msg) => {
             crate::execute::receive(deps, env, sender, cw20_receive_msg)?
         }
@@ -258,12 +253,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::RedemptionStats => {
             to_json_binary(&crate::query::redemption_stats(deps)?)
         }
-        QueryMsg::PerformanceFeeConfig => {
-            to_json_binary(&crate::performance_fees::query_performance_fee_config(deps)?)
-        }
-        QueryMsg::AssetGrowth => {
-            to_json_binary(&crate::performance_fees::query_asset_growth(deps, &env)?)
-        }
+        
         //
         // CW4626
         //

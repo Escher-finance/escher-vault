@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128, Timestamp};
+use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 
 use crate::{
     asset::get_asset_info_address,
@@ -387,7 +387,7 @@ mod tests {
             receiver: Addr::unchecked("cosmos1receiver21234567890123456789012345678901234567890"),
             shares_locked: Uint128::new(200),
             expected_assets: vec![],
-            status: RedemptionStatus::Completed(Timestamp::from_seconds(1234567891)),
+            status: RedemptionStatus::Completed(cosmwasm_std::Timestamp::from_seconds(1234567891)),
             created_at: 1234567890,
             completed_at: Some(1234567891),
             completion_tx_hash: Some("ABC123".to_string()),
