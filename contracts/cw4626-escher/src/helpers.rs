@@ -206,13 +206,10 @@ pub fn _deposit(
         let r_n = entry_fee_cfg.fee_rate.atomics();
         let r_d = Decimal::one().atomics();
         let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
-        // Minted shares correspond to net_assets; compute fee shares so total shares = user_shares + fee_shares
-        // fee_shares = shares * fee_assets / net_assets
-        let net_assets = assets.saturating_sub(fee_assets);
-        let fee_shares = if net_assets.is_zero() {
+        let fee_shares = if assets.is_zero() {
             Uint128::zero()
         } else {
-            shares.multiply_ratio(fee_assets, net_assets)
+            shares.multiply_ratio(fee_assets, assets)
         };
         let user_shares = shares.saturating_sub(fee_shares);
         _mint(deps.branch(), receiver.to_string(), user_shares)?;

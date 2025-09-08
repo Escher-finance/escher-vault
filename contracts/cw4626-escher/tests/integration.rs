@@ -343,7 +343,7 @@ fn proper_instantiate(app: &mut App, cw20_underlying: bool, with_fee: bool) -> A
         lp,
         tower_incentives,
         if with_fee {
-            Some(Decimal::from_ratio(Uint128::new(5), Uint128::new(100)))
+            Some(Decimal::percent(5))
         } else {
             None
         },
@@ -593,6 +593,212 @@ fn deposit_cw20_no_yield_must_be_one_to_one() {
         asset_deposit_amount * Uint128::new(2)
     );
     assert_eq!(preview_amount, asset_deposit_amount);
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
+            .unwrap()
+            .exchange_rate,
+        Decimal::one()
+    );
+}
+
+#[test]
+fn deposit_cw20_with_fee_no_yield_must_be_one_to_one() {
+    let mut app = get_app();
+    let vault = proper_instantiate(&mut app, true, true);
+    let api = app.api();
+    let oracle = addr(api, ORACLE);
+    let user = addr(api, USER);
+    let admin = addr(api, ADMIN);
+    let prices = HashMap::from_iter(
+        [
+            (
+                "other_lp_tkn".to_string(),
+                Decimal::from_str("1.78786").unwrap(),
+            ),
+            ("incentive1".to_string(), Decimal::from_str("0.8").unwrap()),
+            ("incentive2".to_string(), Decimal::from_str("0.8").unwrap()),
+        ]
+        .into_iter(),
+    );
+    app.execute_contract(
+        oracle.clone(),
+        vault.clone(),
+        &ExecuteMsg::OracleUpdatePrices { prices },
+        &[],
+    )
+    .unwrap();
+    let oracle_prices = app
+        .wrap()
+        .query_wasm_smart::<OraclePricesResponse>(&vault, &QueryMsg::OraclePrices {})
+        .unwrap();
+    println!("prices after update {oracle_prices:?}");
+    let initial_share_balance = app
+        .wrap()
+        .query_wasm_smart::<cw20::BalanceResponse>(
+            &vault,
+            &QueryMsg::Balance {
+                address: user.to_string(),
+            },
+        )
+        .unwrap()
+        .balance;
+    assert!(initial_share_balance.is_zero());
+
+    let asset = Addr::unchecked(
+        app.wrap()
+            .query_wasm_smart::<AssetResponse>(&vault, &QueryMsg::Asset {})
+            .unwrap()
+            .asset_token_address,
+    );
+
+    let asset_deposit_amount = Uint128::from(50000_u32);
+
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
+    // do first deposit via transfer from
+    app.execute_contract(
+        user.clone(),
+        asset.clone(),
+        &Cw20ExecuteMsg::IncreaseAllowance {
+            spender: vault.to_string(),
+            amount: asset_deposit_amount,
+            expires: None,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        user.clone(),
+        vault.clone(),
+        &ExecuteMsg::Deposit {
+            assets: asset_deposit_amount,
+            receiver: user.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    println!(
+        "B ADMIN {}",
+        app.wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: admin.to_string(),
+                },
+            )
+            .unwrap()
+            .balance
+    );
+    println!(
+        "B USER {}",
+        app.wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: user.to_string(),
+                },
+            )
+            .unwrap()
+            .balance
+    );
+
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: admin.to_string(),
+                },
+            )
+            .unwrap()
+            .balance
+            + app
+                .wrap()
+                .query_wasm_smart::<cw20::BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user.to_string(),
+                    },
+                )
+                .unwrap()
+                .balance,
+        asset_deposit_amount
+    );
+    assert_eq!(
+        preview_amount.multiply_ratio(Uint128::new(95), Uint128::new(100)),
+        asset_deposit_amount
+    );
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
+            .unwrap()
+            .exchange_rate,
+        Decimal::one()
+    );
+
+    let preview_amount = app
+        .wrap()
+        .query_wasm_smart::<PreviewDepositResponse>(
+            &vault,
+            &QueryMsg::PreviewDeposit {
+                assets: asset_deposit_amount,
+            },
+        )
+        .unwrap()
+        .shares;
+    // do second deposit via send
+    app.execute_contract(
+        user.clone(),
+        asset.clone(),
+        &Cw20ExecuteMsg::Send {
+            contract: vault.to_string(),
+            amount: asset_deposit_amount,
+            msg: to_json_binary(&ExecuteMsg::Deposit {
+                assets: asset_deposit_amount,
+                receiver: user.clone(),
+            })
+            .unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    assert_eq!(
+        app.wrap()
+            .query_wasm_smart::<cw20::BalanceResponse>(
+                &vault,
+                &QueryMsg::Balance {
+                    address: admin.to_string(),
+                },
+            )
+            .unwrap()
+            .balance
+            + app
+                .wrap()
+                .query_wasm_smart::<cw20::BalanceResponse>(
+                    &vault,
+                    &QueryMsg::Balance {
+                        address: user.to_string(),
+                    },
+                )
+                .unwrap()
+                .balance,
+        asset_deposit_amount * Uint128::new(2)
+    );
+    assert_eq!(
+        preview_amount.multiply_ratio(Uint128::new(95), Uint128::new(100)),
+        asset_deposit_amount
+    );
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<ExchangeRateResponse>(&vault, &QueryMsg::ExchangeRate {})
