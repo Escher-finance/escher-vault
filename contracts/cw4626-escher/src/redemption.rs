@@ -3,7 +3,7 @@ use cosmwasm_std::{to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Respon
 
 use crate::{
     msg::PreviewRedeemMultiAssetResponse,
-    responses::generate_request_redemption_response,
+    responses::{generate_complete_redemption_response, generate_request_redemption_response},
     state::{
         AccessControlRole, LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES,
         REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
@@ -249,16 +249,10 @@ pub fn complete_redemption_with_distribution(
     }
 
     let mut messages = vec![];
-    let mut response = Response::new()
-        .add_attribute("action", "complete_redemption_with_distribution")
-        .add_attribute("redemption_id", redemption_id.to_string())
-        .add_attribute("receiver", request.receiver.to_string())
-        .add_attribute("shares_burned", request.shares_locked.to_string())
-        .add_attribute("completed_at", env.block.time.seconds().to_string())
-        .add_attribute("tx_hash", tx_hash.clone());
+    let mut distributed_assets = vec![];
 
     // Create transfer messages for each asset
-    for (i, asset) in request.expected_assets.iter().enumerate() {
+    for asset in request.expected_assets.iter() {
         match &asset.info {
             AssetInfo::NativeToken { denom } => {
                 // For native tokens, we need to send them directly
@@ -285,13 +279,13 @@ pub fn complete_redemption_with_distribution(
             }
         }
 
-        response = response.add_attribute(format!("distributed_asset_{}", i), format!("{asset}"));
+        distributed_assets.push(asset.clone());
     }
 
     // Update request status
     request.status = RedemptionStatus::Completed(env.block.time);
     request.completed_at = Some(env.block.time.seconds());
-    request.completion_tx_hash = Some(tx_hash);
+    request.completion_tx_hash = Some(tx_hash.clone());
     REDEMPTION_REQUESTS.save(deps.storage, redemption_id, &request)?;
 
     // Burn the locked shares after successful distribution
@@ -302,7 +296,15 @@ pub fn complete_redemption_with_distribution(
         env.contract.address.clone(),
     )?;
 
-    Ok(response.add_messages(messages))
+    Ok(generate_complete_redemption_response(
+        redemption_id,
+        &request.receiver,
+        request.shares_locked,
+        env.block.time,
+        &tx_hash,
+        &distributed_assets,
+    )
+    .add_messages(messages))
 }
 
 /// Preview redemption with multi-asset distribution
