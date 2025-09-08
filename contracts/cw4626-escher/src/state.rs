@@ -56,7 +56,7 @@ pub struct RedemptionRequest {
     pub id: u64,
     pub owner: Addr,
     pub receiver: Addr,
-    pub shares_locked: Uint128, // Changed from shares_burned to shares_locked
+    pub shares_locked: Uint128,
     pub expected_assets: Vec<Asset>,
     pub status: RedemptionStatus,
     pub created_at: u64,

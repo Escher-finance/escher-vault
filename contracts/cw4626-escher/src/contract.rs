@@ -136,7 +136,7 @@ pub fn execute(
             shares,
             receiver,
             owner,
-        } => crate::execute::request_redemption(deps, env, info, shares, receiver, owner)?,
+        } => crate::execute::request_redeem(deps, env, info, shares, receiver, owner)?,
         ExecuteMsg::CompleteRedemptionWithDistribution {
             redemption_id,
             tx_hash,

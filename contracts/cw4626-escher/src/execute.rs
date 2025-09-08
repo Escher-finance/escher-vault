@@ -404,7 +404,7 @@ pub fn receive_deposit(
     _deposit(deps, env, info, sender, receiver, assets, shares, true)
 }
 
-pub fn request_redemption(
+pub fn request_redeem(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,

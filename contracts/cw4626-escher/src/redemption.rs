@@ -3,6 +3,7 @@ use cosmwasm_std::{to_json_binary, Addr, Deps, DepsMut, Env, MessageInfo, Respon
 
 use crate::{
     msg::PreviewRedeemMultiAssetResponse,
+    responses::generate_request_redemption_response,
     state::{
         AccessControlRole, LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES,
         REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
@@ -216,29 +217,14 @@ pub fn request_redemption(
     user_redemption_ids.push(redemption_id);
     USER_REDEMPTION_IDS.save(deps.storage, owner.clone(), &user_redemption_ids)?;
 
-    // Create detailed response with asset breakdown
-    let response = Response::new()
-        .add_attribute("action", "request_redemption")
-        .add_attribute("redemption_id", redemption_id.to_string())
-        .add_attribute("owner", owner.to_string())
-        .add_attribute("receiver", receiver.to_string())
-        .add_attribute("shares_locked", shares.to_string()) // Changed from shares_burned to shares_locked
-        .add_attribute("expected_assets_count", expected_assets.len().to_string())
-        .add_attribute("created_at", env.block.time.seconds().to_string());
-
-    // Add detailed asset information
-    let mut response = response;
-    for (i, asset) in expected_assets.iter().enumerate() {
-        let asset_key = format!("expected_asset_{}", i);
-        let asset_value = asset.to_string();
-        response = response.add_attribute(asset_key, asset_value);
-    }
-
-    // Add total value summary
-    let total_value: Uint128 = expected_assets.iter().map(|a| a.amount).sum();
-    response = response.add_attribute("total_expected_value", total_value.to_string());
-
-    Ok(response)
+    Ok(generate_request_redemption_response(
+        redemption_id,
+        &owner,
+        &receiver,
+        shares,
+        env.block.time,
+        &expected_assets,
+    ))
 }
 
 /// Complete redemption by burning shares AND distributing assets in one transaction
