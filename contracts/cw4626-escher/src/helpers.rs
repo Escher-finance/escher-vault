@@ -1,11 +1,15 @@
 use std::collections::HashSet;
 
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, Decimal};
+use cosmwasm_std::{
+    Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+};
 use cw4626_base::helpers::generate_deposit_response;
 
 use crate::{
-    asset::assert_send_asset_to_contract, state::{UNDERLYING_ASSET, LOCKED_SHARES, ENTRY_FEE_CONFIG}, tower::calculate_total_assets,
+    asset::assert_send_asset_to_contract,
+    state::{ENTRY_FEE_CONFIG, LOCKED_SHARES, UNDERLYING_ASSET},
+    tower::calculate_total_assets,
     ContractError,
 };
 
@@ -199,7 +203,11 @@ pub fn _deposit(
             // Minted shares correspond to net_assets; compute fee shares so total shares = user_shares + fee_shares
             // fee_shares = shares * fee_assets / net_assets
             let net_assets = assets.saturating_sub(fee_assets);
-            let fee_shares = if net_assets.is_zero() { Uint128::zero() } else { shares.multiply_ratio(fee_assets, net_assets) };
+            let fee_shares = if net_assets.is_zero() {
+                Uint128::zero()
+            } else {
+                shares.multiply_ratio(fee_assets, net_assets)
+            };
             let user_shares = shares.saturating_sub(fee_shares);
             _mint(deps.branch(), receiver.to_string(), user_shares)?;
             _mint(deps.branch(), cfg.fee_recipient.to_string(), fee_shares)?;
@@ -241,8 +249,11 @@ pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{ENTRY_FEE_CONFIG, EntryFeeConfig, UNDERLYING_ASSET};
-    use cosmwasm_std::{testing::{mock_dependencies, mock_env}, Addr, MessageInfo, Decimal};
+    use crate::state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Addr, Decimal, MessageInfo,
+    };
 
     #[test]
     fn convert_to_shares_zero_state_returns_1_to_1() {
@@ -306,7 +317,9 @@ mod tests {
         UNDERLYING_ASSET
             .save(
                 deps.as_mut().storage,
-                &AssetInfo::Token { contract_addr: token_addr },
+                &AssetInfo::Token {
+                    contract_addr: token_addr,
+                },
             )
             .unwrap();
 
@@ -338,7 +351,10 @@ mod tests {
 
         let depositor = deps.api.addr_make("depositor");
         let receiver = deps.api.addr_make("receiver");
-        let info = MessageInfo { sender: depositor, funds: vec![] };
+        let info = MessageInfo {
+            sender: depositor,
+            funds: vec![],
+        };
         let assets = Uint128::new(1000);
 
         // Assume preview produced 910 shares (net_assets with 10% fee_on_total is 910)
@@ -346,8 +362,14 @@ mod tests {
 
         let res = _deposit(deps.as_mut(), env, info, receiver.clone(), assets, shares).unwrap();
         // Verify attributes present
-        assert!(res.attributes.iter().any(|a| a.key == "fee_shares" && a.value == "90"));
-        assert!(res.attributes.iter().any(|a| a.key == "user_shares" && a.value == "820"));
+        assert!(res
+            .attributes
+            .iter()
+            .any(|a| a.key == "fee_shares" && a.value == "90"));
+        assert!(res
+            .attributes
+            .iter()
+            .any(|a| a.key == "user_shares" && a.value == "820"));
 
         // Check balances
         let user_balance = cw20_base::state::BALANCES
@@ -356,7 +378,10 @@ mod tests {
         let fee_balance = cw20_base::state::BALANCES
             .load(deps.as_ref().storage, &fee_addr)
             .unwrap();
-        let total_supply = cw20_base::state::TOKEN_INFO.load(deps.as_ref().storage).unwrap().total_supply;
+        let total_supply = cw20_base::state::TOKEN_INFO
+            .load(deps.as_ref().storage)
+            .unwrap()
+            .total_supply;
         assert_eq!(user_balance, Uint128::new(820));
         assert_eq!(fee_balance, Uint128::new(90));
         assert_eq!(total_supply, Uint128::new(910));
@@ -371,7 +396,9 @@ mod tests {
         UNDERLYING_ASSET
             .save(
                 deps.as_mut().storage,
-                &AssetInfo::Token { contract_addr: token_addr },
+                &AssetInfo::Token {
+                    contract_addr: token_addr,
+                },
             )
             .unwrap();
 
@@ -392,7 +419,10 @@ mod tests {
 
         let depositor = deps.api.addr_make("depositor");
         let receiver = deps.api.addr_make("receiver");
-        let info = MessageInfo { sender: depositor, funds: vec![] };
+        let info = MessageInfo {
+            sender: depositor,
+            funds: vec![],
+        };
         let assets = Uint128::new(1000);
         let shares = Uint128::new(1000);
 
@@ -403,7 +433,10 @@ mod tests {
         let user_balance = cw20_base::state::BALANCES
             .load(deps.as_ref().storage, &receiver)
             .unwrap();
-        let total_supply = cw20_base::state::TOKEN_INFO.load(deps.as_ref().storage).unwrap().total_supply;
+        let total_supply = cw20_base::state::TOKEN_INFO
+            .load(deps.as_ref().storage)
+            .unwrap()
+            .total_supply;
         assert_eq!(user_balance, Uint128::new(1000));
         assert_eq!(total_supply, Uint128::new(1000));
     }

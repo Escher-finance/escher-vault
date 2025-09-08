@@ -72,10 +72,10 @@ pub struct LockedShares {
 
 #[cw_serde]
 pub struct PerformanceFeeConfig {
-    pub fee_rate: Decimal,           // e.g., 0.1 (10%)
-    pub fee_recipient: Addr,         // Manager address
-    pub initial_assets: Uint128,     // Assets at vault start (baseline)
-    pub last_fee_calculation: u64,   // Block height of last fee calculation
+    pub fee_rate: Decimal,             // e.g., 0.1 (10%)
+    pub fee_recipient: Addr,           // Manager address
+    pub initial_assets: Uint128,       // Assets at vault start (baseline)
+    pub last_fee_calculation: u64,     // Block height of last fee calculation
     pub fee_calculation_interval: u64, // Blocks between fee calculations (e.g., 17280 for 24h)
     pub last_assets_snapshot: Uint128, // Assets at last fee calculation
 }
@@ -96,10 +96,10 @@ pub struct FeeCalculationResult {
 
 #[cw_serde]
 pub struct FeeInfo {
-    pub amount: Uint128,           // Fee amount in underlying asset terms
-    pub percentage: Decimal,       // Percentage of total assets
-    pub calculated_at: u64,        // Block when fee was calculated
-    pub distributed: bool,         // Whether fee has been distributed
+    pub amount: Uint128,     // Fee amount in underlying asset terms
+    pub percentage: Decimal, // Percentage of total assets
+    pub calculated_at: u64,  // Block when fee was calculated
+    pub distributed: bool,   // Whether fee has been distributed
 }
 
 pub const UNDERLYING_ASSET: Item<AssetInfo> = Item::new("asset");
