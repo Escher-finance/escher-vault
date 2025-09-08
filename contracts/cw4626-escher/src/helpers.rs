@@ -4,7 +4,7 @@ use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
     Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
 };
-use cw4626_base::helpers::generate_deposit_response;
+use cw4626_base::helpers::{generate_deposit_response, generate_deposit_with_fee_response};
 
 use crate::{
     asset::assert_send_asset_to_contract,
@@ -185,40 +185,55 @@ pub fn _deposit(
         amount: assets,
         info: asset_info,
     };
-    let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
-    if !via_receive {
-        let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
+    let transfer_msg = if !via_receive {
+        assert_send_asset_to_contract(info, env, asset.clone())?
+    } else {
+        None
+    };
+
+    // Mint shares to receiver minus fee, and fee shares to fee recipient if configured
+    let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
+
+    if entry_fee_cfg.fee_rate.is_zero() {
+        _mint(deps.branch(), receiver.to_string(), shares)?;
+        let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
         if let Some(msg) = transfer_msg {
             res = res.add_message(msg);
         }
-    }
-    // Mint shares to receiver minus fee, and fee shares to fee recipient if configured
-    let entry_fee_cfg = ENTRY_FEE_CONFIG.may_load(deps.storage)?;
-    if let Some(cfg) = entry_fee_cfg {
-        if !cfg.fee_rate.is_zero() {
-            // Compute fee_on_total in asset terms using integer math
-            let r_n = cfg.fee_rate.atomics();
-            let r_d = Decimal::one().atomics();
-            let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
-            // Minted shares correspond to net_assets; compute fee shares so total shares = user_shares + fee_shares
-            // fee_shares = shares * fee_assets / net_assets
-            let net_assets = assets.saturating_sub(fee_assets);
-            let fee_shares = if net_assets.is_zero() {
-                Uint128::zero()
-            } else {
-                shares.multiply_ratio(fee_assets, net_assets)
-            };
-            let user_shares = shares.saturating_sub(fee_shares);
-            _mint(deps.branch(), receiver.to_string(), user_shares)?;
-            _mint(deps.branch(), cfg.fee_recipient.to_string(), fee_shares)?;
-            return Ok(res
-                .add_attribute("entry_fee_rate", cfg.fee_rate.to_string())
-                .add_attribute("fee_shares", fee_shares.to_string())
-                .add_attribute("user_shares", user_shares.to_string()));
+        Ok(res)
+    } else {
+        // Compute fee_on_total in asset terms using integer math
+        let r_n = entry_fee_cfg.fee_rate.atomics();
+        let r_d = Decimal::one().atomics();
+        let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
+        // Minted shares correspond to net_assets; compute fee shares so total shares = user_shares + fee_shares
+        // fee_shares = shares * fee_assets / net_assets
+        let net_assets = assets.saturating_sub(fee_assets);
+        let fee_shares = if net_assets.is_zero() {
+            Uint128::zero()
+        } else {
+            shares.multiply_ratio(fee_assets, net_assets)
+        };
+        let user_shares = shares.saturating_sub(fee_shares);
+        _mint(deps.branch(), receiver.to_string(), user_shares)?;
+        _mint(
+            deps.branch(),
+            entry_fee_cfg.fee_recipient.to_string(),
+            fee_shares,
+        )?;
+        let mut res = generate_deposit_with_fee_response(
+            &sender,
+            &receiver,
+            assets,
+            user_shares,
+            fee_shares,
+            entry_fee_cfg.fee_rate,
+        );
+        if let Some(msg) = transfer_msg {
+            res = res.add_message(msg);
         }
+        Ok(res)
     }
-    _mint(deps.branch(), receiver.to_string(), shares)?;
-    Ok(res)
 }
 
 /// Validates addrs uniqueness, minimum and maximum length
