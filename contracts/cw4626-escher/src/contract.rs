@@ -16,12 +16,17 @@ use crate::state::{
 };
 use crate::tower::{init_oracle_prices, update_tower_config};
 
+/// # Errors
+/// Will return error if migrate fails
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::new())
 }
 
+/// # Errors
+/// Will return error if instantiate fails
 #[cfg_attr(not(feature = "library"), entry_point)]
+#[allow(clippy::too_many_lines)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
@@ -30,7 +35,6 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
-    let _current_block_height = env.block.height;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -91,7 +95,10 @@ pub fn instantiate(
     Ok(Response::new())
 }
 
+/// # Errors
+/// Will return error if execute fails
 #[cfg_attr(not(feature = "library"), entry_point)]
+#[allow(clippy::too_many_lines)]
 pub fn execute(
     mut deps: DepsMut,
     env: Env,
@@ -211,8 +218,11 @@ pub fn execute(
     })
 }
 
+/// # Errors
+/// Will return error if query fails
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+#[allow(clippy::too_many_lines)]
+pub fn query(deps: Deps, env: &Env, msg: QueryMsg) -> StdResult<Binary> {
     let this = env.contract.address.clone();
     match msg {
         QueryMsg::GitInfo {} => to_json_binary(&crate::query::git_info()?),
