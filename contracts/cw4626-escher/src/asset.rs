@@ -25,6 +25,7 @@ pub fn validate_cw20(
         })
 }
 
+#[must_use]
 pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
     match asset_info {
         AssetInfo::NativeToken { denom } => denom.clone(),

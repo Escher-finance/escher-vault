@@ -15,6 +15,7 @@ pub const EVENT_ORACLE_UPDATE_PRICES: &str = "oracle_update_prices";
 pub const EVENT_REQUEST_REDEMPTION: &str = "request_redemption";
 pub const EVENT_COMPLETE_REDEMPTION: &str = "complete_redemption";
 
+#[must_use]
 pub fn generate_withdraw_response(
     caller: &Addr,
     receiver: &Addr,
@@ -30,6 +31,7 @@ pub fn generate_withdraw_response(
     )
 }
 
+#[must_use]
 pub fn generate_bond_response(
     sender: &Addr,
     amount: Uint128,
@@ -45,6 +47,7 @@ pub fn generate_bond_response(
     )
 }
 
+#[must_use]
 pub fn generate_unbond_response(
     sender: &Addr,
     expected: Uint128,
@@ -58,6 +61,7 @@ pub fn generate_unbond_response(
     )
 }
 
+#[must_use]
 pub fn generate_deposit_response(
     sender: &Addr,
     receiver: &Addr,
@@ -73,6 +77,7 @@ pub fn generate_deposit_response(
     )
 }
 
+#[must_use]
 pub fn generate_deposit_with_fee_response(
     caller: &Addr,
     receiver: &Addr,
@@ -92,6 +97,7 @@ pub fn generate_deposit_with_fee_response(
     )
 }
 
+#[must_use]
 pub fn add_liquidity_event(
     sender: &Addr,
     underlying_token_amount: Uint128,
@@ -105,6 +111,7 @@ pub fn add_liquidity_event(
         .add_attribute("lp_contract", lp_contract)
 }
 
+#[must_use]
 pub fn remove_liquidity_event(
     sender: &Addr,
     lp_token_amount: Uint128,
@@ -116,12 +123,14 @@ pub fn remove_liquidity_event(
         .add_attribute("lp_contract", lp_contract)
 }
 
+#[must_use]
 pub fn claim_incentives_event(sender: &Addr, lp_contract: &Addr) -> Event {
     Event::new(EVENT_CLAIM_INCENTIVES)
         .add_attribute("sender", sender)
         .add_attribute("lp_contract", lp_contract)
 }
 
+#[must_use]
 pub fn swap_event(sender: &str, amount: Uint128, asset_info: &AssetInfo) -> Event {
     Event::new(EVENT_SWAP)
         .add_attribute("sender", sender)
@@ -129,6 +138,7 @@ pub fn swap_event(sender: &str, amount: Uint128, asset_info: &AssetInfo) -> Even
         .add_attribute("asset_info", asset_info.to_string())
 }
 
+#[must_use]
 pub fn generate_add_role_response(sender: &str, role: &str, address: &str) -> Response {
     Response::new().add_event(
         Event::new(EVENT_ADD_ROLE)
@@ -138,6 +148,7 @@ pub fn generate_add_role_response(sender: &str, role: &str, address: &str) -> Re
     )
 }
 
+#[must_use]
 pub fn generate_remove_role_response(sender: &str, role: &str, address: &str) -> Response {
     Response::new().add_event(
         Event::new(EVENT_REMOVE_ROLE)
@@ -147,6 +158,7 @@ pub fn generate_remove_role_response(sender: &str, role: &str, address: &str) ->
     )
 }
 
+#[must_use]
 pub fn generate_request_redemption_response(
     redemption_id: u64,
     owner: &Addr,
@@ -178,6 +190,7 @@ pub fn generate_request_redemption_response(
     Response::new().add_event(e)
 }
 
+#[must_use]
 pub fn generate_complete_redemption_response(
     redemption_id: u64,
     receiver: &Addr,
@@ -207,6 +220,7 @@ pub fn generate_complete_redemption_response(
     Response::new().add_event(e)
 }
 
+#[must_use]
 pub fn generate_oracle_update_prices_response(
     sender: &str,
     prices: &crate::state::PricesMap,
@@ -218,7 +232,7 @@ pub fn generate_oracle_update_prices_response(
                 "prices",
                 prices
                     .iter()
-                    .map(|(k, v)| format!("{}={}", k, v))
+                    .map(|(k, v)| format!("{k}={v}"))
                     .collect::<Vec<_>>()
                     .join(","),
             ),

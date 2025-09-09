@@ -249,7 +249,7 @@ pub fn complete_redemption_with_distribution(
     let mut distributed_assets = vec![];
 
     // Create transfer messages for each asset
-    for asset in request.expected_assets.iter() {
+    for asset in &request.expected_assets {
         let transfer_msg = send_asset_from_contract(asset.clone(), request.receiver.clone())?;
         messages.push(transfer_msg);
         distributed_assets.push(asset.clone());

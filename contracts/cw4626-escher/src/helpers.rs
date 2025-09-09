@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    msg::*,
+    msg::PreviewDepositResponse,
     responses::{generate_deposit_response, generate_deposit_with_fee_response},
     state::EntryFeeConfig,
 };
@@ -100,6 +100,7 @@ pub enum PreviewDepositKind {
 }
 
 impl PreviewDepositKind {
+    #[must_use]
     pub fn needs_correction(&self) -> bool {
         match self {
             Self::OnlyQuery {} => false,
@@ -110,7 +111,8 @@ impl PreviewDepositKind {
     }
 }
 
-/// Returns (user_shares, fee_shares)
+/// Returns (`user_shares`, `fee_shares`)
+#[must_use]
 pub fn calculate_entry_fee_share_amounts(
     entry_fee_cfg: &EntryFeeConfig,
     assets: Uint128,
@@ -206,10 +208,10 @@ pub fn _deposit(
         amount: assets,
         info: asset_info,
     };
-    let transfer_msg = if !via_receive {
-        assert_send_asset_to_contract(info, env, asset.clone())?
-    } else {
+    let transfer_msg = if via_receive {
         None
+    } else {
+        assert_send_asset_to_contract(info, env, asset.clone())?
     };
 
     // Mint shares to receiver minus fee, and fee shares to fee recipient if configured

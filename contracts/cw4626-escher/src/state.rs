@@ -26,6 +26,7 @@ impl Display for AccessControlRole {
 }
 
 impl AccessControlRole {
+    #[must_use]
     pub fn key(&self) -> String {
         self.to_string()
     }
@@ -107,7 +108,7 @@ pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
 pub const ACCESS_CONTROL: Map<String, Vec<Addr>> = Map::new("access-control");
 pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
 /// Prices map in terms of the underlying asset
-/// NOTE: It's an Item of a HashMap and not a Map because it needs to be read & updated completely every time
+/// NOTE: It's an Item of a `HashMap` and not a Map because it needs to be read & updated completely every time
 pub const ORACLE_PRICES: Item<PricesMap> = Item::new("oracle-prices");
 // Staking contract configuration
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
