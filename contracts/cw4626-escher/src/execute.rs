@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use crate::{
     access_control::only_role,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
-    helpers::{_deposit, validate_addrs, validate_salt, PreviewDepositKind},
+    helpers::{internal_deposit, validate_addrs, validate_salt, PreviewDepositKind},
     msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
     responses::{
@@ -208,7 +208,7 @@ pub fn deposit(
         },
     )?;
     let sender = info.sender.clone();
-    _deposit(deps, env, info, sender, receiver, assets, shares, false)
+    internal_deposit(deps, env, info, &sender, &receiver, assets, shares, false)
 }
 
 pub fn add_liquidity(
@@ -376,7 +376,7 @@ pub fn receive_deposit(
         assets,
         PreviewDepositKind::Cw20ViaReceive {},
     )?;
-    _deposit(deps, env, info, sender, receiver, assets, shares, true)
+    internal_deposit(deps, env, info, &sender, &receiver, assets, shares, true)
 }
 
 pub fn request_redeem(
