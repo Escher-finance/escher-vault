@@ -507,11 +507,7 @@ mod tests {
             .unwrap()[0]
             .clone();
 
-        let res = claim_incentives(
-            deps.as_mut(),
-            message_info(&manager, &[]),
-        )
-        .unwrap();
+        let res = claim_incentives(deps.as_mut(), message_info(&manager, &[])).unwrap();
         // one message to tower incentives
         assert!(!res.messages.is_empty());
         // event present

@@ -514,7 +514,11 @@ fn convert_to_shares_zero_state_is_one_to_one() {
         .query_wasm_smart::<OracleTokensListResponse>(&vault, &QueryMsg::OracleTokensList {})
         .unwrap()
         .tokens;
-    let prices = HashMap::from_iter(tokens.into_iter().map(|t| (t, Decimal::from_str("1.0").unwrap())));
+    let prices = HashMap::from_iter(
+        tokens
+            .into_iter()
+            .map(|t| (t, Decimal::from_str("1.0").unwrap())),
+    );
     app.execute_contract(
         oracle,
         vault.clone(),
@@ -527,10 +531,7 @@ fn convert_to_shares_zero_state_is_one_to_one() {
     let assets = Uint128::from(12345u64);
     let resp: ConvertToSharesResponse = app
         .wrap()
-        .query_wasm_smart(
-            &vault,
-            &QueryMsg::ConvertToShares { assets },
-        )
+        .query_wasm_smart(&vault, &QueryMsg::ConvertToShares { assets })
         .unwrap();
     assert_eq!(resp.shares, assets);
 }
@@ -546,7 +547,11 @@ fn convert_to_assets_zero_state_is_one_to_one() {
         .query_wasm_smart::<OracleTokensListResponse>(&vault, &QueryMsg::OracleTokensList {})
         .unwrap()
         .tokens;
-    let prices = HashMap::from_iter(tokens.into_iter().map(|t| (t, Decimal::from_str("1.0").unwrap())));
+    let prices = HashMap::from_iter(
+        tokens
+            .into_iter()
+            .map(|t| (t, Decimal::from_str("1.0").unwrap())),
+    );
     app.execute_contract(
         oracle,
         vault.clone(),
@@ -559,10 +564,7 @@ fn convert_to_assets_zero_state_is_one_to_one() {
     let shares = Uint128::from(6789u64);
     let resp: ConvertToAssetsResponse = app
         .wrap()
-        .query_wasm_smart(
-            &vault,
-            &QueryMsg::ConvertToAssets { shares },
-        )
+        .query_wasm_smart(&vault, &QueryMsg::ConvertToAssets { shares })
         .unwrap();
     assert_eq!(resp.assets, shares);
 }
@@ -811,7 +813,10 @@ fn swap_valid_with_exact_balance_emits_event() {
     // Set minimal oracle prices (not strictly needed for swap, but consistent setup)
     let prices = HashMap::from_iter(
         [
-            ("other_lp_tkn".to_string(), Decimal::from_str("1.0").unwrap()),
+            (
+                "other_lp_tkn".to_string(),
+                Decimal::from_str("1.0").unwrap(),
+            ),
             ("incentive1".to_string(), Decimal::from_str("1.0").unwrap()),
             ("incentive2".to_string(), Decimal::from_str("1.0").unwrap()),
         ]
@@ -871,7 +876,12 @@ fn event_attrs(res: &AppResponse, ty: &str) -> Vec<(String, String)> {
     res.events
         .iter()
         .find(|e| e.ty.as_str() == ty || e.ty.as_str() == format!("wasm-{ty}"))
-        .map(|e| e.attributes.iter().map(|a| (a.key.clone(), a.value.clone())).collect())
+        .map(|e| {
+            e.attributes
+                .iter()
+                .map(|a| (a.key.clone(), a.value.clone()))
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -891,7 +901,11 @@ fn events_deposit_with_fee_and_bond_and_oracle_and_request() {
         .query_wasm_smart::<OracleTokensListResponse>(&vault, &QueryMsg::OracleTokensList {})
         .unwrap()
         .tokens;
-    let prices = HashMap::from_iter(tokens.into_iter().map(|t| (t, Decimal::from_str("1.0").unwrap())));
+    let prices = HashMap::from_iter(
+        tokens
+            .into_iter()
+            .map(|t| (t, Decimal::from_str("1.0").unwrap())),
+    );
     let res = app
         .execute_contract(
             oracle,
@@ -929,7 +943,8 @@ fn events_deposit_with_fee_and_bond_and_oracle_and_request() {
             vault.clone(),
             &ExecuteMsg::Bond {
                 amount: Uint128::new(100),
-                salt: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+                salt: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    .to_string(),
                 slippage: Some(Decimal::from_str("0.01").unwrap()),
             },
             &[],
@@ -974,7 +989,11 @@ fn asset_query_and_send_helpers() {
         .query_wasm_smart::<OracleTokensListResponse>(&vault, &QueryMsg::OracleTokensList {})
         .unwrap()
         .tokens;
-    let prices = HashMap::from_iter(tokens.into_iter().map(|t| (t, Decimal::from_str("1.0").unwrap())));
+    let prices = HashMap::from_iter(
+        tokens
+            .into_iter()
+            .map(|t| (t, Decimal::from_str("1.0").unwrap())),
+    );
     app.execute_contract(
         oracle,
         vault.clone(),
@@ -1003,7 +1022,6 @@ fn asset_query_and_send_helpers() {
         .unwrap();
     assert_eq!(asset_resp.asset_token_address, UNDERLYING_TOKEN);
 }
-
 
 #[test]
 fn instantiate_rejects_invalid_staking_contract() {
@@ -1071,7 +1089,12 @@ fn add_and_remove_role_happy_path() {
     // Verify in role list
     let role_resp: AccessControlRoleResponse = app
         .wrap()
-        .query_wasm_smart(&vault, &QueryMsg::Role { kind: AccessControlRole::Manager {} })
+        .query_wasm_smart(
+            &vault,
+            &QueryMsg::Role {
+                kind: AccessControlRole::Manager {},
+            },
+        )
         .unwrap();
     assert!(role_resp.addresses.contains(&new_manager));
 
@@ -1088,7 +1111,12 @@ fn add_and_remove_role_happy_path() {
     .unwrap();
     let role_resp: AccessControlRoleResponse = app
         .wrap()
-        .query_wasm_smart(&vault, &QueryMsg::Role { kind: AccessControlRole::Manager {} })
+        .query_wasm_smart(
+            &vault,
+            &QueryMsg::Role {
+                kind: AccessControlRole::Manager {},
+            },
+        )
         .unwrap();
     assert!(!role_resp.addresses.contains(&new_manager));
 }
