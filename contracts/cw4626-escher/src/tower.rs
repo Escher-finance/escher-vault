@@ -159,15 +159,9 @@ pub fn add_tower_liquidity(
     let mut funds = Vec::new();
 
     let (underlying_increase_allowance_msg, underlying_coin) =
-        asset_generate_increase_allowance_or_funds(
-            underlying_asset.clone(),
-            tower_config.lp.clone(),
-        )?;
+        asset_generate_increase_allowance_or_funds(underlying_asset.clone(), &tower_config.lp)?;
     let (other_lp_increase_allowance_msg, other_lp_coin) =
-        asset_generate_increase_allowance_or_funds(
-            other_lp_asset.clone(),
-            tower_config.lp.clone(),
-        )?;
+        asset_generate_increase_allowance_or_funds(other_lp_asset.clone(), &tower_config.lp)?;
 
     if let Some(m) = underlying_increase_allowance_msg {
         msgs.push(m);
@@ -348,7 +342,7 @@ pub fn tower_swap(
         amount,
     };
     let (allowance_msg, fund) =
-        asset_generate_increase_allowance_or_funds(offer_asset.clone(), tower_config.lp.clone())?;
+        asset_generate_increase_allowance_or_funds(offer_asset.clone(), &tower_config.lp)?;
 
     let mut msgs = Vec::new();
     let mut funds = Vec::new();
@@ -391,7 +385,7 @@ pub fn tower_swap(
             info: asset_info.clone(),
             amount,
         },
-        tower_config.lp.clone(),
+        &tower_config.lp,
         msg,
     )?));
     Ok(msgs)

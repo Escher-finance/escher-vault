@@ -260,7 +260,7 @@ pub fn complete_redemption_with_distribution(
 
     // Create transfer messages for each asset
     for asset in &request.expected_assets {
-        let transfer_msg = send_asset_from_contract(asset.clone(), request.receiver.clone())?;
+        let transfer_msg = send_asset_from_contract(asset.clone(), &request.receiver)?;
         messages.push(transfer_msg);
         distributed_assets.push(asset.clone());
     }

@@ -133,7 +133,7 @@ pub fn bond(
             info: asset_info,
             amount,
         },
-        staking_contract.clone(),
+        &staking_contract,
         to_json_binary(&EscherHubExecuteMsg::Bond {
             slippage,
             expected,
@@ -181,7 +181,7 @@ pub fn unbond(
             },
             amount,
         },
-        staking_contract.clone(),
+        &staking_contract,
         to_json_binary(&EscherHubExecuteMsg::Unstake {
             amount,
             recipient: Some(info.sender.to_string()), // Send unstaked tokens back to the caller
