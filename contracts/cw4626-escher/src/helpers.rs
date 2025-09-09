@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{
     msg::*,
     responses::{generate_deposit_response, generate_deposit_with_fee_response},
+    state::EntryFeeConfig,
 };
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
@@ -109,6 +110,30 @@ impl PreviewDepositKind {
     }
 }
 
+/// Returns (user_shares, fee_shares)
+pub fn calculate_entry_fee_share_amounts(
+    entry_fee_cfg: &EntryFeeConfig,
+    assets: Uint128,
+    shares: Uint128,
+) -> (Uint128, Uint128) {
+    if entry_fee_cfg.fee_rate.is_zero() {
+        return (shares, Uint128::zero());
+    }
+    // Compute fee_on_total in asset terms using integer math
+    let r_n = entry_fee_cfg.fee_rate.atomics();
+    let r_d = Decimal::one().atomics();
+    let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
+    // Convert fee assets into fee shares proportionally to net assets that minted `shares`
+    let net_assets = assets.saturating_sub(fee_assets);
+    let fee_shares = if net_assets.is_zero() {
+        Uint128::zero()
+    } else {
+        shares.multiply_ratio(fee_assets, net_assets)
+    };
+    let user_shares = shares.saturating_sub(fee_shares);
+    (user_shares, fee_shares)
+}
+
 /// Preview deposit calculation
 pub fn _preview_deposit(
     this: &Addr,
@@ -129,22 +154,11 @@ pub fn _preview_deposit(
     // Preview on full assets; fee is applied at mint-split time (shares*(1-r), shares*r)
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     let mut user_shares = shares;
+    // NOTE: We do this check because if it's not query then the fee is accounted for after this
+    // function is called; see `execute::deposit` and `helpers::_deposit`
     if matches!(preview_deposit_kind, PreviewDepositKind::OnlyQuery {}) {
         let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
-        if !entry_fee_cfg.fee_rate.is_zero() {
-            // Compute fee_on_total in asset terms using integer math
-            let r_n = entry_fee_cfg.fee_rate.atomics();
-            let r_d = Decimal::one().atomics();
-            let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
-            // Convert fee assets into fee shares proportionally to net assets that minted `shares`
-            let net_assets = assets.saturating_sub(fee_assets);
-            let fee_shares = if net_assets.is_zero() {
-                Uint128::zero()
-            } else {
-                shares.multiply_ratio(fee_assets, net_assets)
-            };
-            user_shares = shares.saturating_sub(fee_shares);
-        };
+        user_shares = calculate_entry_fee_share_amounts(&entry_fee_cfg, assets, shares).0;
     }
     Ok(PreviewDepositResponse {
         shares: user_shares,
@@ -209,18 +223,8 @@ pub fn _deposit(
         }
         Ok(res)
     } else {
-        // Compute fee_on_total in asset terms using integer math
-        let r_n = entry_fee_cfg.fee_rate.atomics();
-        let r_d = Decimal::one().atomics();
-        let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
-        // Convert fee assets into fee shares proportionally to net assets that minted `shares`
-        let net_assets = assets.saturating_sub(fee_assets);
-        let fee_shares = if net_assets.is_zero() {
-            Uint128::zero()
-        } else {
-            shares.multiply_ratio(fee_assets, net_assets)
-        };
-        let user_shares = shares.saturating_sub(fee_shares);
+        let (user_shares, fee_shares) =
+            calculate_entry_fee_share_amounts(&entry_fee_cfg, assets, shares);
         _mint(deps.branch(), receiver.to_string(), user_shares)?;
         _mint(
             deps.branch(),
