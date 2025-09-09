@@ -196,8 +196,7 @@ pub fn deposit(
             receiver: receiver.clone(),
             assets,
             max_assets,
-        }
-        .into());
+        });
     }
     let PreviewDepositResponse { shares } = query::preview_deposit(
         &env.contract.address,
@@ -226,8 +225,7 @@ pub fn mint(
             receiver: receiver.clone(),
             shares,
             max_shares,
-        }
-        .into());
+        });
     }
     let PreviewMintResponse { assets } =
         query::preview_mint(&env.contract.address, &deps_ref, shares)?;
@@ -392,8 +390,7 @@ pub fn receive_deposit(
             receiver: receiver.clone(),
             assets,
             max_assets,
-        }
-        .into());
+        });
     }
     let PreviewDepositResponse { shares } = query::preview_deposit(
         &env.contract.address,
