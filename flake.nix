@@ -21,6 +21,12 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        astroportSrc = pkgs.fetchFromGitHub {
+          owner = "quasar-finance";
+          repo = "babydex";
+          rev = "8fce1b955a1769a1f4286c73cbfd36701753ac1e";
+          sha256 = pkgs.lib.fakeSha256; # TODO: replace with fixed hash
+        };
 
         # Rust toolchain with specific version
         rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
@@ -116,6 +122,17 @@
               export RUSTFLAGS="-C target-feature=-reference-types"
               # Use git CLI for fetching git deps (more reliable in some CI envs)
               export CARGO_NET_GIT_FETCH_WITH_CLI=true
+
+              # Instruct Cargo to use vendored paths for astroport crates
+              mkdir -p "$CARGO_HOME"
+              cat > "$CARGO_HOME/config.toml" <<'CFG'
+              [patch.'https://github.com/quasar-finance/babydex.git']
+              astroport = { path = "${astroportSrc}/packages/astroport" }
+              astroport-factory = { path = "${astroportSrc}/contracts/astroport-factory" }
+              astroport-pcl-common = { path = "${astroportSrc}/packages/astroport-pcl-common" }
+              astroport-pair-concentrated = { path = "${astroportSrc}/contracts/astroport-pair-concentrated" }
+              CFG
+
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
               mkdir -p artifacts
               wasm-opt -Oz --signext-lowering --strip-debug --strip-producers \
