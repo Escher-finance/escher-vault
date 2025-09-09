@@ -397,13 +397,9 @@ pub fn complete_redemption_with_distribution(
     redemption_id: u64,
     tx_hash: String,
 ) -> Result<Response, ContractError> {
-    crate::redemption::complete_redemption_with_distribution(
-        deps,
-        env,
-        info,
-        redemption_id,
-        tx_hash,
-    )
+    // Restrict completion to managers
+    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+    crate::redemption::complete_redemption_with_distribution(deps, env, redemption_id, tx_hash)
 }
 
 #[cfg(test)]
