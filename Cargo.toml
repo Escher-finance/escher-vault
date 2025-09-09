@@ -1,5 +1,5 @@
 [workspace]
-members = ["packages/*", "contracts/*"]
+members = ["contracts/*"]
 
 # Resolver has to be set explicitely in workspaces, see https://github.com/rust-lang/cargo/issues/9956
 resolver = "2"
@@ -31,8 +31,7 @@ anyhow = "1.0.99"
 astroport = { git = "https://github.com/quasar-finance/babydex.git", version = "5.7.0" }
 astroport-pair = { git = "https://github.com/quasar-finance/babydex.git", version = "2.1.1" }
 astroport-pair-concentrated = { git = "https://github.com/quasar-finance/babydex.git", version = "4.1.1" }
-cw4626 = { path = "packages/cw4626", version = "0.1.0-rc.0" }
-cw4626-base = { path = "contracts/cw4626-base", version = "0.1.0-rc.0" }
+
 cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
 
 [profile.release]
