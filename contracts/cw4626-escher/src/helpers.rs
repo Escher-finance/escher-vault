@@ -213,9 +213,9 @@ pub fn internal_mint(
 /// # Errors
 /// Will return error if storage queries or saves fail
 pub fn internal_deposit(
-    mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     sender: &Addr,
     receiver: &Addr,
     assets: Uint128,
@@ -418,9 +418,9 @@ mod tests {
         let shares = Uint128::new(910);
 
         let res = internal_deposit(
-            deps.as_mut(),
-            env,
-            info,
+            &mut deps.as_mut(),
+            &env,
+            &info,
             &depositor,
             &receiver,
             assets,
@@ -507,9 +507,9 @@ mod tests {
         let shares = Uint128::new(1000);
 
         let res = internal_deposit(
-            deps.as_mut(),
-            env,
-            info,
+            &mut deps.as_mut(),
+            &env,
+            &info,
             &depositor,
             &receiver,
             assets,

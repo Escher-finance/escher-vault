@@ -31,13 +31,15 @@ use crate::{
     ContractError,
 };
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn add_to_role(
-    deps: DepsMut,
-    sender: Addr,
+    deps: &mut DepsMut,
+    sender: &Addr,
     role: AccessControlRole,
-    address: Addr,
+    address: &Addr,
 ) -> Result<Response, ContractError> {
-    only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
+    only_role(deps.storage, sender, AccessControlRole::Manager {})?;
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let mut addrs = addrs.unwrap_or_default();
         addrs.push(address.clone());
@@ -50,13 +52,15 @@ pub fn add_to_role(
     ))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn remove_from_role(
-    deps: DepsMut,
-    sender: Addr,
+    deps: &mut DepsMut,
+    sender: &Addr,
     role: AccessControlRole,
-    address: Addr,
+    address: &Addr,
 ) -> Result<Response, ContractError> {
-    only_role(deps.storage, &sender, AccessControlRole::Manager {})?;
+    only_role(deps.storage, sender, AccessControlRole::Manager {})?;
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let addrs = validate_addrs(
             addrs
@@ -73,23 +77,27 @@ pub fn remove_from_role(
     ))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn oracle_update_prices(
-    mut deps: DepsMut,
-    sender: Addr,
-    prices: PricesMap,
+    deps: &mut DepsMut,
+    sender: &Addr,
+    prices: &PricesMap,
 ) -> Result<Response, ContractError> {
-    only_role(deps.storage, &sender, AccessControlRole::Oracle {})?;
-    update_and_validate_prices(&mut deps, prices.clone())?;
+    only_role(deps.storage, sender, AccessControlRole::Oracle {})?;
+    update_and_validate_prices(deps, prices.clone())?;
     Ok(generate_oracle_update_prices_response(
         sender.as_ref(),
-        &prices,
+        prices,
     ))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn bond(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     amount: Uint128,
     salt: String,
     slippage: Option<Decimal>,
@@ -99,7 +107,7 @@ pub fn bond(
     validate_salt(&salt)?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    let this = env.contract.address;
+    let this = &env.contract.address;
 
     let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
         staking_contract.clone(),
@@ -112,7 +120,7 @@ pub fn bond(
 
     // Get the current asset balance in the vault
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
-    let asset_balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
+    let asset_balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this)?;
 
     // Validate that we have enough assets to bond
     if asset_balance < amount {
@@ -135,19 +143,21 @@ pub fn bond(
         })?,
     )?;
 
-    Ok(generate_bond_response(&this, amount, expected, &staking_contract).add_message(bond_msg))
+    Ok(generate_bond_response(this, amount, expected, &staking_contract).add_message(bond_msg))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn unbond(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    let this = env.contract.address;
+    let this = &env.contract.address;
 
     // Query the staking contract to get current liquidity info
     let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
@@ -180,15 +190,17 @@ pub fn unbond(
         })?,
     )?;
 
-    Ok(generate_unbond_response(&this, expected, &staking_contract).add_message(unbond_msg))
+    Ok(generate_unbond_response(this, expected, &staking_contract).add_message(unbond_msg))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn deposit(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     assets: Uint128,
-    receiver: Addr,
+    receiver: &Addr,
 ) -> Result<Response, ContractError> {
     let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
@@ -208,13 +220,15 @@ pub fn deposit(
         },
     )?;
     let sender = info.sender.clone();
-    internal_deposit(deps, env, info, &sender, &receiver, assets, shares, false)
+    internal_deposit(deps, env, info, &sender, receiver, assets, shares, false)
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn add_liquidity(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     underlying_token_amount: Uint128,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
@@ -233,11 +247,11 @@ pub fn add_liquidity(
     }
     .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
 
-    let this = env.contract.address;
+    let this = &env.contract.address;
     let underlying_balance = query_asset_info_balance(
         &deps.querier,
         tower_config.lp_underlying_asset.clone(),
-        this.clone(),
+        this,
     )?;
     let other_lp_balance =
         query_asset_info_balance(&deps.querier, tower_config.lp_other_asset.clone(), this)?;
@@ -265,17 +279,19 @@ pub fn add_liquidity(
     Ok(Response::new().add_event(event).add_messages(msgs))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn remove_liquidity(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     lp_token_amount: Uint128,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
-    let this = env.contract.address;
-    let lp_amount = get_tower_lp_token_deposit(&deps.querier, &tower_config, &this)?;
+    let this = &env.contract.address;
+    let lp_amount = get_tower_lp_token_deposit(&deps.querier, &tower_config, this)?;
 
     if lp_token_amount.is_zero() || lp_amount < lp_token_amount {
         return Err(ContractError::InsufficientFunds {});
@@ -287,7 +303,9 @@ pub fn remove_liquidity(
     Ok(Response::new().add_event(event).add_messages(msgs))
 }
 
-pub fn claim_incentives(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+/// # Errors
+/// Will return error if internal helper fails
+pub fn claim_incentives(deps: &mut DepsMut, info: &MessageInfo) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
@@ -297,10 +315,12 @@ pub fn claim_incentives(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
     Ok(Response::new().add_event(event).add_message(msg))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn swap(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     amount: Uint128,
     asset_info: AssetInfo,
 ) -> Result<Response, ContractError> {
@@ -313,10 +333,10 @@ pub fn swap(
         return Err(ContractError::InvalidTokenType {});
     }
 
-    let this = env.contract.address;
+    let this = &env.contract.address;
 
     // make sure we have enough native funds to swap
-    let balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this.clone())?;
+    let balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this)?;
 
     if balance < amount {
         return Err(ContractError::InsufficientSwapFunds { asset_info });
@@ -329,34 +349,38 @@ pub fn swap(
     Ok(Response::new().add_event(event).add_messages(msgs))
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn receive(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     cw20_contract: Addr,
-    cw20_receive_msg: cw20::Cw20ReceiveMsg,
+    cw20_receive_msg: &cw20::Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let msg = from_json::<ReceiveMsg>(&cw20_receive_msg.msg)?;
     let sender = deps.api.addr_validate(&cw20_receive_msg.sender)?;
-    let received_balance = ::cw20::Cw20CoinVerified {
+    let received_balance = cw20::Cw20CoinVerified {
         address: cw20_contract,
         amount: cw20_receive_msg.amount,
     };
 
     match msg {
         ReceiveMsg::Deposit { receiver } => {
-            crate::execute::receive_deposit(deps, env, info, sender, received_balance, receiver)
+            crate::execute::receive_deposit(deps, env, info, &sender, &received_balance, &receiver)
         }
     }
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn receive_deposit(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    sender: Addr,
-    received_balance: ::cw20::Cw20CoinVerified,
-    receiver: Addr,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    sender: &Addr,
+    received_balance: &cw20::Cw20CoinVerified,
+    receiver: &Addr,
 ) -> Result<Response, ContractError> {
     if received_balance.address.to_string() != UNDERLYING_ASSET.load(deps.storage)?.to_string() {
         return Err(ContractError::WrongCw20Received {});
@@ -376,35 +400,34 @@ pub fn receive_deposit(
         assets,
         PreviewDepositKind::Cw20ViaReceive {},
     )?;
-    internal_deposit(deps, env, info, &sender, &receiver, assets, shares, true)
+    internal_deposit(deps, env, info, sender, receiver, assets, shares, true)
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn request_redeem(
     mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    env: &Env,
+    info: &MessageInfo,
     shares: Uint128,
-    receiver: Addr,
-    owner: Addr,
+    receiver: &Addr,
+    owner: &Addr,
 ) -> Result<Response, ContractError> {
-    crate::redemption::request_redemption(&mut deps, &env, &info, shares, &receiver, &owner)
+    crate::redemption::request_redemption(&mut deps, env, info, shares, receiver, owner)
 }
 
+/// # Errors
+/// Will return error if internal helper fails
 pub fn complete_redemption_with_distribution(
     mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    env: &Env,
+    info: &MessageInfo,
     redemption_id: u64,
-    tx_hash: String,
+    tx_hash: &str,
 ) -> Result<Response, ContractError> {
     // Restrict completion to managers
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    crate::redemption::complete_redemption_with_distribution(
-        &mut deps,
-        &env,
-        redemption_id,
-        &tx_hash,
-    )
+    crate::redemption::complete_redemption_with_distribution(&mut deps, env, redemption_id, tx_hash)
 }
 
 #[cfg(test)]
@@ -468,7 +491,13 @@ mod tests {
         };
 
         // This might fail due to missing underlying asset setup, but should not panic
-        let result = receive(deps.as_mut(), env, info, cw20_contract, cw20_receive_msg);
+        let result = receive(
+            &mut deps.as_mut(),
+            &env,
+            &info,
+            cw20_contract,
+            &cw20_receive_msg,
+        );
 
         // We expect this to fail due to missing setup, but the function should handle it gracefully
         assert!(result.is_err());
@@ -484,9 +513,9 @@ mod tests {
         let amount = Uint128::from(1000u128);
 
         let result = unbond(
-            deps.as_mut(),
-            env,
-            MessageInfo {
+            &mut deps.as_mut(),
+            &env,
+            &MessageInfo {
                 sender: sender.clone(),
                 funds: vec![],
             },
@@ -512,7 +541,7 @@ mod tests {
             .unwrap()[0]
             .clone();
 
-        let res = claim_incentives(deps.as_mut(), message_info(&manager, &[])).unwrap();
+        let res = claim_incentives(&mut deps.as_mut(), &message_info(&manager, &[])).unwrap();
         // one message to tower incentives
         assert!(!res.messages.is_empty());
         // event present

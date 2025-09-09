@@ -93,7 +93,7 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -101,53 +101,53 @@ pub fn execute(
     let sender = info.sender.clone();
     Ok(match msg {
         ExecuteMsg::AddToRole { role, address } => {
-            crate::execute::add_to_role(deps, sender, role, address)?
+            crate::execute::add_to_role(&mut deps, &sender, role, &address)?
         }
         ExecuteMsg::RemoveFromRole { role, address } => {
-            crate::execute::remove_from_role(deps, sender, role, address)?
+            crate::execute::remove_from_role(&mut deps, &sender, role, &address)?
         }
         ExecuteMsg::OracleUpdatePrices { prices } => {
-            crate::execute::oracle_update_prices(deps, sender, prices)?
+            crate::execute::oracle_update_prices(&mut deps, &sender, &prices)?
         }
         ExecuteMsg::Bond {
             amount,
             salt,
             slippage,
-        } => crate::execute::bond(deps, env, info, amount, salt, slippage)?,
-        ExecuteMsg::Unbond { amount } => crate::execute::unbond(deps, env, info, amount)?,
+        } => crate::execute::bond(&mut deps, &env, &info, amount, salt, slippage)?,
+        ExecuteMsg::Unbond { amount } => crate::execute::unbond(&mut deps, &env, &info, amount)?,
         ExecuteMsg::AddLiquidity {
             underlying_token_amount,
-        } => crate::execute::add_liquidity(deps, env, info, underlying_token_amount)?,
+        } => crate::execute::add_liquidity(&mut deps, &env, &info, underlying_token_amount)?,
         ExecuteMsg::RemoveLiquidity { lp_token_amount } => {
-            crate::execute::remove_liquidity(deps, env, info, lp_token_amount)?
+            crate::execute::remove_liquidity(&mut deps, &env, &info, lp_token_amount)?
         }
-        ExecuteMsg::ClaimIncentives {} => crate::execute::claim_incentives(deps, info)?,
+        ExecuteMsg::ClaimIncentives {} => crate::execute::claim_incentives(&mut deps, &info)?,
         ExecuteMsg::Swap { amount, asset_info } => {
-            crate::execute::swap(deps, env, info, amount, asset_info)?
+            crate::execute::swap(&mut deps, &env, &info, amount, asset_info)?
         }
         //
         // CW4626
         //
         ExecuteMsg::Deposit { assets, receiver } => {
-            crate::execute::deposit(deps, env, info, assets, receiver)?
+            crate::execute::deposit(&mut deps, &env, &info, assets, &receiver)?
         }
         ExecuteMsg::RequestRedeem {
             shares,
             receiver,
             owner,
-        } => crate::execute::request_redeem(deps, env, info, shares, receiver, owner)?,
+        } => crate::execute::request_redeem(deps, &env, &info, shares, &receiver, &owner)?,
         ExecuteMsg::CompleteRedemption {
             redemption_id,
             tx_hash,
         } => crate::execute::complete_redemption_with_distribution(
             deps,
-            env,
-            info,
+            &env,
+            &info,
             redemption_id,
-            tx_hash,
+            &tx_hash,
         )?,
         ExecuteMsg::Receive(cw20_receive_msg) => {
-            crate::execute::receive(deps, env, info, sender, cw20_receive_msg)?
+            crate::execute::receive(&mut deps, &env, &info, sender, &cw20_receive_msg)?
         }
         //
         // CW20

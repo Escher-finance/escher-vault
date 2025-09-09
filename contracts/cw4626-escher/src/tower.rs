@@ -260,7 +260,7 @@ pub fn calculate_assets_ownership(
             amount: query_asset_info_balance(
                 querier,
                 tower_config.lp_underlying_asset.clone(),
-                this.clone(),
+                this,
             )?,
         },
     );
@@ -269,7 +269,7 @@ pub fn calculate_assets_ownership(
     let mut asset_infos = tower_config.lp_incentives.clone();
     asset_infos.push(tower_config.lp_other_asset.clone());
     for asset_info in asset_infos {
-        let asset_balance = query_asset_info_balance(querier, asset_info.clone(), this.clone())?;
+        let asset_balance = query_asset_info_balance(querier, asset_info.clone(), this)?;
         assets.insert(
             asset_info.clone(),
             Asset {

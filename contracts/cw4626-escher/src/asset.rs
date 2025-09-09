@@ -36,7 +36,7 @@ pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
 pub fn query_asset_info_balance(
     querier: &QuerierWrapper,
     asset_info: AssetInfo,
-    addr: Addr,
+    addr: &Addr,
 ) -> Result<Uint128, cosmwasm_std::StdError> {
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => query_token_balance(querier, contract_addr, addr),
@@ -59,12 +59,12 @@ pub fn query_asset_info_decimals(
 
 /// Only returns `WasmMsg` if `AssetInfo::Token`
 pub fn assert_send_asset_to_contract(
-    info: MessageInfo,
-    env: Env,
+    info: &MessageInfo,
+    env: &Env,
     asset: Asset,
 ) -> Result<Option<WasmMsg>, ContractError> {
     let caller = info.sender.clone();
-    let this = env.contract.address;
+    let this = env.contract.address.clone();
     match asset.info {
         AssetInfo::Token { contract_addr } => Ok(Some(WasmMsg::Execute {
             contract_addr: contract_addr.to_string(),
@@ -76,7 +76,7 @@ pub fn assert_send_asset_to_contract(
             funds: vec![],
         })),
         AssetInfo::NativeToken { denom } => {
-            if must_pay(&info, &denom)? != asset.amount {
+            if must_pay(info, &denom)? != asset.amount {
                 return Err(ContractError::WrongFundAmountProvided {});
             }
             Ok(None)
