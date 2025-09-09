@@ -108,6 +108,11 @@
               pkgs.yarn
             ];
             buildPhase = ''
+              # Ensure cargo/git have a writable home on CI builders (e.g., garnix)
+              export HOME="$TMPDIR"
+              export CARGO_HOME="$TMPDIR/.cargo"
+              mkdir -p "$CARGO_HOME"
+
               export RUSTFLAGS="-C target-feature=-reference-types"
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
               mkdir -p artifacts
