@@ -32,9 +32,10 @@
         # Rust toolchain with specific version
         rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
           extensions = [
-            "rust-src"
+           "rust-src"
             "rust-analyzer"
             "clippy"
+            "llvm-tools-preview"
           ];
           targets = [ "wasm32-unknown-unknown" ];
         };
