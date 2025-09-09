@@ -25,7 +25,7 @@
           owner = "quasar-finance";
           repo = "babydex";
           rev = "8fce1b955a1769a1f4286c73cbfd36701753ac1e";
-          sha256 = pkgs.lib.fakeSha256; # TODO: replace with fixed hash
+          sha256 = "sha256-2MkxcBG9rd3B8aivY4bXdByd+fnuqJ8zuwVIk+RdHZU=";
         };
 
         # Rust toolchain with specific version
