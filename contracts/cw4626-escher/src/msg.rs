@@ -211,10 +211,6 @@ pub struct RedemptionStatsResponse {
     pub total_value_distributed: Uint128,
 }
 
-// Performance fee queries removed
-
-// Asset growth query removed
-
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
