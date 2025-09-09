@@ -23,6 +23,7 @@ schemars = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 astroport = { workspace = true }
+astroport-pair = { workspace = true }
 astroport-pair-concentrated = { workspace = true }
 
 [build-dependencies]

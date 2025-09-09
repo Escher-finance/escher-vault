@@ -177,6 +177,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "astroport-pair"
+version = "2.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
+dependencies = [
+ "astroport",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "integer-sqrt",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "astroport-pair-concentrated"
 version = "4.1.1"
 source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
@@ -592,6 +609,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "astroport",
+ "astroport-pair",
  "astroport-pair-concentrated",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1054,6 +1072,15 @@ checksum = "3acae9609540aa318d1bc588455225fb2085b9ed0c4f6bd0d9d5bcd86f1a0344"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
+]
+
+[[package]]
+name = "integer-sqrt"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
