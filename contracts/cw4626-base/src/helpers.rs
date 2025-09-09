@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_json_binary, Addr, BlockInfo, Deps, DepsMut, Env, QuerierWrapper, Response, StdError,
-    StdResult, Storage, Uint128, WasmMsg,
+    to_json_binary, Addr, BlockInfo, Decimal, Deps, DepsMut, Env, QuerierWrapper, Response,
+    StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw4626::{cw20, PreviewDepositResponse};
 
@@ -97,6 +97,8 @@ pub fn _convert_to_assets(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
+// TODO: move all of these to proper events in the `responses` module
+
 pub fn generate_deposit_response(
     caller: &Addr,
     receiver: &Addr,
@@ -109,6 +111,24 @@ pub fn generate_deposit_response(
         .add_attribute("receiver", receiver)
         .add_attribute("assets_transferred", assets)
         .add_attribute("shares_minted", shares)
+}
+
+pub fn generate_deposit_with_fee_response(
+    caller: &Addr,
+    receiver: &Addr,
+    assets: Uint128,
+    user_shares: Uint128,
+    fee_shares: Uint128,
+    entry_fee_rate: Decimal,
+) -> Response {
+    Response::new()
+        .add_attribute("action", "deposit")
+        .add_attribute("depositor", caller)
+        .add_attribute("receiver", receiver)
+        .add_attribute("assets_transferred", assets)
+        .add_attribute("user_shares_minted", user_shares)
+        .add_attribute("fee_shares_minted", fee_shares)
+        .add_attribute("entry_fee_rate", entry_fee_rate.to_string())
 }
 
 pub fn generate_withdraw_response(

@@ -19,6 +19,9 @@ pub struct InstantiateMsg {
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
     pub staking_contract: Option<Addr>,
+    // Entry fee configuration (applied on deposit/mint)
+    pub entry_fee_rate: Option<Decimal>, // e.g., 0.1 (10%); None => 0
+    pub entry_fee_recipient: Addr,       // If None, defaults to fee_recipient
 }
 
 #[cw_serde]
@@ -216,6 +219,10 @@ pub struct RedemptionStatsResponse {
     pub total_assets_distributed: Vec<Asset>,
     pub total_value_distributed: Uint128,
 }
+
+// Performance fee queries removed
+
+// Asset growth query removed
 
 #[cw_serde]
 #[derive(QueryResponses)]

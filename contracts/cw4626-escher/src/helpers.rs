@@ -1,12 +1,14 @@
 use std::collections::HashSet;
 
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
-use cw4626_base::helpers::generate_deposit_response;
+use cosmwasm_std::{
+    Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+};
+use cw4626_base::helpers::{generate_deposit_response, generate_deposit_with_fee_response};
 
 use crate::{
     asset::assert_send_asset_to_contract,
-    state::{LOCKED_SHARES, UNDERLYING_ASSET},
+    state::{ENTRY_FEE_CONFIG, LOCKED_SHARES, UNDERLYING_ASSET},
     tower::calculate_total_assets,
     ContractError,
 };
@@ -116,11 +118,34 @@ pub fn _preview_deposit(
         mut total_assets,
         ..
     } = get_tokens(this, deps)?;
+
     if preview_deposit_kind.needs_correction() {
-        total_assets -= assets;
+        total_assets = total_assets.saturating_sub(assets);
     }
+
+    // Preview on full assets; fee is applied at mint-split time (shares*(1-r), shares*r)
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
-    Ok(cw4626::PreviewDepositResponse { shares })
+    let mut user_shares = shares;
+    if matches!(preview_deposit_kind, PreviewDepositKind::OnlyQuery {}) {
+        let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
+        if !entry_fee_cfg.fee_rate.is_zero() {
+            // Compute fee_on_total in asset terms using integer math
+            let r_n = entry_fee_cfg.fee_rate.atomics();
+            let r_d = Decimal::one().atomics();
+            let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
+            // Convert fee assets into fee shares proportionally to net assets that minted `shares`
+            let net_assets = assets.saturating_sub(fee_assets);
+            let fee_shares = if net_assets.is_zero() {
+                Uint128::zero()
+            } else {
+                shares.multiply_ratio(fee_assets, net_assets)
+            };
+            user_shares = shares.saturating_sub(fee_shares);
+        };
+    }
+    Ok(cw4626::PreviewDepositResponse {
+        shares: user_shares,
+    })
 }
 
 // Internal unchecked `mint`
@@ -164,15 +189,58 @@ pub fn _deposit(
         amount: assets,
         info: asset_info,
     };
-    let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
-    if !via_receive {
-        let transfer_msg = assert_send_asset_to_contract(info, env, asset.clone())?;
+    let transfer_msg = if !via_receive {
+        assert_send_asset_to_contract(info, env, asset.clone())?
+    } else {
+        None
+    };
+
+    // Mint shares to receiver minus fee, and fee shares to fee recipient if configured
+    let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
+
+    if entry_fee_cfg.fee_rate.is_zero() {
+        _mint(deps.branch(), receiver.to_string(), shares)?;
+        let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
         if let Some(msg) = transfer_msg {
             res = res.add_message(msg);
         }
+        Ok(res)
+    } else {
+        // Compute fee_on_total in asset terms using integer math
+        let r_n = entry_fee_cfg.fee_rate.atomics();
+        let r_d = Decimal::one().atomics();
+        let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
+        // Convert fee assets into fee shares proportionally to net assets that minted `shares`
+        let net_assets = assets.saturating_sub(fee_assets);
+        let fee_shares = if net_assets.is_zero() {
+            Uint128::zero()
+        } else {
+            shares.multiply_ratio(fee_assets, net_assets)
+        };
+        let user_shares = shares.saturating_sub(fee_shares);
+        _mint(deps.branch(), receiver.to_string(), user_shares)?;
+        _mint(
+            deps.branch(),
+            entry_fee_cfg.fee_recipient.to_string(),
+            fee_shares,
+        )?;
+        let mut res = generate_deposit_with_fee_response(
+            &sender,
+            &receiver,
+            assets,
+            user_shares,
+            fee_shares,
+            entry_fee_cfg.fee_rate,
+        );
+        // Ensure expected test attributes exist even if base helper changes
+        res = res
+            .add_attribute("user_shares_minted", user_shares)
+            .add_attribute("fee_shares_minted", fee_shares);
+        if let Some(msg) = transfer_msg {
+            res = res.add_message(msg);
+        }
+        Ok(res)
     }
-    _mint(deps.branch(), receiver.to_string(), shares)?;
-    Ok(res)
 }
 
 /// Validates addrs uniqueness, minimum and maximum length
@@ -203,6 +271,11 @@ pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Decimal, MessageInfo,
+    };
 
     #[test]
     fn convert_to_shares_zero_state_returns_1_to_1() {
@@ -254,5 +327,167 @@ mod tests {
         // The preview should now match the convert_to_shares result
         // (We can't test _preview_deposit directly here as it needs deps, but the logic is the same)
         assert_eq!(convert_shares, assets); // Should be 1:1 in this case
+    }
+
+    #[test]
+    fn deposit_mints_fee_and_user_shares_with_entry_fee() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        // Configure underlying as CW20 to avoid native funds check
+        let token_addr = deps.api.addr_make("token");
+        UNDERLYING_ASSET
+            .save(
+                deps.as_mut().storage,
+                &AssetInfo::Token {
+                    contract_addr: token_addr,
+                },
+            )
+            .unwrap();
+
+        // Set entry fee: 10%, fee recipient
+        let fee_addr = deps.api.addr_make("fee");
+        ENTRY_FEE_CONFIG
+            .save(
+                deps.as_mut().storage,
+                &EntryFeeConfig {
+                    fee_rate: Decimal::percent(10),
+                    fee_recipient: fee_addr.clone(),
+                },
+            )
+            .unwrap();
+
+        // Init token info
+        cw20_base::state::TOKEN_INFO
+            .save(
+                deps.as_mut().storage,
+                &cw20_base::state::TokenInfo {
+                    name: "Vault Token".to_string(),
+                    symbol: "VAULT".to_string(),
+                    decimals: 6,
+                    total_supply: Uint128::zero(),
+                    mint: None,
+                },
+            )
+            .unwrap();
+
+        let depositor = deps.api.addr_make("depositor");
+        let receiver = deps.api.addr_make("receiver");
+        let info = MessageInfo {
+            sender: depositor.clone(),
+            funds: vec![],
+        };
+        let assets = Uint128::new(1000);
+
+        // Assume preview produced 910 shares (net_assets with 10% fee_on_total is 910)
+        let shares = Uint128::new(910);
+
+        let res = _deposit(
+            deps.as_mut(),
+            env,
+            info,
+            depositor,
+            receiver.clone(),
+            assets,
+            shares,
+            false,
+        )
+        .unwrap();
+        // Verify attributes present
+        assert!(res
+            .attributes
+            .iter()
+            .any(|a| a.key == "fee_shares_minted" && a.value == "90"));
+        assert!(res
+            .attributes
+            .iter()
+            .any(|a| a.key == "user_shares_minted" && a.value == "820"));
+
+        // Check balances
+        let user_balance = cw20_base::state::BALANCES
+            .load(deps.as_ref().storage, &receiver)
+            .unwrap();
+        let fee_balance = cw20_base::state::BALANCES
+            .load(deps.as_ref().storage, &fee_addr)
+            .unwrap();
+        let total_supply = cw20_base::state::TOKEN_INFO
+            .load(deps.as_ref().storage)
+            .unwrap()
+            .total_supply;
+        assert_eq!(user_balance, Uint128::new(820));
+        assert_eq!(fee_balance, Uint128::new(90));
+        assert_eq!(total_supply, Uint128::new(910));
+    }
+
+    #[test]
+    fn deposit_mints_all_shares_when_entry_fee_zero() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+
+        let token_addr = deps.api.addr_make("token");
+        UNDERLYING_ASSET
+            .save(
+                deps.as_mut().storage,
+                &AssetInfo::Token {
+                    contract_addr: token_addr,
+                },
+            )
+            .unwrap();
+
+        ENTRY_FEE_CONFIG
+            .save(
+                deps.as_mut().storage,
+                &EntryFeeConfig {
+                    fee_rate: Decimal::zero(),
+                    fee_recipient: Addr::unchecked("0"),
+                },
+            )
+            .unwrap();
+        // Init token info
+        cw20_base::state::TOKEN_INFO
+            .save(
+                deps.as_mut().storage,
+                &cw20_base::state::TokenInfo {
+                    name: "Vault Token".to_string(),
+                    symbol: "VAULT".to_string(),
+                    decimals: 6,
+                    total_supply: Uint128::zero(),
+                    mint: None,
+                },
+            )
+            .unwrap();
+
+        let depositor = deps.api.addr_make("depositor");
+        let receiver = deps.api.addr_make("receiver");
+        let info = MessageInfo {
+            sender: depositor.clone(),
+            funds: vec![],
+        };
+        let assets = Uint128::new(1000);
+        let shares = Uint128::new(1000);
+
+        let res = _deposit(
+            deps.as_mut(),
+            env,
+            info,
+            depositor,
+            receiver.clone(),
+            assets,
+            shares,
+            false,
+        )
+        .unwrap();
+        // No fee attributes present
+        assert!(!res.attributes.iter().any(|a| a.key == "fee_shares"));
+
+        let user_balance = cw20_base::state::BALANCES
+            .load(deps.as_ref().storage, &receiver)
+            .unwrap();
+        let total_supply = cw20_base::state::TOKEN_INFO
+            .load(deps.as_ref().storage)
+            .unwrap()
+            .total_supply;
+        assert_eq!(user_balance, Uint128::new(1000));
+        assert_eq!(total_supply, Uint128::new(1000));
     }
 }

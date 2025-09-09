@@ -12,7 +12,10 @@ use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::EscherHubQueryMsg;
 use crate::staking::EscherHubStakingLiquidity;
-use crate::state::{AccessControlRole, ACCESS_CONTROL, UNDERLYING_ASSET, UNDERLYING_DECIMALS};
+use crate::state::{
+    AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
+    UNDERLYING_DECIMALS,
+};
 use crate::tower::{init_oracle_prices, update_tower_config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -29,6 +32,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
+    let _current_block_height = env.block.height;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -75,7 +79,17 @@ pub fn instantiate(
         msg.incentives,
         msg.underlying_token,
     )?;
-    init_oracle_prices(deps, &tower_config)?;
+    init_oracle_prices(deps.branch(), &tower_config)?;
+
+    // Initialize entry fee configuration
+    ENTRY_FEE_CONFIG.save(
+        deps.storage,
+        &EntryFeeConfig {
+            fee_rate: msg.entry_fee_rate.unwrap_or_default(),
+            fee_recipient: msg.entry_fee_recipient,
+        },
+    )?;
+
     Ok(Response::new())
 }
 
