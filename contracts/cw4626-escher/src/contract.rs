@@ -222,7 +222,8 @@ pub fn execute(
 /// Will return error if query fails
 #[cfg_attr(not(feature = "library"), entry_point)]
 #[allow(clippy::too_many_lines)]
-pub fn query(deps: Deps, env: &Env, msg: QueryMsg) -> StdResult<Binary> {
+#[allow(clippy::needless_pass_by_value)]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let this = env.contract.address.clone();
     match msg {
         QueryMsg::GitInfo {} => to_json_binary(&crate::query::git_info()?),
