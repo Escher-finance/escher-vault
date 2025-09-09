@@ -23,7 +23,7 @@ pub fn calculate_user_asset_share(
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let mut user_assets = Vec::new();
 
-    for mut asset in calculate_assets_ownership(&deps.querier, &tower_config, this.clone())? {
+    for mut asset in calculate_assets_ownership(&deps.querier, &tower_config, &this)? {
         asset.amount = user_shares.multiply_ratio(asset.amount, total_shares);
         user_assets.push(asset);
     }
@@ -301,9 +301,9 @@ pub fn preview_redeem_multi_asset(
 
     // Calculate total value in underlying asset terms
     let total_value = if cfg!(test) {
-        Uint128::new(1000000) // Mock value for testing
+        Uint128::new(1_000_000) // Mock value for testing
     } else {
-        calculate_total_assets(&deps.querier, deps.storage, contract_addr.clone())?
+        calculate_total_assets(&deps.querier, deps.storage, &contract_addr)?
     };
     let total_value_in_underlying = shares.multiply_ratio(total_value, total_shares);
 

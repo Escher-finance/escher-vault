@@ -74,12 +74,12 @@ pub fn remove_from_role(
 }
 
 pub fn oracle_update_prices(
-    deps: DepsMut,
+    mut deps: DepsMut,
     sender: Addr,
     prices: PricesMap,
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &sender, AccessControlRole::Oracle {})?;
-    update_and_validate_prices(deps, prices.clone())?;
+    update_and_validate_prices(&mut deps, prices.clone())?;
     Ok(generate_oracle_update_prices_response(
         sender.as_ref(),
         &prices,
@@ -323,7 +323,7 @@ pub fn swap(
     }
 
     // build the execute swap cosmos messages
-    let msgs = tower_swap(tower_config, amount, &asset_info)?;
+    let msgs = tower_swap(&tower_config, amount, &asset_info)?;
 
     let event = swap_event(info.sender.as_ref(), amount, &asset_info);
     Ok(Response::new().add_event(event).add_messages(msgs))

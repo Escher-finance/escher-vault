@@ -45,7 +45,7 @@ pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
 
     let total_shares = total_supply.saturating_sub(locked_shares.total_locked);
 
-    let total_assets = calculate_total_assets(&deps.querier, deps.storage, this.clone())
+    let total_assets = calculate_total_assets(&deps.querier, deps.storage, this)
         .map_err(|err| StdError::generic_err(err.to_string()))?;
     Ok(Tokens {
         share,

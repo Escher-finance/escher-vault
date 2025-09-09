@@ -23,10 +23,12 @@ use crate::{
     ContractError,
 };
 
+/// # Errors
+/// Will return error arg validation fails
 pub fn update_tower_config(
-    deps: DepsMut,
+    deps: &mut DepsMut,
     tower_incentives: Addr,
-    lp: Addr,
+    lp: &Addr,
     slippage_tolerance: Decimal,
     lp_incentives: Vec<AssetInfo>,
     underlying_asset_info: AssetInfo,
@@ -83,7 +85,12 @@ pub fn update_tower_config(
     Ok(config)
 }
 
-pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(), ContractError> {
+/// # Errors
+/// Will return error if storage update fails
+pub fn init_oracle_prices(
+    deps: &mut DepsMut,
+    tower_config: &TowerConfig,
+) -> Result<(), ContractError> {
     let mut assets = Vec::from([tower_config.lp_other_asset.clone()]);
     assets.extend(tower_config.lp_incentives.clone());
     let initial_prices: HashMap<_, _> = assets
@@ -100,7 +107,12 @@ pub fn init_oracle_prices(deps: DepsMut, tower_config: &TowerConfig) -> Result<(
     Ok(())
 }
 
-pub fn update_and_validate_prices(deps: DepsMut, prices: PricesMap) -> Result<(), ContractError> {
+/// # Errors
+/// Will return error if queries or validation fails
+pub fn update_and_validate_prices(
+    deps: &mut DepsMut,
+    prices: PricesMap,
+) -> Result<(), ContractError> {
     if !prices.values().all(|p| *p > Decimal::zero()) {
         return Err(ContractError::OracleZeroPrice {});
     }
@@ -117,6 +129,8 @@ pub fn update_and_validate_prices(deps: DepsMut, prices: PricesMap) -> Result<()
     Ok(())
 }
 
+/// # Errors
+/// Will return error if queries or validation fails
 pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> Result<PricesMap, ContractError> {
     let prices = ORACLE_PRICES.load(storage)?;
     if !prices.values().all(|p| *p > Decimal::zero()) {
@@ -125,6 +139,8 @@ pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> Result<PricesMap
     Ok(prices)
 }
 
+/// # Errors
+/// Will return error if messages fail to serialize
 pub fn add_tower_liquidity(
     tower_config: &TowerConfig,
     underlying_asset_amount: Uint128,
@@ -180,6 +196,9 @@ pub fn add_tower_liquidity(
 }
 
 /// NOTE: This also claims incentives everytime
+///
+/// # Errors
+/// Will return error if messages fail to serialize
 pub fn remove_tower_liquidity(
     tower_config: &TowerConfig,
     lp_token_amount: Uint128,
@@ -209,6 +228,8 @@ pub fn remove_tower_liquidity(
     ]))
 }
 
+/// # Errors
+/// Will return error if messages fail to serialize
 pub fn claim_tower_incentives(tower_config: &TowerConfig) -> Result<CosmosMsg, ContractError> {
     let incentives_execute_msg = IncentivesExecuteMsg::ClaimRewards {
         lp_tokens: Vec::from([tower_config.lp_token.to_string()]),
@@ -221,10 +242,13 @@ pub fn claim_tower_incentives(tower_config: &TowerConfig) -> Result<CosmosMsg, C
 }
 
 /// Calculates all available balances
+///
+/// # Errors
+/// Will return error if queries fail
 pub fn calculate_assets_ownership(
     querier: &QuerierWrapper,
     tower_config: &TowerConfig,
-    this: Addr,
+    this: &Addr,
 ) -> Result<Vec<Asset>, ContractError> {
     let mut assets: HashMap<AssetInfo, Asset> = HashMap::new();
 
@@ -255,14 +279,14 @@ pub fn calculate_assets_ownership(
         );
     }
 
-    let lp_amount = get_tower_lp_token_deposit(querier, tower_config, &this)?;
+    let lp_amount = get_tower_lp_token_deposit(querier, tower_config, this)?;
     if !lp_amount.is_zero() {
         let mut lp_assets: Vec<Asset> = querier.query_wasm_smart::<Vec<Asset>>(
             tower_config.lp.clone(),
             &PairConcentratedQueryMsg::SimulateWithdraw { lp_amount },
         )?;
         lp_assets.extend(
-            get_tower_pending_rewards(querier, tower_config, &this)?
+            get_tower_pending_rewards(querier, tower_config, this)?
                 .into_iter()
                 .filter(|a| tower_config.lp_incentives.contains(&a.info)),
         );
@@ -286,15 +310,18 @@ pub fn calculate_assets_ownership(
 }
 
 /// Calculates total assets in terms of the underlying asset price
+///
+/// # Errors
+/// Will return error if queries fail
 pub fn calculate_total_assets(
     querier: &QuerierWrapper,
     storage: &dyn Storage,
-    this: Addr,
+    this: &Addr,
 ) -> Result<Uint128, ContractError> {
     let prices = get_and_validate_oracle_prices(storage)?;
     let tower_config = TOWER_CONFIG.load(storage)?;
     let mut total_balance = Uint128::zero();
-    for asset in calculate_assets_ownership(querier, &tower_config, this.clone())? {
+    for asset in calculate_assets_ownership(querier, &tower_config, this)? {
         total_balance += if asset.info == tower_config.lp_underlying_asset {
             asset.amount
         } else {
@@ -307,9 +334,12 @@ pub fn calculate_total_assets(
     Ok(total_balance)
 }
 
-// build the swap cosmos messages to the lp contract
+/// Build the swap cosmos messages to the lp contract
+///
+/// # Errors
+/// Will return error if validation fails or messages fail to serialize
 pub fn tower_swap(
-    tower_config: TowerConfig,
+    tower_config: &TowerConfig,
     amount: Uint128,
     asset_info: &AssetInfo,
 ) -> Result<Vec<CosmosMsg>, ContractError> {
@@ -367,6 +397,8 @@ pub fn tower_swap(
     Ok(msgs)
 }
 
+/// # Errors
+/// Will return error if query fails
 pub fn get_tower_lp_token_deposit(
     querier: &QuerierWrapper,
     tower_config: &TowerConfig,
@@ -383,6 +415,9 @@ pub fn get_tower_lp_token_deposit(
 
 /// NOTE: This query errors if the user has not created a position yet
 /// <https://github.com/quasar-finance/babydex/blob/8fce1b955a1769a1f4286c73cbfd36701753ac1e/contracts/tokenomics/incentives/src/query.rs#L174>
+///
+/// # Errors
+/// Will return error if query fails
 pub fn get_tower_pending_rewards(
     querier: &QuerierWrapper,
     tower_config: &TowerConfig,

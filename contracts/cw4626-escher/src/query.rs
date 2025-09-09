@@ -62,7 +62,7 @@ pub fn asset(deps: &Deps) -> StdResult<AssetResponse> {
 }
 
 pub fn total_assets(deps: &Deps, this: Addr) -> StdResult<TotalAssetsResponse> {
-    let total_managed_assets = calculate_total_assets(&deps.querier, deps.storage, this)
+    let total_managed_assets = calculate_total_assets(&deps.querier, deps.storage, &this)
         .map_err(|err| StdError::generic_err(err.to_string()))?;
     Ok(TotalAssetsResponse {
         total_managed_assets,

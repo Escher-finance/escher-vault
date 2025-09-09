@@ -70,14 +70,14 @@ pub fn instantiate(
         &validate_addrs(msg.oracles.into_iter())?,
     )?;
     let tower_config = update_tower_config(
-        deps.branch(),
+        &mut deps.branch(),
         msg.tower_incentives,
-        msg.lp,
+        &msg.lp,
         msg.slippage_tolerance,
         msg.incentives,
         msg.underlying_token,
     )?;
-    init_oracle_prices(deps.branch(), &tower_config)?;
+    init_oracle_prices(&mut deps.branch(), &tower_config)?;
 
     // Initialize entry fee configuration
     ENTRY_FEE_CONFIG.save(
