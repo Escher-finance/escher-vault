@@ -239,10 +239,6 @@ pub fn _deposit(
             fee_shares,
             entry_fee_cfg.fee_rate,
         );
-        // Ensure expected test attributes exist even if base helper changes
-        res = res
-            .add_attribute("user_shares_minted", user_shares)
-            .add_attribute("fee_shares_minted", fee_shares);
         if let Some(msg) = transfer_msg {
             res = res.add_message(msg);
         }
@@ -278,7 +274,10 @@ pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET};
+    use crate::{
+        responses::EVENT_DEPOSIT,
+        state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET},
+    };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env},
         Decimal, MessageInfo,
@@ -400,12 +399,17 @@ mod tests {
             false,
         )
         .unwrap();
+        let ev = res
+            .events
+            .into_iter()
+            .find(|e| e.ty == EVENT_DEPOSIT)
+            .unwrap();
         // Verify attributes present
-        assert!(res
+        assert!(ev
             .attributes
             .iter()
             .any(|a| a.key == "fee_shares_minted" && a.value == "90"));
-        assert!(res
+        assert!(ev
             .attributes
             .iter()
             .any(|a| a.key == "user_shares_minted" && a.value == "820"));
