@@ -97,7 +97,7 @@ pub enum ExecuteMsg {
         msg: Binary,
     },
     /// Allows spender to access an additional amount tokens
-    /// from the owner's (env.sender) account. If expires is Some(), overwrites current allowance
+    /// from the owner's (env.sender) account. If expires is `Some()`, overwrites current allowance
     /// expiration with this one.
     IncreaseAllowance {
         spender: String,
@@ -105,7 +105,7 @@ pub enum ExecuteMsg {
         expires: Option<cw20::Expiration>,
     },
     /// Lowers the spender's access of tokens
-    /// from the owner's (env.sender) account by amount. If expires is Some(), overwrites current
+    /// from the owner's (env.sender) account by amount. If expires is `Some()`, overwrites current
     /// allowance expiration with this one.
     DecreaseAllowance {
         spender: String,
@@ -225,7 +225,7 @@ pub enum QueryMsg {
     /// NOTE: We might want to keep prices "private"
     #[returns(OracleTokensListResponse)]
     OraclePrices {},
-    /// Returns vault underlying asset exchange rate (total_assets / total_shares) as string
+    /// Returns vault underlying asset exchange rate (`total_assets` / `total_shares`) as string
     #[returns(ExchangeRateResponse)]
     ExchangeRate {},
     #[returns(LpPositionResponse)]

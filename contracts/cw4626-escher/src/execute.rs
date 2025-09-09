@@ -11,7 +11,7 @@ use crate::{
     access_control::only_role,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     helpers::{_deposit, validate_addrs, validate_salt, PreviewDepositKind},
-    msg::*,
+    msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
     responses::{
         add_liquidity_event, claim_incentives_event, generate_add_role_response,

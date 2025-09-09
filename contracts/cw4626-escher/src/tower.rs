@@ -382,7 +382,7 @@ pub fn get_tower_lp_token_deposit(
 }
 
 /// NOTE: This query errors if the user has not created a position yet
-/// https://github.com/quasar-finance/babydex/blob/8fce1b955a1769a1f4286c73cbfd36701753ac1e/contracts/tokenomics/incentives/src/query.rs#L174
+/// <https://github.com/quasar-finance/babydex/blob/8fce1b955a1769a1f4286c73cbfd36701753ac1e/contracts/tokenomics/incentives/src/query.rs#L174>
 pub fn get_tower_pending_rewards(
     querier: &QuerierWrapper,
     tower_config: &TowerConfig,

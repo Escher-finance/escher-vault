@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{
-    msg::*,
+    msg::PreviewDepositResponse,
     responses::{generate_deposit_response, generate_deposit_with_fee_response},
+    state::EntryFeeConfig,
 };
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
@@ -99,6 +100,7 @@ pub enum PreviewDepositKind {
 }
 
 impl PreviewDepositKind {
+    #[must_use]
     pub fn needs_correction(&self) -> bool {
         match self {
             Self::OnlyQuery {} => false,
@@ -107,6 +109,31 @@ impl PreviewDepositKind {
             Self::Native {} => true,
         }
     }
+}
+
+/// Returns (`user_shares`, `fee_shares`)
+#[must_use]
+pub fn calculate_entry_fee_share_amounts(
+    entry_fee_cfg: &EntryFeeConfig,
+    assets: Uint128,
+    shares: Uint128,
+) -> (Uint128, Uint128) {
+    if entry_fee_cfg.fee_rate.is_zero() {
+        return (shares, Uint128::zero());
+    }
+    // Compute fee_on_total in asset terms using integer math
+    let r_n = entry_fee_cfg.fee_rate.atomics();
+    let r_d = Decimal::one().atomics();
+    let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
+    // Convert fee assets into fee shares proportionally to net assets that minted `shares`
+    let net_assets = assets.saturating_sub(fee_assets);
+    let fee_shares = if net_assets.is_zero() {
+        Uint128::zero()
+    } else {
+        shares.multiply_ratio(fee_assets, net_assets)
+    };
+    let user_shares = shares.saturating_sub(fee_shares);
+    (user_shares, fee_shares)
 }
 
 /// Preview deposit calculation
@@ -129,22 +156,11 @@ pub fn _preview_deposit(
     // Preview on full assets; fee is applied at mint-split time (shares*(1-r), shares*r)
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     let mut user_shares = shares;
+    // NOTE: We do this check because if it's not query then the fee is accounted for after this
+    // function is called; see `execute::deposit` and `helpers::_deposit`
     if matches!(preview_deposit_kind, PreviewDepositKind::OnlyQuery {}) {
         let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
-        if !entry_fee_cfg.fee_rate.is_zero() {
-            // Compute fee_on_total in asset terms using integer math
-            let r_n = entry_fee_cfg.fee_rate.atomics();
-            let r_d = Decimal::one().atomics();
-            let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
-            // Convert fee assets into fee shares proportionally to net assets that minted `shares`
-            let net_assets = assets.saturating_sub(fee_assets);
-            let fee_shares = if net_assets.is_zero() {
-                Uint128::zero()
-            } else {
-                shares.multiply_ratio(fee_assets, net_assets)
-            };
-            user_shares = shares.saturating_sub(fee_shares);
-        };
+        user_shares = calculate_entry_fee_share_amounts(&entry_fee_cfg, assets, shares).0;
     }
     Ok(PreviewDepositResponse {
         shares: user_shares,
@@ -192,10 +208,10 @@ pub fn _deposit(
         amount: assets,
         info: asset_info,
     };
-    let transfer_msg = if !via_receive {
-        assert_send_asset_to_contract(info, env, asset.clone())?
-    } else {
+    let transfer_msg = if via_receive {
         None
+    } else {
+        assert_send_asset_to_contract(info, env, asset.clone())?
     };
 
     // Mint shares to receiver minus fee, and fee shares to fee recipient if configured
@@ -209,18 +225,8 @@ pub fn _deposit(
         }
         Ok(res)
     } else {
-        // Compute fee_on_total in asset terms using integer math
-        let r_n = entry_fee_cfg.fee_rate.atomics();
-        let r_d = Decimal::one().atomics();
-        let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
-        // Convert fee assets into fee shares proportionally to net assets that minted `shares`
-        let net_assets = assets.saturating_sub(fee_assets);
-        let fee_shares = if net_assets.is_zero() {
-            Uint128::zero()
-        } else {
-            shares.multiply_ratio(fee_assets, net_assets)
-        };
-        let user_shares = shares.saturating_sub(fee_shares);
+        let (user_shares, fee_shares) =
+            calculate_entry_fee_share_amounts(&entry_fee_cfg, assets, shares);
         _mint(deps.branch(), receiver.to_string(), user_shares)?;
         _mint(
             deps.branch(),
@@ -235,10 +241,6 @@ pub fn _deposit(
             fee_shares,
             entry_fee_cfg.fee_rate,
         );
-        // Ensure expected test attributes exist even if base helper changes
-        res = res
-            .add_attribute("user_shares_minted", user_shares)
-            .add_attribute("fee_shares_minted", fee_shares);
         if let Some(msg) = transfer_msg {
             res = res.add_message(msg);
         }
@@ -274,7 +276,10 @@ pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET};
+    use crate::{
+        responses::EVENT_DEPOSIT,
+        state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET},
+    };
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env},
         Decimal, MessageInfo,
@@ -396,12 +401,17 @@ mod tests {
             false,
         )
         .unwrap();
+        let ev = res
+            .events
+            .into_iter()
+            .find(|e| e.ty == EVENT_DEPOSIT)
+            .unwrap();
         // Verify attributes present
-        assert!(res
+        assert!(ev
             .attributes
             .iter()
             .any(|a| a.key == "fee_shares_minted" && a.value == "90"));
-        assert!(res
+        assert!(ev
             .attributes
             .iter()
             .any(|a| a.key == "user_shares_minted" && a.value == "820"));
