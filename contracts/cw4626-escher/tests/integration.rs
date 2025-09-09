@@ -353,6 +353,54 @@ fn proper_instantiate(app: &mut App, cw20_underlying: bool, with_fee: bool) -> A
 }
 
 #[test]
+fn complete_redemption_requires_manager() {
+    let mut app = get_app();
+    let vault = proper_instantiate(&mut app, false, false);
+
+    // Non-manager tries to complete redemption -> must fail with Unauthorized before any other checks
+    let user = addr(app.api(), USER);
+    let err = app
+        .execute_contract(
+            user,
+            vault,
+            &ExecuteMsg::CompleteRedemption {
+                redemption_id: 1,
+                tx_hash: "dummy".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err();
+    assert!(format!("{err}").contains("only manager role"));
+}
+
+#[test]
+fn swap_rejects_invalid_asset_for_manager() {
+    let mut app = get_app();
+    // native underlying so lp_other_asset will be the mocked cw20 token; we'll pass an invalid third token
+    let vault = proper_instantiate(&mut app, false, false);
+    let admin = addr(app.api(), ADMIN);
+
+    // Ensure some balance exists so we hit InvalidTokenType check rather than InsufficientSwapFunds
+    // Provide a tiny mint of an unrelated token to the vault (won't be used because token is invalid)
+    let invalid_asset = AssetInfo::NativeToken {
+        denom: "totally-invalid".to_string(),
+    };
+
+    let err = app
+        .execute_contract(
+            admin,
+            vault,
+            &ExecuteMsg::Swap {
+                amount: Uint128::new(1),
+                asset_info: invalid_asset,
+            },
+            &[],
+        )
+        .unwrap_err();
+    assert!(format!("{err}").contains("invalid token type for this operation"));
+}
+
+#[test]
 fn instantiates_properly_underlying_native() {
     let mut app = get_app();
     proper_instantiate(&mut app, false, false);
