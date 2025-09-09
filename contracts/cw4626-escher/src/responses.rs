@@ -136,20 +136,26 @@ pub fn generate_request_redemption_response(
     created_at: Timestamp,
     expected_assets: &[Asset],
 ) -> Response {
-    let mut e = Event::new(EVENT_REQUEST_REDEMPTION)
+    // Format expected assets as a comma-separated string
+    let expected_assets_str = expected_assets
+        .iter()
+        .map(|a| format!("{}={}", a.info, a.amount))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    let e = Event::new(EVENT_REQUEST_REDEMPTION)
         .add_attribute("redemption_id", redemption_id.to_string())
         .add_attribute("owner", owner)
         .add_attribute("receiver", receiver)
         .add_attribute("shares_locked", shares_locked)
         .add_attribute("expected_assets_count", expected_assets.len().to_string())
-        .add_attribute("created_at", created_at.to_string());
-    for (i, asset) in expected_assets.iter().enumerate() {
-        e = e.add_attribute(format!("expected_asset_{}", i), asset.to_string());
-    }
-    e = e.add_attribute(
-        "total_expected_value",
-        expected_assets.iter().map(|a| a.amount).sum::<Uint128>(),
-    );
+        .add_attribute("expected_assets", expected_assets_str)
+        .add_attribute("created_at", created_at.to_string())
+        .add_attribute(
+            "total_expected_value",
+            expected_assets.iter().map(|a| a.amount).sum::<Uint128>(),
+        );
+
     Response::new().add_event(e)
 }
 
@@ -161,19 +167,24 @@ pub fn generate_complete_redemption_response(
     tx_hash: &str,
     distributed_assets: &[Asset],
 ) -> Response {
-    let mut e = Event::new(EVENT_COMPLETE_REDEMPTION)
+    // Format distributed assets as a comma-separated string
+    let distributed_assets_str = distributed_assets
+        .iter()
+        .map(|a| format!("{}={}", a.info, a.amount))
+        .collect::<Vec<_>>()
+        .join(",");
+    let e = Event::new(EVENT_COMPLETE_REDEMPTION)
         .add_attribute("redemption_id", redemption_id.to_string())
         .add_attribute("receiver", receiver)
         .add_attribute("shares_burned", shares_burned)
         .add_attribute("completed_at", completed_at.to_string())
         .add_attribute("tx_hash", tx_hash)
+        .add_attribute("distributed_assets", distributed_assets_str)
         .add_attribute(
             "distributed_assets_count",
             distributed_assets.len().to_string(),
         );
-    for (i, asset) in distributed_assets.iter().enumerate() {
-        e = e.add_attribute(format!("distributed_asset_{}", i), asset.to_string());
-    }
+
     Response::new().add_event(e)
 }
 
