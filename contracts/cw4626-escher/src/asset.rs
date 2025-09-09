@@ -6,7 +6,7 @@ use cosmwasm_std::{
     to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper,
     StdResult, Uint128, WasmMsg,
 };
-use cw4626::cw20;
+use cw20;
 use cw4626_base::helpers::validate_cw20;
 use cw_utils::must_pay;
 

@@ -7,12 +7,7 @@ use crate::{
         Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
         PreviewDepositKind,
     },
-    msg::{
-        AccessControlRoleResponse, ConfigResponse, ExchangeRateResponse, GitInfoResponse,
-        LpPositionResponse, OraclePricesResponse, OracleTokensListResponse,
-        PendingIncentivesResponse, PreviewRedeemMultiAssetResponse, RedemptionRequestResponse,
-        RedemptionStatsResponse, UserRedemptionRequestsResponse,
-    },
+    msg::*,
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, REDEMPTION_REQUESTS, STAKING_CONTRACT,
         TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
@@ -52,17 +47,17 @@ pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
     })
 }
 
-pub fn asset(deps: &Deps) -> StdResult<cw4626::AssetResponse> {
+pub fn asset(deps: &Deps) -> StdResult<AssetResponse> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
-    Ok(cw4626::AssetResponse {
+    Ok(AssetResponse {
         asset_token_address: get_asset_info_address(&asset),
     })
 }
 
-pub fn total_assets(deps: &Deps, this: Addr) -> StdResult<cw4626::TotalAssetsResponse> {
+pub fn total_assets(deps: &Deps, this: Addr) -> StdResult<TotalAssetsResponse> {
     let total_managed_assets = calculate_total_assets(&deps.querier, deps.storage, this)
         .map_err(|err| StdError::generic_err(err.to_string()))?;
-    Ok(cw4626::TotalAssetsResponse {
+    Ok(TotalAssetsResponse {
         total_managed_assets,
     })
 }
@@ -71,32 +66,32 @@ pub fn convert_to_shares(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
-) -> StdResult<cw4626::ConvertToSharesResponse> {
+) -> StdResult<ConvertToSharesResponse> {
     let Tokens {
         total_shares,
         total_assets,
         ..
     } = get_tokens(this, deps)?;
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
-    Ok(cw4626::ConvertToSharesResponse { shares })
+    Ok(ConvertToSharesResponse { shares })
 }
 
 pub fn convert_to_assets(
     this: &Addr,
     deps: &Deps,
     shares: Uint128,
-) -> StdResult<cw4626::ConvertToAssetsResponse> {
+) -> StdResult<ConvertToAssetsResponse> {
     let Tokens {
         total_shares,
         total_assets,
         ..
     } = get_tokens(this, deps)?;
     let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
-    Ok(cw4626::ConvertToAssetsResponse { assets })
+    Ok(ConvertToAssetsResponse { assets })
 }
 
-pub fn max_deposit(_receiver: Addr) -> StdResult<cw4626::MaxDepositResponse> {
-    Ok(cw4626::MaxDepositResponse {
+pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
+    Ok(MaxDepositResponse {
         max_assets: if cfg!(not(test)) {
             Uint128::MAX
         } else {
@@ -105,8 +100,8 @@ pub fn max_deposit(_receiver: Addr) -> StdResult<cw4626::MaxDepositResponse> {
     })
 }
 
-pub fn max_mint(_receiver: Addr) -> StdResult<cw4626::MaxMintResponse> {
-    Ok(cw4626::MaxMintResponse {
+pub fn max_mint(_receiver: Addr) -> StdResult<MaxMintResponse> {
+    Ok(MaxMintResponse {
         max_shares: if cfg!(not(test)) {
             Uint128::MAX
         } else {
@@ -120,22 +115,18 @@ pub fn preview_deposit(
     deps: &Deps,
     assets: Uint128,
     preview_deposit_kind: PreviewDepositKind,
-) -> StdResult<cw4626::PreviewDepositResponse> {
+) -> StdResult<PreviewDepositResponse> {
     _preview_deposit(this, deps, assets, preview_deposit_kind)
 }
 
-pub fn preview_mint(
-    this: &Addr,
-    deps: &Deps,
-    shares: Uint128,
-) -> StdResult<cw4626::PreviewMintResponse> {
+pub fn preview_mint(this: &Addr, deps: &Deps, shares: Uint128) -> StdResult<PreviewMintResponse> {
     let Tokens {
         total_shares,
         total_assets,
         ..
     } = get_tokens(this, deps)?;
     let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Ceil)?;
-    Ok(cw4626::PreviewMintResponse { assets })
+    Ok(PreviewMintResponse { assets })
 }
 
 pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse> {

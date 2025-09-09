@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-cw4626 = { workspace = true }
+# cw4626 = { workspace = true }
 cw4626-base = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }

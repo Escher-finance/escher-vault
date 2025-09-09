@@ -1,10 +1,15 @@
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
-
-use cw4626::*;
+use cw20_base::msg::InstantiateMarketingInfo;
 
 use crate::state::{AccessControlRole, PricesMap, RedemptionRequest, TowerConfig};
+
+#[cw_serde]
+pub enum ReceiveMsg {
+    /// Mints shares to receiver by depositing exact amount of underlying tokens
+    Deposit { receiver: Addr },
+}
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -351,4 +356,64 @@ pub enum QueryMsg {
     /// contract.
     #[returns(cw20::DownloadLogoResponse)]
     DownloadLogo {},
+}
+
+#[cw_serde]
+pub struct AssetResponse {
+    pub asset_token_address: String,
+}
+
+#[cw_serde]
+pub struct TotalAssetsResponse {
+    pub total_managed_assets: Uint128,
+}
+
+#[cw_serde]
+pub struct ConvertToSharesResponse {
+    pub shares: Uint128,
+}
+
+#[cw_serde]
+pub struct ConvertToAssetsResponse {
+    pub assets: Uint128,
+}
+
+#[cw_serde]
+pub struct MaxDepositResponse {
+    pub max_assets: Uint128,
+}
+
+#[cw_serde]
+pub struct PreviewDepositResponse {
+    pub shares: Uint128,
+}
+
+#[cw_serde]
+pub struct MaxMintResponse {
+    pub max_shares: Uint128,
+}
+
+#[cw_serde]
+pub struct PreviewMintResponse {
+    pub assets: Uint128,
+}
+
+#[cw_serde]
+pub struct MaxWithdrawResponse {
+    pub max_assets: Uint128,
+}
+
+#[cw_serde]
+pub struct PreviewWithdrawResponse {
+    pub shares: Uint128,
+}
+
+#[cw_serde]
+pub struct MaxRedeemResponse {
+    pub max_shares: Uint128,
+}
+
+#[cw_serde]
+pub struct PreviewRedeemResponse {
+    pub assets: Uint128,
 }

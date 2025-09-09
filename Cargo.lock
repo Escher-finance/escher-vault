@@ -657,7 +657,6 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
- "cw4626",
  "cw4626-base",
  "schemars",
  "serde",

@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::msg::*;
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
     Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
@@ -112,7 +113,7 @@ pub fn _preview_deposit(
     deps: &Deps,
     assets: Uint128,
     preview_deposit_kind: PreviewDepositKind,
-) -> StdResult<cw4626::PreviewDepositResponse> {
+) -> StdResult<PreviewDepositResponse> {
     let Tokens {
         total_shares,
         mut total_assets,
@@ -143,7 +144,7 @@ pub fn _preview_deposit(
             user_shares = shares.saturating_sub(fee_shares);
         };
     }
-    Ok(cw4626::PreviewDepositResponse {
+    Ok(PreviewDepositResponse {
         shares: user_shares,
     })
 }
