@@ -100,16 +100,6 @@ pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
     })
 }
 
-pub fn max_mint(_receiver: Addr) -> StdResult<MaxMintResponse> {
-    Ok(MaxMintResponse {
-        max_shares: if cfg!(not(test)) {
-            Uint128::MAX
-        } else {
-            Uint128::new(100_000_000)
-        },
-    })
-}
-
 pub fn preview_deposit(
     this: &Addr,
     deps: &Deps,
@@ -117,16 +107,6 @@ pub fn preview_deposit(
     preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<PreviewDepositResponse> {
     _preview_deposit(this, deps, assets, preview_deposit_kind)
-}
-
-pub fn preview_mint(this: &Addr, deps: &Deps, shares: Uint128) -> StdResult<PreviewMintResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
-    let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Ceil)?;
-    Ok(PreviewMintResponse { assets })
 }
 
 pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse> {
@@ -238,37 +218,6 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
         total_assets_distributed,
         total_value_distributed,
     })
-}
-
-pub fn max_withdraw(this: &Addr, deps: &Deps, owner: Addr) -> StdResult<MaxWithdrawResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
-    let owner_shares_balance =
-        cw20_base::contract::query_balance(*deps, owner.to_string())?.balance;
-    let assets = _convert_to_assets(
-        total_shares,
-        total_assets,
-        owner_shares_balance,
-        Rounding::Floor,
-    )?;
-    Ok(MaxWithdrawResponse { max_assets: assets })
-}
-
-pub fn preview_withdraw(
-    this: &Addr,
-    deps: &Deps,
-    assets: Uint128,
-) -> StdResult<PreviewWithdrawResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
-    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Ceil)?;
-    Ok(PreviewWithdrawResponse { shares })
 }
 
 pub fn max_redeem(deps: &Deps, owner: Addr) -> StdResult<MaxRedeemResponse> {

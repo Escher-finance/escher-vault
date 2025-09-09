@@ -211,28 +211,6 @@ pub fn deposit(
     _deposit(deps, env, info, sender, receiver, assets, shares, false)
 }
 
-pub fn mint(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    shares: Uint128,
-    receiver: Addr,
-) -> Result<Response, ContractError> {
-    let deps_ref = deps.as_ref();
-    let MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
-    if shares > max_shares {
-        return Err(ContractError::ExceededMaxMint {
-            receiver: receiver.clone(),
-            shares,
-            max_shares,
-        });
-    }
-    let PreviewMintResponse { assets } =
-        query::preview_mint(&env.contract.address, &deps_ref, shares)?;
-    let sender = info.sender.clone();
-    _deposit(deps, env, info, sender, receiver, assets, shares, false)
-}
-
 pub fn add_liquidity(
     deps: DepsMut,
     env: Env,

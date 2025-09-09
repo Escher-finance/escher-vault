@@ -131,9 +131,6 @@ pub fn execute(
         ExecuteMsg::Deposit { assets, receiver } => {
             crate::execute::deposit(deps, env, info, assets, receiver)?
         }
-        ExecuteMsg::Mint { shares, receiver } => {
-            crate::execute::mint(deps, env, info, shares, receiver)?
-        }
         ExecuteMsg::RequestRedeem {
             shares,
             receiver,
@@ -259,16 +256,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             assets,
             PreviewDepositKind::OnlyQuery {},
         )?),
-        QueryMsg::MaxMint { receiver } => to_json_binary(&crate::query::max_mint(receiver)?),
-        QueryMsg::PreviewMint { shares } => {
-            to_json_binary(&crate::query::preview_mint(&this, &deps, shares)?)
-        }
-        QueryMsg::MaxWithdraw { owner } => {
-            to_json_binary(&crate::query::max_withdraw(&this, &deps, owner)?)
-        }
-        QueryMsg::PreviewWithdraw { assets } => {
-            to_json_binary(&crate::query::preview_withdraw(&this, &deps, assets)?)
-        }
         QueryMsg::MaxRedeem { owner } => to_json_binary(&crate::query::max_redeem(&deps, owner)?),
         QueryMsg::PreviewRedeem { shares } => {
             to_json_binary(&crate::query::preview_redeem(&this, &deps, shares)?)

@@ -71,8 +71,6 @@ pub enum ExecuteMsg {
     //
     /// Mints shares to receiver by depositing exact amount of underlying tokens
     Deposit { assets: Uint128, receiver: Addr },
-    /// Mints exact shares to receiver by depositing amount of underlying tokens
-    Mint { shares: Uint128, receiver: Addr },
     /// Request redemption with proper multi-asset distribution
     RequestRedeem {
         shares: Uint128,
@@ -280,21 +278,6 @@ pub enum QueryMsg {
     /// current on-chain conditions
     #[returns(PreviewDepositResponse)]
     PreviewDeposit { assets: Uint128 },
-    /// Returns the maximum amount of the Vault shares that can be minted for the receiver, through a mint call
-    #[returns(MaxMintResponse)]
-    MaxMint { receiver: Addr },
-    /// Allows an on-chain or off-chain user to simulate the effects of their mint at the current block, given
-    /// current on-chain conditions
-    #[returns(PreviewMintResponse)]
-    PreviewMint { shares: Uint128 },
-    /// Returns the maximum amount of the underlying asset that can be withdrawn from the owner balance in the
-    /// Vault, through a withdraw call
-    #[returns(MaxWithdrawResponse)]
-    MaxWithdraw { owner: Addr },
-    /// Allows an on-chain or off-chain user to simulate the effects of their withdrawal at the current block,
-    /// given current on-chain conditions
-    #[returns(PreviewWithdrawResponse)]
-    PreviewWithdraw { assets: Uint128 },
     /// Returns the maximum amount of Vault shares that can be redeemed from the owner balance in the Vault,
     /// through a redeem call
     #[returns(MaxRedeemResponse)]
@@ -373,26 +356,6 @@ pub struct MaxDepositResponse {
 
 #[cw_serde]
 pub struct PreviewDepositResponse {
-    pub shares: Uint128,
-}
-
-#[cw_serde]
-pub struct MaxMintResponse {
-    pub max_shares: Uint128,
-}
-
-#[cw_serde]
-pub struct PreviewMintResponse {
-    pub assets: Uint128,
-}
-
-#[cw_serde]
-pub struct MaxWithdrawResponse {
-    pub max_assets: Uint128,
-}
-
-#[cw_serde]
-pub struct PreviewWithdrawResponse {
     pub shares: Uint128,
 }
 
