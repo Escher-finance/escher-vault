@@ -114,6 +114,8 @@
               mkdir -p "$CARGO_HOME"
 
               export RUSTFLAGS="-C target-feature=-reference-types"
+              # Use git CLI for fetching git deps (more reliable in some CI envs)
+              export CARGO_NET_GIT_FETCH_WITH_CLI=true
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
               mkdir -p artifacts
               wasm-opt -Oz --signext-lowering --strip-debug --strip-producers \
