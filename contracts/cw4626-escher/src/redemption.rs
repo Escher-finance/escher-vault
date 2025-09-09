@@ -6,8 +6,8 @@ use crate::{
     msg::PreviewRedeemMultiAssetResponse,
     responses::{generate_complete_redemption_response, generate_request_redemption_response},
     state::{
-        AccessControlRole, LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES,
-        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
+        LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES, REDEMPTION_COUNTER,
+        REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
     },
     tower::{calculate_assets_ownership, calculate_total_assets},
     ContractError,
@@ -232,13 +232,9 @@ pub fn request_redemption(
 pub fn complete_redemption_with_distribution(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     redemption_id: u64,
     tx_hash: String,
 ) -> Result<Response, ContractError> {
-    // Check manager authorization
-    crate::access_control::only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-
     // Load redemption request
     let mut request = REDEMPTION_REQUESTS
         .may_load(deps.storage, redemption_id)?
@@ -321,8 +317,8 @@ pub fn preview_redeem_multi_asset(
 mod tests {
     use super::*;
     use crate::state::{
-        TowerConfig, ACCESS_CONTROL, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG,
-        UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        AccessControlRole, TowerConfig, ACCESS_CONTROL, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
+        TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
     };
     use astroport::asset::AssetInfo;
     use cosmwasm_std::{
