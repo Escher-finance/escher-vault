@@ -62,7 +62,7 @@ pub enum Rounding {
 }
 
 /// Internal conversion
-pub fn _convert_to_shares(
+pub fn internal_convert_to_shares(
     total_shares: Uint128,
     total_assets: Uint128,
     assets: Uint128,
@@ -77,7 +77,7 @@ pub fn _convert_to_shares(
 }
 
 /// Internal conversion
-pub fn _convert_to_assets(
+pub fn internal_convert_to_assets(
     total_shares: Uint128,
     total_assets: Uint128,
     shares: Uint128,
@@ -137,7 +137,7 @@ pub fn calculate_entry_fee_share_amounts(
 }
 
 /// Preview deposit calculation
-pub fn _preview_deposit(
+pub fn internal_preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
@@ -154,7 +154,7 @@ pub fn _preview_deposit(
     }
 
     // Preview on full assets; fee is applied at mint-split time (shares*(1-r), shares*r)
-    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+    let shares = internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     let mut user_shares = shares;
     // NOTE: We do this check because if it's not query then the fee is accounted for after this
     // function is called; see `execute::deposit` and `helpers::_deposit`
@@ -290,7 +290,7 @@ mod tests {
         let assets = Uint128::new(60000);
 
         // Test when total_shares is zero
-        let shares = _convert_to_shares(
+        let shares = internal_convert_to_shares(
             Uint128::zero(),
             Uint128::new(60000),
             assets,
@@ -301,7 +301,8 @@ mod tests {
 
         // Test when both are zero
         let shares =
-            _convert_to_shares(Uint128::zero(), Uint128::zero(), assets, Rounding::Floor).unwrap();
+            internal_convert_to_shares(Uint128::zero(), Uint128::zero(), assets, Rounding::Floor)
+                .unwrap();
         assert_eq!(shares, assets);
     }
 
@@ -313,7 +314,8 @@ mod tests {
 
         // Should use the ratio formula, not 1:1
         let shares =
-            _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor).unwrap();
+            internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)
+                .unwrap();
 
         // Expected: 1000 * (2000 + 1) / (3000 + 1) = 1000 * 2001 / 3001 ≈ 666
         let expected = Uint128::new(666);
@@ -330,7 +332,8 @@ mod tests {
 
         // Both should give the same result now
         let convert_shares =
-            _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor).unwrap();
+            internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)
+                .unwrap();
 
         // The preview should now match the convert_to_shares result
         // (We can't test _preview_deposit directly here as it needs deps, but the logic is the same)

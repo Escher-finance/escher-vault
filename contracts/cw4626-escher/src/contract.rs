@@ -232,17 +232,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&crate::query::redemption_request(&deps, id)?)
         }
         QueryMsg::UserRedemptionRequests { user } => {
-            to_json_binary(&crate::query::user_redemption_requests(&deps, user)?)
+            to_json_binary(&crate::query::user_redemption_requests(&deps, &user)?)
         }
         QueryMsg::PreviewRedeemMultiAsset { shares } => to_json_binary(
-            &crate::query::preview_redeem_multi_asset(deps, shares, env.contract.address.clone())?,
+            &crate::query::preview_redeem_multi_asset(deps, shares, &this)?,
         ),
         QueryMsg::RedemptionStats => to_json_binary(&crate::query::redemption_stats(deps)?),
         //
         // CW4626
         //
         QueryMsg::Asset {} => to_json_binary(&crate::query::asset(&deps)?),
-        QueryMsg::TotalAssets {} => to_json_binary(&crate::query::total_assets(&deps, this)?),
+        QueryMsg::TotalAssets {} => to_json_binary(&crate::query::total_assets(&deps, &this)?),
         QueryMsg::ConvertToShares { assets } => {
             to_json_binary(&crate::query::convert_to_shares(&this, &deps, assets)?)
         }
@@ -256,7 +256,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             assets,
             PreviewDepositKind::OnlyQuery {},
         )?),
-        QueryMsg::MaxRedeem { owner } => to_json_binary(&crate::query::max_redeem(&deps, owner)?),
+        QueryMsg::MaxRedeem { owner } => to_json_binary(&crate::query::max_redeem(&deps, &owner)?),
         QueryMsg::PreviewRedeem { shares } => {
             to_json_binary(&crate::query::preview_redeem(&this, &deps, shares)?)
         }

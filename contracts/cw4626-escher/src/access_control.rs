@@ -10,7 +10,7 @@ pub fn only_role(
     sender: &Addr,
     role: AccessControlRole,
 ) -> Result<(), ContractError> {
-    let unauthorized_err = Err(ContractError::Unauthorized(role.clone()));
+    let unauthorized_err = Err(ContractError::Unauthorized(role));
     let Ok(Some(addresses)) = ACCESS_CONTROL.may_load(storage, role.key()) else {
         return unauthorized_err;
     };

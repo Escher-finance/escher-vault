@@ -4,8 +4,8 @@ use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 use crate::{
     asset::get_asset_info_address,
     helpers::{
-        Rounding, Tokens, _convert_to_assets, _convert_to_shares, _preview_deposit, get_tokens,
-        PreviewDepositKind,
+        get_tokens, internal_convert_to_assets, internal_convert_to_shares,
+        internal_preview_deposit, PreviewDepositKind, Rounding, Tokens,
     },
     msg::{
         AccessControlRoleResponse, AssetResponse, ConfigResponse, ConvertToAssetsResponse,
@@ -22,16 +22,22 @@ use crate::{
     tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
 };
 
+/// # Errors
+/// Will return error if queries fail
 pub fn git_info() -> StdResult<GitInfoResponse> {
     let git = format!("{}:{}", env!("VERGEN_GIT_BRANCH"), env!("VERGEN_GIT_SHA"));
     Ok(GitInfoResponse { git })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn role(deps: &Deps, kind: AccessControlRole) -> StdResult<AccessControlRoleResponse> {
     let addresses = ACCESS_CONTROL.load(deps.storage, kind.key())?;
     Ok(AccessControlRoleResponse { addresses })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn oracle_tokens_list(deps: &Deps) -> StdResult<OracleTokensListResponse> {
     let tokens = ORACLE_PRICES
         .load(deps.storage)?
@@ -40,11 +46,15 @@ pub fn oracle_tokens_list(deps: &Deps) -> StdResult<OracleTokensListResponse> {
     Ok(OracleTokensListResponse { tokens })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn oracle_prices(deps: &Deps) -> StdResult<OraclePricesResponse> {
     let prices = ORACLE_PRICES.load(deps.storage)?;
     Ok(OraclePricesResponse { prices })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
@@ -54,6 +64,8 @@ pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
     })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn asset(deps: &Deps) -> StdResult<AssetResponse> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
     Ok(AssetResponse {
@@ -61,14 +73,18 @@ pub fn asset(deps: &Deps) -> StdResult<AssetResponse> {
     })
 }
 
-pub fn total_assets(deps: &Deps, this: Addr) -> StdResult<TotalAssetsResponse> {
-    let total_managed_assets = calculate_total_assets(&deps.querier, deps.storage, &this)
+/// # Errors
+/// Will return error if queries fail
+pub fn total_assets(deps: &Deps, this: &Addr) -> StdResult<TotalAssetsResponse> {
+    let total_managed_assets = calculate_total_assets(&deps.querier, deps.storage, this)
         .map_err(|err| StdError::generic_err(err.to_string()))?;
     Ok(TotalAssetsResponse {
         total_managed_assets,
     })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn convert_to_shares(
     this: &Addr,
     deps: &Deps,
@@ -79,10 +95,12 @@ pub fn convert_to_shares(
         total_assets,
         ..
     } = get_tokens(this, deps)?;
-    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+    let shares = internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(ConvertToSharesResponse { shares })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn convert_to_assets(
     this: &Addr,
     deps: &Deps,
@@ -93,10 +111,12 @@ pub fn convert_to_assets(
         total_assets,
         ..
     } = get_tokens(this, deps)?;
-    let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
+    let assets = internal_convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(ConvertToAssetsResponse { assets })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
     Ok(MaxDepositResponse {
         max_assets: if cfg!(not(test)) {
@@ -107,15 +127,19 @@ pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
     })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
     preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<PreviewDepositResponse> {
-    _preview_deposit(this, deps, assets, preview_deposit_kind)
+    internal_preview_deposit(this, deps, assets, preview_deposit_kind)
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse> {
     let Tokens {
         total_shares,
@@ -129,12 +153,16 @@ pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse
     Ok(ExchangeRateResponse { exchange_rate })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn lp_position(this: &Addr, deps: &Deps) -> StdResult<LpPositionResponse> {
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let lp_token_amount = get_tower_lp_token_deposit(&deps.querier, &tower_config, this)?;
     Ok(LpPositionResponse { lp_token_amount })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn all_pending_incentives(this: &Addr, deps: &Deps) -> StdResult<PendingIncentivesResponse> {
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let incentives = get_tower_pending_rewards(&deps.querier, &tower_config, this)?;
@@ -143,14 +171,18 @@ pub fn all_pending_incentives(this: &Addr, deps: &Deps) -> StdResult<PendingInce
 
 // Redemption system queries
 
+/// # Errors
+/// Will return error if queries fail
 pub fn redemption_request(deps: &Deps, id: u64) -> StdResult<RedemptionRequestResponse> {
     let request = REDEMPTION_REQUESTS.may_load(deps.storage, id)?;
     Ok(RedemptionRequestResponse { request })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn user_redemption_requests(
     deps: &Deps,
-    user: Addr,
+    user: &Addr,
 ) -> StdResult<UserRedemptionRequestsResponse> {
     let redemption_ids = USER_REDEMPTION_IDS
         .may_load(deps.storage, user.clone())?
@@ -166,15 +198,19 @@ pub fn user_redemption_requests(
     Ok(UserRedemptionRequestsResponse { requests })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn preview_redeem_multi_asset(
     deps: Deps,
     shares: Uint128,
-    contract_addr: Addr,
+    this: &Addr,
 ) -> StdResult<PreviewRedeemMultiAssetResponse> {
-    crate::redemption::preview_redeem_multi_asset(deps, shares, &contract_addr)
+    crate::redemption::preview_redeem_multi_asset(deps, shares, this)
         .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
     use crate::state::{REDEMPTION_COUNTER, REDEMPTION_REQUESTS};
     use std::collections::HashMap;
@@ -227,13 +263,17 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
     })
 }
 
-pub fn max_redeem(deps: &Deps, owner: Addr) -> StdResult<MaxRedeemResponse> {
+/// # Errors
+/// Will return error if queries fail
+pub fn max_redeem(deps: &Deps, owner: &Addr) -> StdResult<MaxRedeemResponse> {
     let owner_balance = cw20_base::contract::query_balance(*deps, owner.to_string())?.balance;
     Ok(MaxRedeemResponse {
         max_shares: owner_balance,
     })
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn preview_redeem(
     this: &Addr,
     deps: &Deps,
@@ -244,7 +284,7 @@ pub fn preview_redeem(
         total_assets,
         ..
     } = get_tokens(this, deps)?;
-    let assets = _convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
+    let assets = internal_convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(PreviewRedeemResponse { assets })
 }
 
@@ -439,7 +479,7 @@ mod tests {
         let result = preview_redeem_multi_asset(
             deps.as_ref(),
             shares,
-            Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
+            &Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
         );
         assert!(result.is_ok());
 
@@ -458,7 +498,7 @@ mod tests {
         let result = preview_redeem_multi_asset(
             deps.as_ref(),
             shares,
-            Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
+            &Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
         );
 
         // This test might fail due to mock setup, but we can test the structure
