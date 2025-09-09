@@ -6,12 +6,12 @@ use cosmwasm_std::{
     from_json, to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response,
     StdError, Uint128,
 };
-use cw4626::PreviewDepositResponse;
 
 use crate::{
     access_control::only_role,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     helpers::{_deposit, validate_addrs, validate_salt, PreviewDepositKind},
+    msg::*,
     query,
     responses::{
         add_liquidity_event, claim_incentives_event, generate_add_role_response,
@@ -190,16 +190,15 @@ pub fn deposit(
     assets: Uint128,
     receiver: Addr,
 ) -> Result<Response, ContractError> {
-    let cw4626::MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
+    let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
-        return Err(cw4626_base::ContractError::ExceededMaxDeposit {
+        return Err(ContractError::ExceededMaxDeposit {
             receiver: receiver.clone(),
             assets,
             max_assets,
-        }
-        .into());
+        });
     }
-    let cw4626::PreviewDepositResponse { shares } = query::preview_deposit(
+    let PreviewDepositResponse { shares } = query::preview_deposit(
         &env.contract.address,
         &deps.as_ref(),
         assets,
@@ -220,16 +219,15 @@ pub fn mint(
     receiver: Addr,
 ) -> Result<Response, ContractError> {
     let deps_ref = deps.as_ref();
-    let cw4626::MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
+    let MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
     if shares > max_shares {
-        return Err(cw4626_base::ContractError::ExceededMaxMint {
+        return Err(ContractError::ExceededMaxMint {
             receiver: receiver.clone(),
             shares,
             max_shares,
-        }
-        .into());
+        });
     }
-    let cw4626::PreviewMintResponse { assets } =
+    let PreviewMintResponse { assets } =
         query::preview_mint(&env.contract.address, &deps_ref, shares)?;
     let sender = info.sender.clone();
     _deposit(deps, env, info, sender, receiver, assets, shares, false)
@@ -358,17 +356,17 @@ pub fn receive(
     env: Env,
     info: MessageInfo,
     cw20_contract: Addr,
-    cw20_receive_msg: cw4626::cw20::Cw20ReceiveMsg,
+    cw20_receive_msg: cw20::Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let msg = from_json::<cw4626::Cw4626ReceiveMsg>(&cw20_receive_msg.msg)?;
+    let msg = from_json::<ReceiveMsg>(&cw20_receive_msg.msg)?;
     let sender = deps.api.addr_validate(&cw20_receive_msg.sender)?;
-    let received_balance = cw4626::cw20::Cw20CoinVerified {
+    let received_balance = ::cw20::Cw20CoinVerified {
         address: cw20_contract,
         amount: cw20_receive_msg.amount,
     };
 
     match msg {
-        cw4626::Cw4626ReceiveMsg::Deposit { receiver } => {
+        ReceiveMsg::Deposit { receiver } => {
             crate::execute::receive_deposit(deps, env, info, sender, received_balance, receiver)
         }
     }
@@ -379,21 +377,20 @@ pub fn receive_deposit(
     env: Env,
     info: MessageInfo,
     sender: Addr,
-    received_balance: cw4626::cw20::Cw20CoinVerified,
+    received_balance: ::cw20::Cw20CoinVerified,
     receiver: Addr,
 ) -> Result<Response, ContractError> {
     if received_balance.address.to_string() != UNDERLYING_ASSET.load(deps.storage)?.to_string() {
         return Err(ContractError::WrongCw20Received {});
     }
     let assets = received_balance.amount;
-    let cw4626::MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
+    let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
-        return Err(cw4626_base::ContractError::ExceededMaxDeposit {
+        return Err(ContractError::ExceededMaxDeposit {
             receiver: receiver.clone(),
             assets,
             max_assets,
-        }
-        .into());
+        });
     }
     let PreviewDepositResponse { shares } = query::preview_deposit(
         &env.contract.address,
@@ -439,7 +436,6 @@ mod tests {
         testing::{message_info, mock_dependencies, mock_env},
         to_json_binary, Addr, Uint128,
     };
-    use cw4626::Cw4626ReceiveMsg;
     use std::str::FromStr;
 
     fn setup_test_contract(deps: &mut DepsMut) {
@@ -485,8 +481,8 @@ mod tests {
         let receiver = Addr::unchecked("receiver");
         let info = message_info(&sender, &[]);
 
-        let deposit_msg = Cw4626ReceiveMsg::Deposit { receiver };
-        let cw20_receive_msg = cw4626::cw20::Cw20ReceiveMsg {
+        let deposit_msg = ReceiveMsg::Deposit { receiver };
+        let cw20_receive_msg = ::cw20::Cw20ReceiveMsg {
             sender: sender.to_string(),
             amount: Uint128::from(1000u128),
             msg: to_json_binary(&deposit_msg).unwrap(),

@@ -72,9 +72,8 @@
             echo "  - cargo schema   # Generate schemas"
             echo ""
             echo "📚 Next steps:"
-            echo "1. Build contracts: cargo wasm -p cw4626-escher"
+            echo "1. Build contracts: ./scripts/build-optimize.sh"
             echo "2. Run tests: cargo test"
-            echo "3. Deploy: ./scripts/deploy-babylon-env.sh"
           '';
 
           # Rust environment
@@ -92,20 +91,6 @@
 
         # Build outputs
         packages = {
-          # Build base contract
-          cw4626-base = pkgs.stdenv.mkDerivation {
-            name = "cw4626-base";
-            src = ./.;
-            buildInputs = [ devEnv ];
-            buildPhase = ''
-              cargo wasm -p cw4626-base
-            '';
-            installPhase = ''
-              mkdir -p $out
-              cp target/wasm32-unknown-unknown/release/cw4626_base.wasm $out/
-            '';
-          };
-
           # Build escher contract
           cw4626-escher = pkgs.stdenv.mkDerivation {
             name = "cw4626-escher";

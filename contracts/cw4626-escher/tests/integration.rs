@@ -20,9 +20,10 @@ use cosmwasm_std::MessageInfo;
 use cosmwasm_std::Response;
 use cosmwasm_std::StdResult;
 use cosmwasm_std::Uint128;
+use cw20::Cw20ExecuteMsg;
+use cw20::MinterResponse;
 use cw_multi_test::{App, ContractWrapper, Executor};
 
-use cw4626::{cw20::*, *};
 use cw4626_escher::contract;
 use cw4626_escher::msg::*;
 

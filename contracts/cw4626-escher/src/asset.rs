@@ -6,11 +6,24 @@ use cosmwasm_std::{
     to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper,
     StdResult, Uint128, WasmMsg,
 };
-use cw4626::cw20;
-use cw4626_base::helpers::validate_cw20;
+use cw20;
 use cw_utils::must_pay;
 
 use crate::ContractError;
+
+pub fn validate_cw20(
+    querier: &QuerierWrapper,
+    token_address: &Addr,
+) -> Result<cw20::TokenInfoResponse, ContractError> {
+    querier
+        .query_wasm_smart::<cw20::TokenInfoResponse>(
+            token_address,
+            &cw20::Cw20QueryMsg::TokenInfo {},
+        )
+        .map_err(|_| ContractError::InvalidCw20 {
+            addr: token_address.clone(),
+        })
+}
 
 pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
     match asset_info {

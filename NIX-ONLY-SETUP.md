@@ -32,7 +32,6 @@ nix develop
 ### 3. **Build Contracts with Nix**
 ```bash
 # Build both contracts
-cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release
 cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release
 ```
 
@@ -42,14 +41,12 @@ cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --rele
 cargo test
 
 # Or run specific packages
-cargo test --package cw4626-base
 cargo test --package cw4626-escher
 ```
 
 ### 5. **Optimize WASM Files**
 ```bash
 # Optimize with Nix wasm-opt
-wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm
 wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 ```
 
@@ -58,7 +55,6 @@ wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/
 ### **Development Commands**
 ```bash
 # Build contracts
-cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release
 cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release
 
 # Run tests
@@ -76,11 +72,9 @@ cargo clippy
 ### **WASM Commands**
 ```bash
 # Build WASM
-cargo wasm -p cw4626-base
 cargo wasm -p cw4626-escher
 
 # Optimize WASM
-wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o optimized.wasm
 wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o optimized.wasm
 ```
 
@@ -102,7 +96,6 @@ cw-vault/
 ├── scripts/                  # Build and deployment scripts
 ├── target/                   # Build outputs
 │   └── wasm32-unknown-unknown/release/
-│       ├── cw4626_base_optimized.wasm
 │       └── cw4626_escher_optimized.wasm
 └── contracts/                # Smart contract source code
 ```
@@ -114,14 +107,12 @@ cw-vault/
 nix develop
 
 # 2. Build contracts
-cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release
 cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release
 
 # 3. Run tests
 cargo test
 
 # 4. Optimize WASM
-wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm
 wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 
 # 5. Deploy

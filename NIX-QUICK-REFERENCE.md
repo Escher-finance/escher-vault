@@ -29,7 +29,6 @@ docker-compose logs -f
 docker-compose exec cw4626-nix bash
 
 # Build contracts
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release"
 docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release"
 
 # Run tests
@@ -45,7 +44,6 @@ docker-compose exec cw4626-nix bash -c "cd /workspace && cargo clippy --workspac
 ### **WASM Optimization**
 ```bash
 # Optimize with Nix wasm-opt
-docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm"
 docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm"
 
 # Check file sizes
@@ -79,14 +77,12 @@ docker-compose exec cw4626-nix bash -c "cd /workspace && ls -lh target/wasm32-un
 ./scripts/dev-docker.sh
 
 # 2. Build contracts
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release"
 docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release"
 
 # 3. Run tests
 docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test"
 
 # 4. Optimize WASM
-docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm"
 docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm"
 
 # 5. Deploy

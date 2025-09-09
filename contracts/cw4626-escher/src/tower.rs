@@ -13,7 +13,6 @@ use cosmwasm_std::{
     to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, StdResult, Storage, Uint128,
     WasmMsg,
 };
-use cw4626::cw20;
 
 use crate::{
     asset::{
