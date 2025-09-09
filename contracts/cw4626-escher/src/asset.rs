@@ -11,6 +11,8 @@ use cw_utils::must_pay;
 
 use crate::ContractError;
 
+/// # Errors
+/// Will return error validation fails
 pub fn validate_cw20(
     querier: &QuerierWrapper,
     token_address: &Addr,
@@ -33,10 +35,12 @@ pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
     }
 }
 
+/// # Errors
+/// Will return error query fails
 pub fn query_asset_info_balance(
     querier: &QuerierWrapper,
     asset_info: AssetInfo,
-    addr: Addr,
+    addr: &Addr,
 ) -> Result<Uint128, cosmwasm_std::StdError> {
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => query_token_balance(querier, contract_addr, addr),
@@ -44,6 +48,8 @@ pub fn query_asset_info_balance(
     }
 }
 
+/// # Errors
+/// Will return error query fails
 pub fn query_asset_info_decimals(
     querier: &QuerierWrapper,
     asset_info: AssetInfo,
@@ -58,13 +64,16 @@ pub fn query_asset_info_decimals(
 }
 
 /// Only returns `WasmMsg` if `AssetInfo::Token`
+///
+/// # Errors
+/// Will return error if messages fail to serialize or validation fails
 pub fn assert_send_asset_to_contract(
-    info: MessageInfo,
-    env: Env,
+    info: &MessageInfo,
+    env: &Env,
     asset: Asset,
 ) -> Result<Option<WasmMsg>, ContractError> {
     let caller = info.sender.clone();
-    let this = env.contract.address;
+    let this = env.contract.address.clone();
     match asset.info {
         AssetInfo::Token { contract_addr } => Ok(Some(WasmMsg::Execute {
             contract_addr: contract_addr.to_string(),
@@ -76,7 +85,7 @@ pub fn assert_send_asset_to_contract(
             funds: vec![],
         })),
         AssetInfo::NativeToken { denom } => {
-            if must_pay(&info, &denom)? != asset.amount {
+            if must_pay(info, &denom)? != asset.amount {
                 return Err(ContractError::WrongFundAmountProvided {});
             }
             Ok(None)
@@ -84,7 +93,9 @@ pub fn assert_send_asset_to_contract(
     }
 }
 
-pub fn send_asset_from_contract(asset: Asset, receiver: Addr) -> Result<CosmosMsg, ContractError> {
+/// # Errors
+/// Will return error if messages fail to serialize or validation fails
+pub fn send_asset_from_contract(asset: Asset, receiver: &Addr) -> Result<CosmosMsg, ContractError> {
     let cosmos_msg = match asset.info {
         AssetInfo::NativeToken { denom } => CosmosMsg::Bank(BankMsg::Send {
             to_address: receiver.to_string(),
@@ -107,9 +118,12 @@ pub fn send_asset_from_contract(asset: Asset, receiver: Addr) -> Result<CosmosMs
 
 /// If `AssetInfo::Token` it uses cw20 Send
 /// If `AssetInfo::NativeToken` it attaches funds to msg
+///
+/// # Errors
+/// Will return error if messages fail to serialize or validation fails
 pub fn asset_cw20_send_or_attach_funds(
     asset: Asset,
-    execute_contract_addr: Addr,
+    execute_contract_addr: &Addr,
     msg: Binary,
 ) -> StdResult<WasmMsg> {
     let wasm_msg = match asset.info {
@@ -133,10 +147,13 @@ pub fn asset_cw20_send_or_attach_funds(
 
 /// If `AssetInfo::Token` it returns `Ok(Some(msg), None)`
 /// If `AssetInfo::NativeToken` it returns `Ok(None, Some(coin))`
+///
+/// # Errors
+/// Will return error if messages fail to serialize or validation fails
 #[allow(clippy::type_complexity)]
 pub fn asset_generate_increase_allowance_or_funds(
     asset: Asset,
-    target_addr: Addr,
+    target_addr: &Addr,
 ) -> StdResult<(Option<CosmosMsg>, Option<Coin>)> {
     match asset.info {
         AssetInfo::Token { contract_addr } => {

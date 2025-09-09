@@ -16,12 +16,17 @@ use crate::state::{
 };
 use crate::tower::{init_oracle_prices, update_tower_config};
 
+/// # Errors
+/// Will return error if migrate fails
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::new())
 }
 
+/// # Errors
+/// Will return error if instantiate fails
 #[cfg_attr(not(feature = "library"), entry_point)]
+#[allow(clippy::too_many_lines)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
@@ -30,7 +35,6 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
-    let _current_block_height = env.block.height;
     cw20_base::contract::instantiate(
         deps.branch(),
         env,
@@ -70,14 +74,14 @@ pub fn instantiate(
         &validate_addrs(msg.oracles.into_iter())?,
     )?;
     let tower_config = update_tower_config(
-        deps.branch(),
+        &mut deps.branch(),
         msg.tower_incentives,
-        msg.lp,
+        &msg.lp,
         msg.slippage_tolerance,
         msg.incentives,
         msg.underlying_token,
     )?;
-    init_oracle_prices(deps.branch(), &tower_config)?;
+    init_oracle_prices(&mut deps.branch(), &tower_config)?;
 
     // Initialize entry fee configuration
     ENTRY_FEE_CONFIG.save(
@@ -91,9 +95,12 @@ pub fn instantiate(
     Ok(Response::new())
 }
 
+/// # Errors
+/// Will return error if execute fails
 #[cfg_attr(not(feature = "library"), entry_point)]
+#[allow(clippy::too_many_lines)]
 pub fn execute(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -101,53 +108,53 @@ pub fn execute(
     let sender = info.sender.clone();
     Ok(match msg {
         ExecuteMsg::AddToRole { role, address } => {
-            crate::execute::add_to_role(deps, sender, role, address)?
+            crate::execute::add_to_role(&mut deps, &sender, role, &address)?
         }
         ExecuteMsg::RemoveFromRole { role, address } => {
-            crate::execute::remove_from_role(deps, sender, role, address)?
+            crate::execute::remove_from_role(&mut deps, &sender, role, &address)?
         }
         ExecuteMsg::OracleUpdatePrices { prices } => {
-            crate::execute::oracle_update_prices(deps, sender, prices)?
+            crate::execute::oracle_update_prices(&mut deps, &sender, &prices)?
         }
         ExecuteMsg::Bond {
             amount,
             salt,
             slippage,
-        } => crate::execute::bond(deps, env, info, amount, salt, slippage)?,
-        ExecuteMsg::Unbond { amount } => crate::execute::unbond(deps, env, info, amount)?,
+        } => crate::execute::bond(&mut deps, &env, &info, amount, salt, slippage)?,
+        ExecuteMsg::Unbond { amount } => crate::execute::unbond(&mut deps, &env, &info, amount)?,
         ExecuteMsg::AddLiquidity {
             underlying_token_amount,
-        } => crate::execute::add_liquidity(deps, env, info, underlying_token_amount)?,
+        } => crate::execute::add_liquidity(&mut deps, &env, &info, underlying_token_amount)?,
         ExecuteMsg::RemoveLiquidity { lp_token_amount } => {
-            crate::execute::remove_liquidity(deps, env, info, lp_token_amount)?
+            crate::execute::remove_liquidity(&mut deps, &env, &info, lp_token_amount)?
         }
-        ExecuteMsg::ClaimIncentives {} => crate::execute::claim_incentives(deps, info)?,
+        ExecuteMsg::ClaimIncentives {} => crate::execute::claim_incentives(&mut deps, &info)?,
         ExecuteMsg::Swap { amount, asset_info } => {
-            crate::execute::swap(deps, env, info, amount, asset_info)?
+            crate::execute::swap(&mut deps, &env, &info, amount, asset_info)?
         }
         //
         // CW4626
         //
         ExecuteMsg::Deposit { assets, receiver } => {
-            crate::execute::deposit(deps, env, info, assets, receiver)?
+            crate::execute::deposit(&mut deps, &env, &info, assets, &receiver)?
         }
         ExecuteMsg::RequestRedeem {
             shares,
             receiver,
             owner,
-        } => crate::execute::request_redeem(deps, env, info, shares, receiver, owner)?,
+        } => crate::execute::request_redeem(deps, &env, &info, shares, &receiver, &owner)?,
         ExecuteMsg::CompleteRedemption {
             redemption_id,
             tx_hash,
         } => crate::execute::complete_redemption_with_distribution(
             deps,
-            env,
-            info,
+            &env,
+            &info,
             redemption_id,
-            tx_hash,
+            &tx_hash,
         )?,
         ExecuteMsg::Receive(cw20_receive_msg) => {
-            crate::execute::receive(deps, env, info, sender, cw20_receive_msg)?
+            crate::execute::receive(&mut deps, &env, &info, sender, &cw20_receive_msg)?
         }
         //
         // CW20
@@ -211,7 +218,11 @@ pub fn execute(
     })
 }
 
+/// # Errors
+/// Will return error if query fails
 #[cfg_attr(not(feature = "library"), entry_point)]
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::needless_pass_by_value)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let this = env.contract.address.clone();
     match msg {
@@ -232,17 +243,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&crate::query::redemption_request(&deps, id)?)
         }
         QueryMsg::UserRedemptionRequests { user } => {
-            to_json_binary(&crate::query::user_redemption_requests(&deps, user)?)
+            to_json_binary(&crate::query::user_redemption_requests(&deps, &user)?)
         }
         QueryMsg::PreviewRedeemMultiAsset { shares } => to_json_binary(
-            &crate::query::preview_redeem_multi_asset(deps, shares, env.contract.address.clone())?,
+            &crate::query::preview_redeem_multi_asset(deps, shares, &this)?,
         ),
         QueryMsg::RedemptionStats => to_json_binary(&crate::query::redemption_stats(deps)?),
         //
         // CW4626
         //
         QueryMsg::Asset {} => to_json_binary(&crate::query::asset(&deps)?),
-        QueryMsg::TotalAssets {} => to_json_binary(&crate::query::total_assets(&deps, this)?),
+        QueryMsg::TotalAssets {} => to_json_binary(&crate::query::total_assets(&deps, &this)?),
         QueryMsg::ConvertToShares { assets } => {
             to_json_binary(&crate::query::convert_to_shares(&this, &deps, assets)?)
         }
@@ -256,7 +267,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             assets,
             PreviewDepositKind::OnlyQuery {},
         )?),
-        QueryMsg::MaxRedeem { owner } => to_json_binary(&crate::query::max_redeem(&deps, owner)?),
+        QueryMsg::MaxRedeem { owner } => to_json_binary(&crate::query::max_redeem(&deps, &owner)?),
         QueryMsg::PreviewRedeem { shares } => {
             to_json_binary(&crate::query::preview_redeem(&this, &deps, shares)?)
         }

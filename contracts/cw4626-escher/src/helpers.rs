@@ -25,6 +25,8 @@ pub struct Tokens {
     pub total_assets: Uint128,
 }
 
+/// # Errors
+/// Will return error if queries fail
 pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
     let share = AssetInfo::Token {
         contract_addr: this.clone(),
@@ -45,7 +47,7 @@ pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
 
     let total_shares = total_supply.saturating_sub(locked_shares.total_locked);
 
-    let total_assets = calculate_total_assets(&deps.querier, deps.storage, this.clone())
+    let total_assets = calculate_total_assets(&deps.querier, deps.storage, this)
         .map_err(|err| StdError::generic_err(err.to_string()))?;
     Ok(Tokens {
         share,
@@ -55,14 +57,17 @@ pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
     })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Rounding {
     Floor,
     Ceil,
 }
 
 /// Internal conversion
-pub fn _convert_to_shares(
+///
+/// # Errors
+/// Will return error if calculation fails
+pub fn internal_convert_to_shares(
     total_shares: Uint128,
     total_assets: Uint128,
     assets: Uint128,
@@ -77,7 +82,10 @@ pub fn _convert_to_shares(
 }
 
 /// Internal conversion
-pub fn _convert_to_assets(
+///
+/// # Errors
+/// Will return error if calculation fails
+pub fn internal_convert_to_assets(
     total_shares: Uint128,
     total_assets: Uint128,
     shares: Uint128,
@@ -91,7 +99,7 @@ pub fn _convert_to_assets(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum PreviewDepositKind {
     OnlyQuery {},
     Cw20ViaTransferFrom {},
@@ -103,10 +111,8 @@ impl PreviewDepositKind {
     #[must_use]
     pub fn needs_correction(&self) -> bool {
         match self {
-            Self::OnlyQuery {} => false,
-            Self::Cw20ViaTransferFrom {} => false,
-            Self::Cw20ViaReceive {} => true,
-            Self::Native {} => true,
+            Self::OnlyQuery {} | Self::Cw20ViaTransferFrom {} => false,
+            Self::Native {} | Self::Cw20ViaReceive {} => true,
         }
     }
 }
@@ -137,7 +143,10 @@ pub fn calculate_entry_fee_share_amounts(
 }
 
 /// Preview deposit calculation
-pub fn _preview_deposit(
+///
+/// # Errors
+/// Will return error if queries fail
+pub fn internal_preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
@@ -154,7 +163,7 @@ pub fn _preview_deposit(
     }
 
     // Preview on full assets; fee is applied at mint-split time (shares*(1-r), shares*r)
-    let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
+    let shares = internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     let mut user_shares = shares;
     // NOTE: We do this check because if it's not query then the fee is accounted for after this
     // function is called; see `execute::deposit` and `helpers::_deposit`
@@ -168,7 +177,14 @@ pub fn _preview_deposit(
 }
 
 // Internal unchecked `mint`
-pub fn _mint(deps: DepsMut, recipient: String, amount: Uint128) -> Result<(), ContractError> {
+///
+/// # Errors
+/// Will return error if storage queries or saves fail
+pub fn internal_mint(
+    deps: &mut DepsMut,
+    recipient: &str,
+    amount: Uint128,
+) -> Result<(), ContractError> {
     let mut config = cw20_base::state::TOKEN_INFO.load(deps.storage)?;
 
     // update supply and enforce cap
@@ -183,7 +199,7 @@ pub fn _mint(deps: DepsMut, recipient: String, amount: Uint128) -> Result<(), Co
     cw20_base::state::TOKEN_INFO.save(deps.storage, &config)?;
 
     // add amount to recipient balance
-    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    let rcpt_addr = deps.api.addr_validate(recipient)?;
     cw20_base::state::BALANCES.update(
         deps.storage,
         &rcpt_addr,
@@ -193,12 +209,15 @@ pub fn _mint(deps: DepsMut, recipient: String, amount: Uint128) -> Result<(), Co
 }
 
 /// Used internally in `deposit`/`mint` functionality
-pub fn _deposit(
-    mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    sender: Addr,
-    receiver: Addr,
+///
+/// # Errors
+/// Will return error if storage queries or saves fail
+pub fn internal_deposit(
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    sender: &Addr,
+    receiver: &Addr,
     assets: Uint128,
     shares: Uint128,
     via_receive: bool,
@@ -218,8 +237,8 @@ pub fn _deposit(
     let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
 
     if entry_fee_cfg.fee_rate.is_zero() {
-        _mint(deps.branch(), receiver.to_string(), shares)?;
-        let mut res = generate_deposit_response(&sender, &receiver, assets, shares);
+        internal_mint(&mut deps.branch(), receiver.as_str(), shares)?;
+        let mut res = generate_deposit_response(sender, receiver, assets, shares);
         if let Some(msg) = transfer_msg {
             res = res.add_message(msg);
         }
@@ -227,15 +246,15 @@ pub fn _deposit(
     } else {
         let (user_shares, fee_shares) =
             calculate_entry_fee_share_amounts(&entry_fee_cfg, assets, shares);
-        _mint(deps.branch(), receiver.to_string(), user_shares)?;
-        _mint(
-            deps.branch(),
-            entry_fee_cfg.fee_recipient.to_string(),
+        internal_mint(&mut deps.branch(), receiver.as_str(), user_shares)?;
+        internal_mint(
+            &mut deps.branch(),
+            entry_fee_cfg.fee_recipient.as_str(),
             fee_shares,
         )?;
         let mut res = generate_deposit_with_fee_response(
-            &sender,
-            &receiver,
+            sender,
+            receiver,
             assets,
             user_shares,
             fee_shares,
@@ -249,6 +268,9 @@ pub fn _deposit(
 }
 
 /// Validates addrs uniqueness, minimum and maximum length
+///
+/// # Errors
+/// Will return error if validations fail
 pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, ContractError> {
     let addrs = addrs
         .collect::<HashSet<_>>()
@@ -263,6 +285,8 @@ pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, Co
     Ok(addrs)
 }
 
+/// # Errors
+/// Will return error if validations fail
 pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
     let hex = salt
         .strip_prefix("0x")
@@ -290,7 +314,7 @@ mod tests {
         let assets = Uint128::new(60000);
 
         // Test when total_shares is zero
-        let shares = _convert_to_shares(
+        let shares = internal_convert_to_shares(
             Uint128::zero(),
             Uint128::new(60000),
             assets,
@@ -301,7 +325,8 @@ mod tests {
 
         // Test when both are zero
         let shares =
-            _convert_to_shares(Uint128::zero(), Uint128::zero(), assets, Rounding::Floor).unwrap();
+            internal_convert_to_shares(Uint128::zero(), Uint128::zero(), assets, Rounding::Floor)
+                .unwrap();
         assert_eq!(shares, assets);
     }
 
@@ -313,7 +338,8 @@ mod tests {
 
         // Should use the ratio formula, not 1:1
         let shares =
-            _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor).unwrap();
+            internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)
+                .unwrap();
 
         // Expected: 1000 * (2000 + 1) / (3000 + 1) = 1000 * 2001 / 3001 ≈ 666
         let expected = Uint128::new(666);
@@ -330,7 +356,8 @@ mod tests {
 
         // Both should give the same result now
         let convert_shares =
-            _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor).unwrap();
+            internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)
+                .unwrap();
 
         // The preview should now match the convert_to_shares result
         // (We can't test _preview_deposit directly here as it needs deps, but the logic is the same)
@@ -390,12 +417,12 @@ mod tests {
         // Assume preview produced 910 shares (net_assets with 10% fee_on_total is 910)
         let shares = Uint128::new(910);
 
-        let res = _deposit(
-            deps.as_mut(),
-            env,
-            info,
-            depositor,
-            receiver.clone(),
+        let res = internal_deposit(
+            &mut deps.as_mut(),
+            &env,
+            &info,
+            &depositor,
+            &receiver,
             assets,
             shares,
             false,
@@ -479,12 +506,12 @@ mod tests {
         let assets = Uint128::new(1000);
         let shares = Uint128::new(1000);
 
-        let res = _deposit(
-            deps.as_mut(),
-            env,
-            info,
-            depositor,
-            receiver.clone(),
+        let res = internal_deposit(
+            &mut deps.as_mut(),
+            &env,
+            &info,
+            &depositor,
+            &receiver,
             assets,
             shares,
             false,

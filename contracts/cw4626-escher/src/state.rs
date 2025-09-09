@@ -7,6 +7,7 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
+#[derive(Copy)]
 pub enum AccessControlRole {
     Manager {},
     Oracle {},
