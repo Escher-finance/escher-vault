@@ -91,17 +91,33 @@
 
         # Build outputs
         packages = {
-          # Build escher contract
+          # CI-friendly build that does not rely on devShell (no shellHook execution)
           cw4626-escher = pkgs.stdenv.mkDerivation {
             name = "cw4626-escher";
             src = ./.;
-            buildInputs = [ devEnv ];
+            # Tools required for build/optimization
+            nativeBuildInputs = [
+              rustToolchain
+              pkgs.binaryen
+              pkgs.wasm-pack
+              pkgs.jq
+              pkgs.curl
+              pkgs.git
+              pkgs.pkg-config
+              pkgs.nodejs_20
+              pkgs.yarn
+            ];
             buildPhase = ''
-              cargo wasm -p cw4626-escher
+              export RUSTFLAGS="-C target-feature=-reference-types"
+              cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
+              mkdir -p artifacts
+              wasm-opt -Oz --signext-lowering --strip-debug --strip-producers \
+                target/wasm32-unknown-unknown/release/cw4626_escher.wasm \
+                -o artifacts/cw4626_escher.wasm
             '';
             installPhase = ''
               mkdir -p $out
-              cp target/wasm32-unknown-unknown/release/cw4626_escher.wasm $out/
+              cp artifacts/cw4626_escher.wasm $out/
             '';
           };
         };
