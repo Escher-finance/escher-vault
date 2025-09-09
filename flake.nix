@@ -113,7 +113,8 @@
             
             nativeBuildInputs = [ 
               pkgs.binaryen 
-              pkgs.pkg-config 
+              pkgs.pkg-config
+              pkgs.lld_18
             ];
             
             # Environment and build configuration
