@@ -5,6 +5,8 @@ use crate::{
     ContractError,
 };
 
+/// # Errors
+/// Will return error if validation fails
 pub fn only_role(
     storage: &dyn Storage,
     sender: &Addr,
