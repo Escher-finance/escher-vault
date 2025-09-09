@@ -1,3 +1,5 @@
+#![warn(clippy::unwrap_used)]
+
 pub mod access_control;
 pub mod asset;
 pub mod contract;
