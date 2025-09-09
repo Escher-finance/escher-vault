@@ -77,11 +77,9 @@ cd cw-vault  # Environment automatically loads
 ### **Build Contracts**
 ```bash
 # Build all contracts
-cargo wasm -p cw4626-base
 cargo wasm -p cw4626-escher
 
 # Or use Nix packages
-nix build .#cw4626-base
 nix build .#cw4626-escher
 ```
 
@@ -96,7 +94,6 @@ cargo test --test integration
 
 ### **Generate Schemas**
 ```bash
-cargo schema -p cw4626-base
 cargo schema -p cw4626-escher
 ```
 

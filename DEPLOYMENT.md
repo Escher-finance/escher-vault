@@ -1,29 +1,30 @@
 # CW4626 Vault Deployment Guide
 
 ## Overview
-This guide covers deploying the CW4626 vault contracts for LP staking on Astroport forks.
+
+This guide covers deploying the CW4626 vault contracts for LP staking on
+Astroport forks.
 
 ## Contracts
 
-### 1. cw4626-base
-- **Purpose**: Basic vault functionality (deposit, withdraw, mint, redeem)
-- **Features**: CW4626 standard compliance, CW20 share tokens, ownership management
-- **Use Case**: Simple vault without LP automation
+### 1. cw4626-escher
 
-### 2. cw4626-escher
 - **Purpose**: Enhanced vault with LP automation and incentives
-- **Features**: All base features + automated liquidity provision, oracle integration, role-based access
+- **Features**: All base features + automated liquidity provision, oracle
+  integration, role-based access
 - **Use Case**: Production vault with automated LP management
 
 ## Prerequisites
 
 ### Required Tools
+
 - Rust 1.70+
 - wasm-opt (binaryen)
 - CosmWasm compatible blockchain
 - CLI tools (wasmd, junod, etc.)
 
 ### Dependencies
+
 - Astroport fork (babydex)
 - CW20 token contracts
 - Oracle price feeds
@@ -32,11 +33,9 @@ This guide covers deploying the CW4626 vault contracts for LP staking on Astropo
 
 ```bash
 # Build all contracts
-cargo wasm -p cw4626-base
 cargo wasm -p cw4626-escher
 
 # Generate schemas
-cargo schema -p cw4626-base
 cargo schema -p cw4626-escher
 
 # Run tests
@@ -48,33 +47,12 @@ cargo test
 ### 1. Upload Contract Code
 
 ```bash
-# Upload base contract
-wasmd tx wasm store target/wasm32-unknown-unknown/release/cw4626_base.wasm \
-  --from <key> --chain-id <chain-id> --gas auto --gas-adjustment 1.3
-
 # Upload escher contract
 wasmd tx wasm store target/wasm32-unknown-unknown/release/cw4626_escher.wasm \
   --from <key> --chain-id <chain-id> --gas auto --gas-adjustment 1.3
 ```
 
-### 2. Instantiate Base Contract
-
-```bash
-# Basic vault instantiation
-wasmd tx wasm instantiate <code-id> '{
-  "owner": "<owner-address>",
-  "underlying_token_address": "<cw20-token-address>",
-  "share_name": "Vault USDC",
-  "share_symbol": "vUSDC",
-  "share_marketing": {
-    "project": "https://your-project.com",
-    "description": "USDC Vault for LP staking",
-    "marketing": "<marketing-address>"
-  }
-}' --from <key> --chain-id <chain-id> --gas auto --gas-adjustment 1.3
-```
-
-### 3. Instantiate Escher Contract
+### 2. Instantiate Escher Contract
 
 ```bash
 # Enhanced vault with LP automation
@@ -104,13 +82,8 @@ wasmd tx wasm instantiate <code-id> '{
 
 ## Configuration
 
-### Base Contract
-- **owner**: Vault administrator with ownership privileges
-- **underlying_token_address**: CW20 token to be vaulted
-- **share_name/symbol**: Display name for vault shares
-- **share_marketing**: Optional marketing information
-
 ### Escher Contract
+
 - **manager**: Address with vault management privileges
 - **oracle**: Address authorized to update price feeds
 - **tower_incentives**: Astroport incentives contract
@@ -121,6 +94,7 @@ wasmd tx wasm instantiate <code-id> '{
 ## Usage Examples
 
 ### Deposit Assets
+
 ```bash
 # Approve spending
 wasmd tx wasm execute <cw20-token> '{
@@ -140,6 +114,7 @@ wasmd tx wasm execute <vault-address> '{
 ```
 
 ### Withdraw Assets
+
 ```bash
 # Withdraw assets
 wasmd tx wasm execute <vault-address> '{
@@ -152,6 +127,7 @@ wasmd tx wasm execute <vault-address> '{
 ```
 
 ### Query Vault State
+
 ```bash
 # Get vault info
 wasmd query wasm contract-state smart <vault-address> '{"asset": {}}'
@@ -166,27 +142,32 @@ wasmd query wasm contract-state smart <vault-address> '{"balance": {"address": "
 ## Security Considerations
 
 ### Access Control
+
 - **Manager role**: Can update vault configuration
 - **Oracle role**: Can update price feeds
 - **Owner**: Can transfer ownership
 
 ### Slippage Protection
+
 - Configured slippage tolerance prevents excessive losses
 - Oracle price validation ensures accurate pricing
 
 ### Emergency Procedures
+
 - Owner can pause operations if needed
 - Manager can adjust parameters in emergency
 
 ## Monitoring
 
 ### Key Metrics
+
 - Total assets under management
 - Share price (assets/shares ratio)
 - LP position performance
 - Reward accumulation
 
 ### Events to Track
+
 - Deposit/withdrawal events
 - LP provision/withdrawal
 - Price updates
@@ -195,12 +176,14 @@ wasmd query wasm contract-state smart <vault-address> '{"balance": {"address": "
 ## Troubleshooting
 
 ### Common Issues
+
 1. **Insufficient allowance**: Approve token spending before deposit
 2. **Slippage exceeded**: Check current market conditions
 3. **Oracle price stale**: Ensure price feeds are updated
 4. **Insufficient balance**: Check user token balances
 
 ### Debug Commands
+
 ```bash
 # Check contract state
 wasmd query wasm contract-state raw <vault-address>
@@ -220,6 +203,7 @@ wasmd query wasm contract-state smart <vault-address> '{"config": {}}'
 ## Support
 
 For issues and questions:
+
 - Check test logs and contract state
 - Review error messages in transaction responses
 - Consult CosmWasm documentation

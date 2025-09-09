@@ -41,11 +41,6 @@ if [ ! -f "Cargo.toml" ]; then
 fi
 
 # Check if WASM files exist
-if [ ! -f "target/wasm32-unknown-unknown/release/cw4626_base.wasm" ]; then
-    print_error "Base contract WASM file not found. Run './scripts/test-vault.sh' first."
-    exit 1
-fi
-
 if [ ! -f "target/wasm32-unknown-unknown/release/cw4626_escher.wasm" ]; then
     print_error "Escher contract WASM file not found. Run './scripts/test-vault.sh' first."
     exit 1
@@ -81,16 +76,12 @@ esac
 
 # Contract configuration
 case $CONTRACT_TYPE in
-    "base")
-        CONTRACT_FILE="cw4626_base.wasm"
-        CONTRACT_NAME="CW4626 Base Vault"
-        ;;
     "escher")
         CONTRACT_FILE="cw4626_escher.wasm"
         CONTRACT_NAME="CW4626 Escher Vault"
         ;;
     *)
-        print_error "Unknown contract type: $CONTRACT_TYPE. Use: base or escher"
+        print_error "Unknown contract type: $CONTRACT_TYPE. Use: escher"
         exit 1
         ;;
 esac

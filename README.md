@@ -6,10 +6,9 @@ blockchains.
 
 ## 🚀 Overview
 
-This project provides two vault implementations:
+This project provides the following vault implementations:
 
-1. **`cw4626-base`** - Basic vault functionality following the CW4626 standard
-2. **`cw4626-escher`** - Enhanced vault with automated LP management and
+1. **`cw4626-escher`** - Enhanced vault with automated LP management and
    incentives
 
 ## ✨ Features
@@ -50,11 +49,8 @@ Shares   Auto-LP    Fee Collection
 
 ```
 cw-vault/
-├── packages/
-│   └── cw4626/           # Core specification and messages
 ├── contracts/
-│   ├── cw4626-base/      # Basic vault implementation
-│   └── cw4626-escher/    # Enhanced LP automation vault
+│   └── cw4626-escher/     # Enhanced LP automation vault
 ├── scripts/               # Build and deployment scripts
 ├── schema/                # Generated JSON schemas
 └── tests/                 # Integration tests
@@ -103,8 +99,6 @@ docker-compose up -d
 ### 3. **Build Contracts with Nix**
 
 ```bash
-# Build both contracts
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release"
 docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release"
 ```
 
@@ -122,7 +116,6 @@ docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test"
 
 ```bash
 # Optimize with Nix wasm-opt
-docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm"
 docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm"
 ```
 
@@ -133,7 +126,6 @@ docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/was
 ./scripts/deploy-docker.sh
 
 # Or manually deploy the optimized files:
-# - target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm
 # - target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 ```
 
@@ -159,7 +151,6 @@ nix develop
 
 ```bash
 # Build both contracts
-cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release
 cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release
 ```
 
@@ -170,7 +161,6 @@ cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --rele
 cargo test
 
 # Or run specific packages
-cargo test --package cw4626-base
 cargo test --package cw4626-escher
 ```
 
@@ -178,7 +168,6 @@ cargo test --package cw4626-escher
 
 ```bash
 # Optimize with Nix wasm-opt
-wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm
 wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 ```
 
@@ -189,7 +178,6 @@ wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/
 ./scripts/deploy-babylon-env.sh
 
 # Or manually deploy the optimized files:
-# - target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm
 # - target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 ```
 
@@ -213,11 +201,9 @@ sudo apt install binaryen  # Ubuntu
 
 ```bash
 # Build all contracts
-cargo wasm -p cw4626-base
 cargo wasm -p cw4626-escher
 
 # Generate schemas
-cargo schema -p cw4626-base
 cargo schema -p cw4626-escher
 ```
 
@@ -230,26 +216,6 @@ cargo test
 # Or use the test script
 ./scripts/test-vault.sh
 ```
-
----
-
-## 🎯 **Why Docker + Nix?**
-
-### **✅ Benefits**
-
-- **🐧 Perfect Nix Environment** - All tools managed by Nix
-- **🔄 Reproducible Builds** - Same environment every time
-- **🚫 No System Conflicts** - Isolated from host system
-- **🌍 Cross-Platform** - Works on macOS, Linux, Windows
-- **📦 All Dependencies Included** - No missing tools or versions
-- **⚡ Fast Development** - Optimized toolchain and caching
-
-### **📊 Performance Results**
-
-| Contract          | Original | Nix Optimized | Reduction       |
-| ----------------- | -------- | ------------- | --------------- |
-| **cw4626-base**   | 584K     | **457K**      | **22% smaller** |
-| **cw4626-escher** | 665K     | **519K**      | **22% smaller** |
 
 ---
 
@@ -354,7 +320,7 @@ wasmd query wasm contract-state smart <vault-address> '{"balance": {"address": "
 docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test"
 
 # Specific package
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test --package cw4626-base"
+docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test --package cw4626-escher"
 ```
 
 ### **Run Tests Traditionally**

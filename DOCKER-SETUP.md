@@ -1,9 +1,11 @@
-
 # 🐳 Docker + Nix Setup Guide for CW4626 Vault
 
 ## 🎯 Overview
 
-This guide covers setting up a **Docker-based Nix environment** for developing and deploying CW4626 vault contracts. This approach gives you all the benefits of Nix (reproducible builds, dependency management) without the complexity of installing Nix directly on macOS.
+This guide covers setting up a **Docker-based Nix environment** for developing
+and deploying CW4626 vault contracts. This approach gives you all the benefits
+of Nix (reproducible builds, dependency management) without the complexity of
+installing Nix directly on macOS.
 
 ## ✨ What You Get
 
@@ -18,10 +20,12 @@ This guide covers setting up a **Docker-based Nix environment** for developing a
 ## 🚀 Quick Start
 
 ### 1. **Prerequisites**
+
 - Docker Desktop installed and running
 - Git (for cloning the repository)
 
 ### 2. **Start the Environment**
+
 ```bash
 # Start the Docker + Nix environment
 ./scripts/dev-docker.sh
@@ -31,21 +35,22 @@ docker-compose up -d
 ```
 
 ### 3. **Enter the Container**
+
 ```bash
 docker-compose exec cw4626-nix bash
 ```
 
 ### 4. **Build Contracts**
+
 ```bash
 # Inside the container
-cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release
 cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release
 ```
 
 ### 5. **Optimize WASM Files**
+
 ```bash
 # Inside the container
-wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_base.wasm -o target/wasm32-unknown-unknown/release/cw4626_base_optimized.wasm
 wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 ```
 
@@ -61,13 +66,13 @@ cw-vault/
 │   └── deploy-docker.sh      # Deployment script
 └── target/                   # Build outputs (mounted as volume)
     └── wasm32-unknown-unknown/release/
-        ├── cw4626_base_optimized.wasm
         └── cw4626_escher_optimized.wasm
 ```
 
 ## 🔧 Available Commands
 
 ### **Container Management**
+
 ```bash
 # Start environment
 docker-compose up -d
@@ -86,12 +91,13 @@ docker-compose ps
 ```
 
 ### **Development Commands**
+
 ```bash
 # Enter container
 docker-compose exec cw4626-nix bash
 
 # Build contracts
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-base --lib --target wasm32-unknown-unknown --release"
+docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release"
 
 # Run tests
 docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test"
@@ -101,6 +107,7 @@ docker-compose exec cw4626-nix bash -c "cd /workspace && cargo schema"
 ```
 
 ### **Deployment Commands**
+
 ```bash
 # Run deployment script
 ./scripts/deploy-docker.sh
@@ -113,14 +120,14 @@ docker-compose exec cw4626-nix bash -c "cd /workspace && ls -lh target/wasm32-un
 
 After optimization with `wasm-opt -Os`:
 
-| Contract | Original | Optimized | Reduction |
-|----------|----------|-----------|-----------|
-| cw4626-base | 584K | 457K | 22% |
-| cw4626-escher | 665K | 519K | 22% |
+| Contract      | Original | Optimized | Reduction |
+| ------------- | -------- | --------- | --------- |
+| cw4626-escher | 665K     | 519K      | 22%       |
 
 ## 🌟 Benefits of This Setup
 
 ### **✅ Advantages**
+
 - **Reproducible builds** - Same environment every time
 - **No system conflicts** - Isolated from host system
 - **Easy sharing** - Team members get identical environments
@@ -129,6 +136,7 @@ After optimization with `wasm-opt -Os`:
 - **No SIP issues** - Bypasses macOS System Integrity Protection
 
 ### **⚠️ Considerations**
+
 - **Docker dependency** - Requires Docker Desktop
 - **Resource usage** - Container uses system resources
 - **Network access** - Container needs internet for package downloads
@@ -137,6 +145,7 @@ After optimization with `wasm-opt -Os`:
 ## 🔍 Troubleshooting
 
 ### **Container Won't Start**
+
 ```bash
 # Check Docker status
 docker info
@@ -151,6 +160,7 @@ docker-compose up -d
 ```
 
 ### **Build Failures**
+
 ```bash
 # Check if container is running
 docker-compose ps
@@ -163,6 +173,7 @@ wasm-opt --version
 ```
 
 ### **Permission Issues**
+
 ```bash
 # Fix file permissions
 chmod +x scripts/*.sh
@@ -195,4 +206,5 @@ If you encounter issues:
 
 ---
 
-**🎉 Congratulations!** You now have a fully functional Docker + Nix environment for CW4626 vault development and deployment.
+**🎉 Congratulations!** You now have a fully functional Docker + Nix environment
+for CW4626 vault development and deployment.
