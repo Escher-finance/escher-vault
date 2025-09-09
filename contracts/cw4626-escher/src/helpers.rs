@@ -122,9 +122,30 @@ pub fn _preview_deposit(
     if preview_deposit_kind.needs_correction() {
         total_assets = total_assets.saturating_sub(assets);
     }
+
     // Preview on full assets; fee is applied at mint-split time (shares*(1-r), shares*r)
     let shares = _convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
-    Ok(cw4626::PreviewDepositResponse { shares })
+    let mut user_shares = shares;
+    if matches!(preview_deposit_kind, PreviewDepositKind::OnlyQuery {}) {
+        let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
+        if !entry_fee_cfg.fee_rate.is_zero() {
+            // Compute fee_on_total in asset terms using integer math
+            let r_n = entry_fee_cfg.fee_rate.atomics();
+            let r_d = Decimal::one().atomics();
+            let fee_assets = assets.multiply_ratio(r_n, r_d + r_n);
+            // Convert fee assets into fee shares proportionally to net assets that minted `shares`
+            let net_assets = assets.saturating_sub(fee_assets);
+            let fee_shares = if net_assets.is_zero() {
+                Uint128::zero()
+            } else {
+                shares.multiply_ratio(fee_assets, net_assets)
+            };
+            user_shares = shares.saturating_sub(fee_shares);
+        };
+    }
+    Ok(cw4626::PreviewDepositResponse {
+        shares: user_shares,
+    })
 }
 
 // Internal unchecked `mint`
