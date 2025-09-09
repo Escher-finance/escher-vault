@@ -128,9 +128,9 @@
               cat > "$CARGO_HOME/config.toml" <<'CFG'
               [patch.'https://github.com/quasar-finance/babydex.git']
               astroport = { path = "${astroportSrc}/packages/astroport" }
-              astroport-factory = { path = "${astroportSrc}/contracts/factory" }
-              astroport-pcl-common = { path = "${astroportSrc}/packages/pcl-common" }
-              astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair-concentrated" }
+              astroport-factory = { path = "${astroportSrc}/contracts/astroport-factory" }
+              astroport-pcl-common = { path = "${astroportSrc}/packages/astroport-pcl-common" }
+              astroport-pair-concentrated = { path = "${astroportSrc}/contracts/astroport-pair-concentrated" }
               CFG
 
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
