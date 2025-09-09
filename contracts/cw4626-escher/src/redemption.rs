@@ -14,16 +14,19 @@ use crate::{
 };
 
 /// Calculate the user's proportional share of each asset type
+///
+/// # Errors
+/// Will return error if storage queries or calculations fail
 pub fn calculate_user_asset_share(
     deps: Deps,
     user_shares: Uint128,
     total_shares: Uint128,
-    this: Addr,
+    this: &Addr,
 ) -> Result<Vec<Asset>, ContractError> {
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let mut user_assets = Vec::new();
 
-    for mut asset in calculate_assets_ownership(&deps.querier, &tower_config, &this)? {
+    for mut asset in calculate_assets_ownership(&deps.querier, &tower_config, this)? {
         asset.amount = user_shares.multiply_ratio(asset.amount, total_shares);
         user_assets.push(asset);
     }
@@ -32,12 +35,15 @@ pub fn calculate_user_asset_share(
 }
 
 /// Lock shares for redemption instead of burning them immediately
-pub fn _lock_shares(
+///
+/// # Errors
+/// Will return error if storage queries or saves fail
+pub fn internal_lock_shares(
     storage: &mut dyn cosmwasm_std::Storage,
     shares: Uint128,
     redemption_id: u64,
-    owner: Addr,
-    contract_addr: Addr,
+    owner: &Addr,
+    contract_addr: &Addr,
 ) -> Result<(), ContractError> {
     // Update locked shares tracking
     let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
@@ -53,7 +59,7 @@ pub fn _lock_shares(
     // Transfer shares from user to contract (locking them)
     cw20_base::state::BALANCES.update(
         storage,
-        &owner,
+        owner,
         |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
             let current = balance.unwrap_or_default();
             if current < shares {
@@ -68,7 +74,7 @@ pub fn _lock_shares(
 
     cw20_base::state::BALANCES.update(
         storage,
-        &contract_addr,
+        contract_addr,
         |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
             Ok(balance.unwrap_or_default() + shares)
         },
@@ -78,11 +84,14 @@ pub fn _lock_shares(
 }
 
 /// Burn locked shares after successful redemption completion
-pub fn _burn_locked_shares(
+///
+/// # Errors
+/// Will return error if storage queries or saves fail
+pub fn internal_burn_locked_shares(
     storage: &mut dyn cosmwasm_std::Storage,
     shares: Uint128,
     redemption_id: u64,
-    contract_addr: Addr,
+    contract_addr: &Addr,
 ) -> Result<(), ContractError> {
     // Update locked shares tracking
     let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
@@ -101,7 +110,7 @@ pub fn _burn_locked_shares(
     // Burn the shares from the contract
     cw20_base::state::BALANCES.update(
         storage,
-        &contract_addr,
+        contract_addr,
         |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
             let current = balance.unwrap_or_default();
             if current < shares {
@@ -127,13 +136,16 @@ pub fn _burn_locked_shares(
 }
 
 /// Request redemption - lock shares and create pending request
+///
+/// # Errors
+/// Will return error if storage queries or saves fail
 pub fn request_redemption(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: &mut DepsMut,
+    env: &Env,
+    info: &MessageInfo,
     shares: Uint128,
-    receiver: Addr,
-    owner: Addr,
+    receiver: &Addr,
+    owner: &Addr,
 ) -> Result<Response, ContractError> {
     if shares.is_zero() {
         return Err(ContractError::ZeroShareAmount {});
@@ -141,7 +153,7 @@ pub fn request_redemption(
 
     // Check if owner has enough shares
     let owner_balance = cw20_base::state::BALANCES
-        .may_load(deps.storage, &owner)?
+        .may_load(deps.storage, owner)?
         .unwrap_or_default();
     if owner_balance < shares {
         return Err(ContractError::InsufficientShares {
@@ -154,7 +166,7 @@ pub fn request_redemption(
     if info.sender != owner {
         cw20_base::allowances::deduct_allowance(
             deps.storage,
-            &owner,
+            owner,
             &info.sender,
             &env.block,
             shares,
@@ -174,12 +186,7 @@ pub fn request_redemption(
             amount: shares,
         }]
     } else {
-        calculate_user_asset_share(
-            deps.as_ref(),
-            shares,
-            total_shares,
-            env.contract.address.clone(),
-        )?
+        calculate_user_asset_share(deps.as_ref(), shares, total_shares, &env.contract.address)?
     };
 
     // Generate redemption ID
@@ -187,12 +194,12 @@ pub fn request_redemption(
     REDEMPTION_COUNTER.save(deps.storage, &redemption_id)?;
 
     // Lock the shares instead of burning them
-    _lock_shares(
+    internal_lock_shares(
         deps.storage,
         shares,
         redemption_id,
-        owner.clone(),
-        env.contract.address.clone(),
+        owner,
+        &env.contract.address,
     )?;
 
     // Create redemption request
@@ -220,8 +227,8 @@ pub fn request_redemption(
 
     Ok(generate_request_redemption_response(
         redemption_id,
-        &owner,
-        &receiver,
+        owner,
+        receiver,
         shares,
         env.block.time,
         &expected_assets,
@@ -229,11 +236,14 @@ pub fn request_redemption(
 }
 
 /// Complete redemption by burning shares AND distributing assets in one transaction
+///
+/// # Errors
+/// Will return error if messages fail to serialize
 pub fn complete_redemption_with_distribution(
-    deps: DepsMut,
-    env: Env,
+    deps: &mut DepsMut,
+    env: &Env,
     redemption_id: u64,
-    tx_hash: String,
+    tx_hash: &str,
 ) -> Result<Response, ContractError> {
     // Load redemption request
     let mut request = REDEMPTION_REQUESTS
@@ -258,15 +268,15 @@ pub fn complete_redemption_with_distribution(
     // Update request status
     request.status = RedemptionStatus::Completed(env.block.time);
     request.completed_at = Some(env.block.time.seconds());
-    request.completion_tx_hash = Some(tx_hash.clone());
+    request.completion_tx_hash = Some(tx_hash.to_string());
     REDEMPTION_REQUESTS.save(deps.storage, redemption_id, &request)?;
 
     // Burn the locked shares after successful distribution
-    _burn_locked_shares(
+    internal_burn_locked_shares(
         deps.storage,
         request.shares_locked,
         redemption_id,
-        env.contract.address.clone(),
+        &env.contract.address,
     )?;
 
     Ok(generate_complete_redemption_response(
@@ -274,17 +284,20 @@ pub fn complete_redemption_with_distribution(
         &request.receiver,
         request.shares_locked,
         env.block.time,
-        &tx_hash,
+        tx_hash,
         &distributed_assets,
     )
     .add_messages(messages))
 }
 
 /// Preview redemption with multi-asset distribution
+///
+/// # Errors
+/// Will return error if calculations fail
 pub fn preview_redeem_multi_asset(
     deps: Deps,
     shares: Uint128,
-    contract_addr: Addr,
+    contract_addr: &Addr,
 ) -> Result<PreviewRedeemMultiAssetResponse, ContractError> {
     if shares.is_zero() {
         return Ok(PreviewRedeemMultiAssetResponse {
@@ -296,14 +309,13 @@ pub fn preview_redeem_multi_asset(
     let total_shares = cw20_base::state::TOKEN_INFO
         .load(deps.storage)?
         .total_supply;
-    let expected_assets =
-        calculate_user_asset_share(deps, shares, total_shares, contract_addr.clone())?;
+    let expected_assets = calculate_user_asset_share(deps, shares, total_shares, contract_addr)?;
 
     // Calculate total value in underlying asset terms
     let total_value = if cfg!(test) {
         Uint128::new(1_000_000) // Mock value for testing
     } else {
-        calculate_total_assets(&deps.querier, deps.storage, &contract_addr)?
+        calculate_total_assets(&deps.querier, deps.storage, contract_addr)?
     };
     let total_value_in_underlying = shares.multiply_ratio(total_value, total_shares);
 
@@ -401,14 +413,7 @@ mod tests {
         let receiver = Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890");
         let owner = Addr::unchecked("cosmos1user1234567890123456789012345678901234567890");
 
-        let result = request_redemption(
-            deps.as_mut(),
-            env.clone(),
-            info,
-            shares,
-            receiver.clone(),
-            owner.clone(),
-        );
+        let result = request_redemption(&mut deps.as_mut(), &env, &info, shares, &receiver, &owner);
 
         match &result {
             Err(e) => {
@@ -460,7 +465,7 @@ mod tests {
         let receiver = Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890");
         let owner = Addr::unchecked("cosmos1user1234567890123456789012345678901234567890");
 
-        let result = request_redemption(deps.as_mut(), env, info, shares, receiver, owner);
+        let result = request_redemption(&mut deps.as_mut(), &env, &info, shares, &receiver, &owner);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -493,7 +498,7 @@ mod tests {
         let receiver = Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890");
         let owner = Addr::unchecked("cosmos1user1234567890123456789012345678901234567890");
 
-        let result = request_redemption(deps.as_mut(), env, info, shares, receiver, owner);
+        let result = request_redemption(&mut deps.as_mut(), &env, &info, shares, &receiver, &owner);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -513,7 +518,7 @@ mod tests {
         let result = preview_redeem_multi_asset(
             deps.as_ref(),
             shares,
-            Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
+            &Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
         );
 
         // This test might fail due to mock setup, but we can test the structure
@@ -545,7 +550,7 @@ mod tests {
         let result = preview_redeem_multi_asset(
             deps.as_ref(),
             shares,
-            Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
+            &Addr::unchecked("cosmos1contract1234567890123456789012345678901234567890"),
         );
 
         assert!(result.is_ok());

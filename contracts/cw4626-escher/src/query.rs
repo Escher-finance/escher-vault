@@ -171,7 +171,7 @@ pub fn preview_redeem_multi_asset(
     shares: Uint128,
     contract_addr: Addr,
 ) -> StdResult<PreviewRedeemMultiAssetResponse> {
-    crate::redemption::preview_redeem_multi_asset(deps, shares, contract_addr)
+    crate::redemption::preview_redeem_multi_asset(deps, shares, &contract_addr)
         .map_err(|e| StdError::generic_err(e.to_string()))
 }
 

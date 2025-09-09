@@ -380,18 +380,18 @@ pub fn receive_deposit(
 }
 
 pub fn request_redeem(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     shares: Uint128,
     receiver: Addr,
     owner: Addr,
 ) -> Result<Response, ContractError> {
-    crate::redemption::request_redemption(deps, env, info, shares, receiver, owner)
+    crate::redemption::request_redemption(&mut deps, &env, &info, shares, &receiver, &owner)
 }
 
 pub fn complete_redemption_with_distribution(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     redemption_id: u64,
@@ -399,7 +399,12 @@ pub fn complete_redemption_with_distribution(
 ) -> Result<Response, ContractError> {
     // Restrict completion to managers
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    crate::redemption::complete_redemption_with_distribution(deps, env, redemption_id, tx_hash)
+    crate::redemption::complete_redemption_with_distribution(
+        &mut deps,
+        &env,
+        redemption_id,
+        &tx_hash,
+    )
 }
 
 #[cfg(test)]

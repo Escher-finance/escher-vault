@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// # Errors
-/// Will return error arg validation fails
+/// Will return error if arg validation fails
 pub fn update_tower_config(
     deps: &mut DepsMut,
     tower_incentives: Addr,
