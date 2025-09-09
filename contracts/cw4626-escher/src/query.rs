@@ -446,7 +446,7 @@ mod tests {
             .save(deps.as_mut().storage, user.clone(), &vec![1, 2])
             .unwrap();
 
-        let result = user_redemption_requests(&deps.as_ref(), user);
+        let result = user_redemption_requests(&deps.as_ref(), &user);
         assert!(result.is_ok());
 
         let response = result.unwrap();
@@ -462,7 +462,7 @@ mod tests {
 
         let user = Addr::unchecked("cosmos1user1234567890123456789012345678901234567890");
 
-        let result = user_redemption_requests(&deps.as_ref(), user);
+        let result = user_redemption_requests(&deps.as_ref(), &user);
         assert!(result.is_ok());
 
         let response = result.unwrap();
