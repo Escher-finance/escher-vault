@@ -143,7 +143,7 @@ pub fn generate_request_redemption_response(
         .collect::<Vec<_>>()
         .join(",");
 
-    let mut e = Event::new(EVENT_REQUEST_REDEMPTION)
+    let e = Event::new(EVENT_REQUEST_REDEMPTION)
         .add_attribute("redemption_id", redemption_id.to_string())
         .add_attribute("owner", owner)
         .add_attribute("receiver", receiver)
@@ -155,9 +155,6 @@ pub fn generate_request_redemption_response(
             "total_expected_value",
             expected_assets.iter().map(|a| a.amount).sum::<Uint128>(),
         );
-    for (i, asset) in expected_assets.iter().enumerate() {
-        e = e.add_attribute(format!("expected_asset_{}", i), asset.to_string());
-    }
 
     Response::new().add_event(e)
 }
@@ -170,13 +167,13 @@ pub fn generate_complete_redemption_response(
     tx_hash: &str,
     distributed_assets: &[Asset],
 ) -> Response {
-    // Format expected assets as a comma-separated string
+    // Format distributed assets as a comma-separated string
     let distributed_assets_str = distributed_assets
         .iter()
         .map(|a| format!("{}={}", a.info, a.amount))
         .collect::<Vec<_>>()
         .join(",");
-    let mut e = Event::new(EVENT_COMPLETE_REDEMPTION)
+    let e = Event::new(EVENT_COMPLETE_REDEMPTION)
         .add_attribute("redemption_id", redemption_id.to_string())
         .add_attribute("receiver", receiver)
         .add_attribute("shares_burned", shares_burned)
@@ -187,9 +184,7 @@ pub fn generate_complete_redemption_response(
             "distributed_assets_count",
             distributed_assets.len().to_string(),
         );
-    for (i, asset) in distributed_assets.iter().enumerate() {
-        e = e.add_attribute(format!("distributed_asset_{}", i), asset.to_string());
-    }
+
     Response::new().add_event(e)
 }
 
