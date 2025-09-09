@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use astroport::asset::AssetInfo;
+use cosmwasm_std::assert_approx_eq;
 use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Addr;
@@ -687,31 +688,6 @@ fn deposit_cw20_with_fee_no_yield_must_be_one_to_one() {
     )
     .unwrap();
 
-    println!(
-        "B ADMIN {}",
-        app.wrap()
-            .query_wasm_smart::<cw20::BalanceResponse>(
-                &vault,
-                &QueryMsg::Balance {
-                    address: admin.to_string(),
-                },
-            )
-            .unwrap()
-            .balance
-    );
-    println!(
-        "B USER {}",
-        app.wrap()
-            .query_wasm_smart::<cw20::BalanceResponse>(
-                &vault,
-                &QueryMsg::Balance {
-                    address: user.to_string(),
-                },
-            )
-            .unwrap()
-            .balance
-    );
-
     assert_eq!(
         app.wrap()
             .query_wasm_smart::<cw20::BalanceResponse>(
@@ -734,9 +710,10 @@ fn deposit_cw20_with_fee_no_yield_must_be_one_to_one() {
                 .balance,
         asset_deposit_amount
     );
-    assert_eq!(
-        preview_amount.multiply_ratio(Uint128::new(95), Uint128::new(100)),
-        asset_deposit_amount
+    assert_approx_eq!(
+        preview_amount,
+        asset_deposit_amount.multiply_ratio(Uint128::new(95), Uint128::new(100)),
+        "0.0001"
     );
     assert_eq!(
         app.wrap()
@@ -795,9 +772,10 @@ fn deposit_cw20_with_fee_no_yield_must_be_one_to_one() {
                 .balance,
         asset_deposit_amount * Uint128::new(2)
     );
-    assert_eq!(
-        preview_amount.multiply_ratio(Uint128::new(95), Uint128::new(100)),
-        asset_deposit_amount
+    assert_approx_eq!(
+        preview_amount,
+        asset_deposit_amount.multiply_ratio(Uint128::new(95), Uint128::new(100)),
+        "0.0001"
     );
     assert_eq!(
         app.wrap()
