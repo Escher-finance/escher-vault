@@ -1,8 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw4626_base::execute as cw4626_base_executes;
-use cw4626_base::query as cw4626_base_queries;
 
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractError;
@@ -136,16 +134,6 @@ pub fn execute(
         ExecuteMsg::Mint { shares, receiver } => {
             crate::execute::mint(deps, env, info, shares, receiver)?
         }
-        ExecuteMsg::Withdraw {
-            assets,
-            receiver,
-            owner,
-        } => cw4626_base_executes::withdraw(deps, env, sender, assets, receiver, owner)?,
-        ExecuteMsg::Redeem {
-            shares,
-            receiver,
-            owner,
-        } => cw4626_base_executes::redeem(deps, env, sender, shares, receiver, owner)?,
         ExecuteMsg::RequestRedeem {
             shares,
             receiver,
@@ -276,16 +264,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&crate::query::preview_mint(&this, &deps, shares)?)
         }
         QueryMsg::MaxWithdraw { owner } => {
-            to_json_binary(&cw4626_base_queries::max_withdraw(&this, &deps, owner)?)
+            to_json_binary(&crate::query::max_withdraw(&this, &deps, owner)?)
         }
-        QueryMsg::PreviewWithdraw { assets } => to_json_binary(
-            &cw4626_base_queries::preview_withdraw(&this, &deps, assets)?,
-        ),
-        QueryMsg::MaxRedeem { owner } => {
-            to_json_binary(&cw4626_base_queries::max_redeem(&deps, owner)?)
+        QueryMsg::PreviewWithdraw { assets } => {
+            to_json_binary(&crate::query::preview_withdraw(&this, &deps, assets)?)
         }
+        QueryMsg::MaxRedeem { owner } => to_json_binary(&crate::query::max_redeem(&deps, owner)?),
         QueryMsg::PreviewRedeem { shares } => {
-            to_json_binary(&cw4626_base_queries::preview_redeem(&this, &deps, shares)?)
+            to_json_binary(&crate::query::preview_redeem(&this, &deps, shares)?)
         }
         //
         // CW20

@@ -97,8 +97,6 @@ pub fn _convert_to_assets(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-// TODO: move all of these to proper events in the `responses` module
-
 pub fn generate_deposit_response(
     caller: &Addr,
     receiver: &Addr,

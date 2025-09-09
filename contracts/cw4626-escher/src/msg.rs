@@ -73,18 +73,6 @@ pub enum ExecuteMsg {
     Deposit { assets: Uint128, receiver: Addr },
     /// Mints exact shares to receiver by depositing amount of underlying tokens
     Mint { shares: Uint128, receiver: Addr },
-    /// Burns shares from owner and sends exact assets of underlying tokens to receiver
-    Withdraw {
-        assets: Uint128,
-        receiver: Addr,
-        owner: Addr,
-    },
-    /// Burns exact shares from owner and sends assets of underlying tokens to receiver
-    Redeem {
-        shares: Uint128,
-        receiver: Addr,
-        owner: Addr,
-    },
     /// Request redemption with proper multi-asset distribution
     RequestRedeem {
         shares: Uint128,

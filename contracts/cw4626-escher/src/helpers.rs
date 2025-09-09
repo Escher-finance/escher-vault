@@ -1,11 +1,13 @@
 use std::collections::HashSet;
 
-use crate::msg::*;
+use crate::{
+    msg::*,
+    responses::{generate_deposit_response, generate_deposit_with_fee_response},
+};
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
     Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
 };
-use cw4626_base::helpers::{generate_deposit_response, generate_deposit_with_fee_response};
 
 use crate::{
     asset::assert_send_asset_to_contract,

@@ -1,5 +1,5 @@
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_std::{Addr, Event, Response, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Decimal, Event, Response, Timestamp, Uint128};
 
 const EVENT_BOND: &str = "bond";
 const EVENT_UNBOND: &str = "unbond";
@@ -70,6 +70,25 @@ pub fn generate_deposit_response(
             .add_attribute("receiver", receiver)
             .add_attribute("assets_transferred", assets)
             .add_attribute("shares_minted", shares),
+    )
+}
+
+pub fn generate_deposit_with_fee_response(
+    caller: &Addr,
+    receiver: &Addr,
+    assets: Uint128,
+    user_shares: Uint128,
+    fee_shares: Uint128,
+    entry_fee_rate: Decimal,
+) -> Response {
+    Response::new().add_event(
+        Event::new(EVENT_DEPOSIT)
+            .add_attribute("depositor", caller)
+            .add_attribute("receiver", receiver)
+            .add_attribute("assets_transferred", assets)
+            .add_attribute("user_shares_minted", user_shares)
+            .add_attribute("fee_shares_minted", fee_shares)
+            .add_attribute("entry_fee_rate", entry_fee_rate.to_string()),
     )
 }
 

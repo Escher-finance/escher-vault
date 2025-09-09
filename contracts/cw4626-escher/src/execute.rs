@@ -192,7 +192,7 @@ pub fn deposit(
 ) -> Result<Response, ContractError> {
     let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
-        return Err(cw4626_base::ContractError::ExceededMaxDeposit {
+        return Err(ContractError::ExceededMaxDeposit {
             receiver: receiver.clone(),
             assets,
             max_assets,
@@ -222,7 +222,7 @@ pub fn mint(
     let deps_ref = deps.as_ref();
     let MaxMintResponse { max_shares } = query::max_mint(receiver.clone())?;
     if shares > max_shares {
-        return Err(cw4626_base::ContractError::ExceededMaxMint {
+        return Err(ContractError::ExceededMaxMint {
             receiver: receiver.clone(),
             shares,
             max_shares,
@@ -388,7 +388,7 @@ pub fn receive_deposit(
     let assets = received_balance.amount;
     let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
-        return Err(cw4626_base::ContractError::ExceededMaxDeposit {
+        return Err(ContractError::ExceededMaxDeposit {
             receiver: receiver.clone(),
             assets,
             max_assets,
