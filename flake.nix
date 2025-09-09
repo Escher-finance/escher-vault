@@ -129,9 +129,9 @@
               [patch.'https://github.com/quasar-finance/babydex.git']
               astroport = { path = "${astroportSrc}/packages/astroport" }
               astroport-factory = { path = "${astroportSrc}/contracts/factory" }
-              astroport-pair = { path = "${astroportSrc}/contracts/astroport-pair" }
-              astroport-pair-concentrated = { path = "${astroportSrc}/contracts/astroport-pair-concentrated" }
-              astroport-pcl-common = { path = "${astroportSrc}/packages/astroport-pcl-common" }
+              astroport-pair = { path = "${astroportSrc}/contracts/pair" }
+              astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
+              astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
               CFG
 
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
