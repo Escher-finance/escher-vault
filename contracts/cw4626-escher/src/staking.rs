@@ -1,4 +1,4 @@
-use astroport::asset::Asset;
+use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_json_binary, Addr, Decimal, DepsMut, StdError, Timestamp, Uint128, WasmMsg};
 
@@ -6,7 +6,7 @@ use crate::{
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     error::ContractResult,
     helpers::validate_salt,
-    state::UNDERLYING_ASSET,
+    state::{STAKING_CONTRACT, UNDERLYING_ASSET},
     ContractError,
 };
 
@@ -78,6 +78,37 @@ pub enum EscherHubExecuteMsg {
         recipient_channel_id: Option<u32>,
         recipient_ibc_channel_id: Option<u32>,
     },
+}
+
+/// # Errors
+/// Will return error if queries or validation fails
+pub fn validate_and_store_staking_contract(
+    deps: &mut DepsMut,
+    staking_contract: &Addr,
+    other_lp_token: &AssetInfo,
+) -> ContractResult<()> {
+    let _ = deps
+        .querier
+        .query_wasm_smart::<EscherHubStakingLiquidity>(
+            staking_contract.clone(),
+            &EscherHubQueryMsg::StakingLiquidity {},
+        )
+        .map_err(|_| ContractError::InvalidStakingContract {})?;
+    let EscherHubParameters { cw20_address, .. } = deps
+        .querier
+        .query_wasm_smart::<EscherHubParameters>(
+            staking_contract.clone(),
+            &EscherHubQueryMsg::Parameters {},
+        )
+        .map_err(|_| ContractError::InvalidStakingContract {})?;
+    let cw20_info = AssetInfo::Token {
+        contract_addr: cw20_address,
+    };
+    if cw20_info != *other_lp_token {
+        return Err(ContractError::InvalidStakingContract {});
+    }
+    STAKING_CONTRACT.save(deps.storage, staking_contract)?;
+    Ok(())
 }
 
 /// Returns (`bond_msg`, `expected`)

@@ -3,13 +3,12 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use crate::asset::query_asset_info_decimals;
-use crate::error::{ContractError, ContractResult};
+use crate::error::ContractResult;
 use crate::helpers::validate_addrs;
 use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::staking::EscherHubQueryMsg;
-use crate::staking::EscherHubStakingLiquidity;
+use crate::staking::validate_and_store_staking_contract;
 use crate::state::{
     AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
     UNDERLYING_DECIMALS,
@@ -51,18 +50,6 @@ pub fn instantiate(
     UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token)?;
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
 
-    // Save staking contract address if provided
-    if let Some(staking_contract) = msg.staking_contract {
-        let _ = deps
-            .querier
-            .query_wasm_smart::<EscherHubStakingLiquidity>(
-                staking_contract.clone(),
-                &EscherHubQueryMsg::StakingLiquidity {},
-            )
-            .map_err(|_| ContractError::InvalidStakingContract {})?;
-        crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
-    }
-
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Manager {}.key(),
@@ -81,6 +68,16 @@ pub fn instantiate(
         msg.incentives,
         msg.underlying_token,
     )?;
+
+    // Save staking contract address if provided
+    if let Some(staking_contract) = msg.staking_contract {
+        validate_and_store_staking_contract(
+            &mut deps,
+            &staking_contract,
+            &tower_config.lp_other_asset,
+        )?;
+    }
+
     init_oracle_prices(&mut deps.branch(), &tower_config)?;
 
     // Initialize entry fee configuration
