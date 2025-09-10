@@ -265,8 +265,12 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
 
 /// List all redemption requests with basic pagination
 ///
-/// start_after: last seen id; results start from start_after+1
+/// `start_after`: last seen id; results start from `start_after+1`
 /// limit: max number of items to return (cap to 200, default 50)
+///
+/// # Errors
+/// 
+/// Returns `StdError` if there's an issue accessing storage or parsing data
 pub fn all_redemption_requests(
     deps: &Deps,
     start_after: Option<u64>,
