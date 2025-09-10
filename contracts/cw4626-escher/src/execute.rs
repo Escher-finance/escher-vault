@@ -14,6 +14,7 @@ use crate::{
     helpers::{internal_deposit, validate_addrs, PreviewDepositKind},
     msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
+    receive::receive_deposit,
     responses::{
         add_liquidity_event, claim_incentives_event, generate_add_role_response,
         generate_bond_response, generate_oracle_update_prices_response,
@@ -335,40 +336,9 @@ pub fn receive(
 
     match msg {
         ReceiveMsg::Deposit { receiver } => {
-            crate::execute::receive_deposit(deps, env, info, &sender, &received_balance, &receiver)
+            receive_deposit(deps, env, info, &sender, &received_balance, &receiver)
         }
     }
-}
-
-/// # Errors
-/// Will return error if internal helper fails
-pub fn receive_deposit(
-    deps: &mut DepsMut,
-    env: &Env,
-    info: &MessageInfo,
-    sender: &Addr,
-    received_balance: &cw20::Cw20CoinVerified,
-    receiver: &Addr,
-) -> ContractResult<Response> {
-    if received_balance.address.to_string() != UNDERLYING_ASSET.load(deps.storage)?.to_string() {
-        return Err(ContractError::WrongCw20Received {});
-    }
-    let assets = received_balance.amount;
-    let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
-    if assets > max_assets {
-        return Err(ContractError::ExceededMaxDeposit {
-            receiver: receiver.clone(),
-            assets,
-            max_assets,
-        });
-    }
-    let PreviewDepositResponse { shares } = query::preview_deposit(
-        &env.contract.address,
-        &deps.as_ref(),
-        assets,
-        PreviewDepositKind::Cw20ViaReceive {},
-    )?;
-    internal_deposit(deps, env, info, sender, receiver, assets, shares, true)
 }
 
 /// # Errors
