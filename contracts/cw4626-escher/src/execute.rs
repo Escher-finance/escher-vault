@@ -10,7 +10,7 @@ use cosmwasm_std::{
 use crate::{
     access_control::only_role,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
-    helpers::{internal_deposit, validate_addrs, validate_salt, PreviewDepositKind},
+    helpers::{internal_deposit, validate_addrs, PreviewDepositKind},
     msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
     responses::{
@@ -19,7 +19,7 @@ use crate::{
         generate_remove_role_response, generate_unbond_response, remove_liquidity_event,
         swap_event,
     },
-    staking::{EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
+    staking::{internal_bond, EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
     state::{
         AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
@@ -104,44 +104,11 @@ pub fn bond(
 ) -> Result<Response, ContractError> {
     only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
-    validate_salt(&salt)?;
-
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = &env.contract.address;
 
-    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
-        staking_contract.clone(),
-        &EscherHubQueryMsg::StakingLiquidity {},
-    )?;
-
-    let expected = amount
-        .checked_div_floor(exchange_rate)
-        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
-
-    // Get the current asset balance in the vault
-    let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
-    let asset_balance = query_asset_info_balance(&deps.querier, asset_info.clone(), this)?;
-
-    // Validate that we have enough assets to bond
-    if asset_balance < amount {
-        return Err(ContractError::InsufficientFunds {});
-    }
-
-    // Create the bond message for the staking contract
-    let bond_msg = asset_cw20_send_or_attach_funds(
-        Asset {
-            info: asset_info,
-            amount,
-        },
-        &staking_contract,
-        to_json_binary(&EscherHubExecuteMsg::Bond {
-            slippage,
-            expected,
-            recipient: None,
-            recipient_channel_id: None,
-            salt: Some(salt),
-        })?,
-    )?;
+    let (bond_msg, expected) =
+        internal_bond(deps, this, &staking_contract, amount, salt, slippage)?;
 
     Ok(generate_bond_response(this, amount, expected, &staking_contract).add_message(bond_msg))
 }
