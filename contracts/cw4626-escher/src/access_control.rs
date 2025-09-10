@@ -6,6 +6,8 @@ use crate::{
     ContractError,
 };
 
+/// Validates that the `sender` has to have the specified `role`
+///
 /// # Errors
 /// Will return error if validation fails
 pub fn validate_only_role(
