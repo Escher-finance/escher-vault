@@ -81,6 +81,8 @@ pub enum EscherHubExecuteMsg {
     },
 }
 
+/// Validates that `staking_contract` is an Escher staking hub and saves it
+///
 /// # Errors
 /// Will return error if queries or validation fails
 pub fn validate_and_store_staking_contract(
