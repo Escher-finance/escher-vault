@@ -17,7 +17,7 @@ use cosmwasm_std::{
 use crate::{
     asset::{
         asset_cw20_send_or_attach_funds, asset_generate_increase_allowance_or_funds,
-        get_asset_info_address, query_asset_info_balance,
+        query_asset_info_balance,
     },
     error::ContractResult,
     state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
@@ -328,7 +328,7 @@ pub fn calculate_total_assets(
         total_balance += if asset.info == tower_config.lp_underlying_asset {
             asset.amount
         } else {
-            let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
+            let Some(asset_price) = prices.get(&asset.info.to_string()) else {
                 return Err(ContractError::OracleInvalidPrices {});
             };
             asset.amount.mul_floor(*asset_price)

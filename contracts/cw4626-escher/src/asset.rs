@@ -11,6 +11,8 @@ use cw_utils::must_pay;
 
 use crate::{error::ContractResult, ContractError};
 
+/// Validates that `token_address` is a CW20 contract
+///
 /// # Errors
 /// Will return error validation fails
 pub fn validate_cw20(
@@ -25,14 +27,6 @@ pub fn validate_cw20(
         .map_err(|_| ContractError::InvalidCw20 {
             addr: token_address.clone(),
         })
-}
-
-#[must_use]
-pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
-    match asset_info {
-        AssetInfo::NativeToken { denom } => denom.clone(),
-        AssetInfo::Token { contract_addr } => contract_addr.to_string(),
-    }
 }
 
 /// # Errors

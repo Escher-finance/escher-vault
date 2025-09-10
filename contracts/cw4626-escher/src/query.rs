@@ -2,7 +2,6 @@ use astroport::asset::AssetInfo;
 use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 
 use crate::{
-    asset::get_asset_info_address,
     helpers::{
         get_tokens, internal_convert_to_assets, internal_convert_to_shares,
         internal_preview_deposit, PreviewDepositKind, Rounding, Tokens,
@@ -69,7 +68,7 @@ pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
 pub fn asset(deps: &Deps) -> StdResult<AssetResponse> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
     Ok(AssetResponse {
-        asset_token_address: get_asset_info_address(&asset),
+        asset_token_address: asset.to_string(),
     })
 }
 
