@@ -256,6 +256,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             &crate::query::preview_redeem_multi_asset(deps, shares, &this)?,
         ),
         QueryMsg::RedemptionStats => to_json_binary(&crate::query::redemption_stats(deps)?),
+        QueryMsg::AllRedemptionRequests { start_after, limit } => to_json_binary(
+            &crate::query::all_redemption_requests(&deps, start_after, limit)?,
+        ),
         //
         // CW4626
         //

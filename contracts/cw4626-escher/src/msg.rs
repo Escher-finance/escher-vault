@@ -201,6 +201,12 @@ pub struct UserRedemptionRequestsResponse {
 }
 
 #[cw_serde]
+pub struct AllRedemptionRequestsResponse {
+    pub requests: Vec<RedemptionRequest>,
+    pub next_start_after: Option<u64>,
+}
+
+#[cw_serde]
 pub struct PreviewRedeemMultiAssetResponse {
     pub expected_assets: Vec<Asset>,
     pub total_value_in_underlying: Uint128,
@@ -253,6 +259,12 @@ pub enum QueryMsg {
     /// Get redemption statistics and summary
     #[returns(RedemptionStatsResponse)]
     RedemptionStats,
+    /// List all redemption requests with pagination
+    #[returns(AllRedemptionRequestsResponse)]
+    AllRedemptionRequests {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 
     //
     // CW4626

@@ -7,16 +7,16 @@ use crate::{
         internal_preview_deposit, PreviewDepositKind, Rounding, Tokens,
     },
     msg::{
-        AccessControlRoleResponse, AssetResponse, ConfigResponse, ConvertToAssetsResponse,
-        ConvertToSharesResponse, ExchangeRateResponse, GitInfoResponse, LpPositionResponse,
-        MaxDepositResponse, MaxRedeemResponse, OraclePricesResponse, OracleTokensListResponse,
-        PendingIncentivesResponse, PreviewDepositResponse, PreviewRedeemMultiAssetResponse,
-        PreviewRedeemResponse, RedemptionRequestResponse, RedemptionStatsResponse,
-        TotalAssetsResponse, UserRedemptionRequestsResponse,
+        AccessControlRoleResponse, AllRedemptionRequestsResponse, AssetResponse, ConfigResponse,
+        ConvertToAssetsResponse, ConvertToSharesResponse, ExchangeRateResponse, GitInfoResponse,
+        LpPositionResponse, MaxDepositResponse, MaxRedeemResponse, OraclePricesResponse,
+        OracleTokensListResponse, PendingIncentivesResponse, PreviewDepositResponse,
+        PreviewRedeemMultiAssetResponse, PreviewRedeemResponse, RedemptionRequestResponse,
+        RedemptionStatsResponse, TotalAssetsResponse, UserRedemptionRequestsResponse,
     },
     state::{
-        AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, REDEMPTION_REQUESTS, STAKING_CONTRACT,
-        TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
+        STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
     },
     tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
 };
@@ -262,6 +262,40 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
     })
 }
 
+/// List all redemption requests with basic pagination
+///
+/// `start_after`: last seen id; results start from `start_after+1`
+/// limit: max number of items to return (cap to 200, default 50)
+///
+/// # Errors
+///
+/// Returns `StdError` if there's an issue accessing storage or parsing data
+pub fn all_redemption_requests(
+    deps: &Deps,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<AllRedemptionRequestsResponse> {
+    let cap = limit.unwrap_or(50).min(200) as usize;
+    let total = REDEMPTION_COUNTER.may_load(deps.storage)?.unwrap_or(0);
+    let mut next_id = start_after.unwrap_or(0) + 1;
+    let mut out = Vec::new();
+    while (next_id <= total) && (out.len() < cap) {
+        if let Some(req) = REDEMPTION_REQUESTS.may_load(deps.storage, next_id)? {
+            out.push(req);
+        }
+        next_id += 1;
+    }
+    let next_start_after = if next_id <= total {
+        Some(next_id - 1)
+    } else {
+        None
+    };
+    Ok(AllRedemptionRequestsResponse {
+        requests: out,
+        next_start_after,
+    })
+}
+
 /// # Errors
 /// Will return error if queries fail
 pub fn max_redeem(deps: &Deps, owner: &Addr) -> StdResult<MaxRedeemResponse> {
@@ -292,7 +326,8 @@ mod tests {
     use super::*;
     use crate::state::{
         AccessControlRole, RedemptionRequest, RedemptionStatus, TowerConfig, ACCESS_CONTROL,
-        REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
+        USER_REDEMPTION_IDS,
     };
     use astroport::asset::{Asset, AssetInfo};
     use cosmwasm_std::{testing::mock_dependencies, Addr, DepsMut, Uint128};
@@ -452,6 +487,51 @@ mod tests {
         assert_eq!(response.requests.len(), 2);
         assert_eq!(response.requests[0].id, 1);
         assert_eq!(response.requests[1].id, 2);
+    }
+
+    #[test]
+    fn test_all_redemption_requests_pagination() {
+        let mut deps = mock_dependencies();
+        setup_test_contract(&mut deps.as_mut());
+
+        // create 3 requests and set counter
+        for i in 1..=3u64 {
+            let req = RedemptionRequest {
+                id: i,
+                owner: Addr::unchecked(format!("cosmos1owner{i}")),
+                receiver: Addr::unchecked(format!("cosmos1recv{i}")),
+                shares_locked: Uint128::new(100 * i as u128),
+                expected_assets: vec![],
+                status: if i % 2 == 0 {
+                    RedemptionStatus::Completed(cosmwasm_std::Timestamp::from_seconds(1))
+                } else {
+                    RedemptionStatus::Pending
+                },
+                created_at: 1,
+                completed_at: None,
+                completion_tx_hash: None,
+            };
+            REDEMPTION_REQUESTS
+                .save(deps.as_mut().storage, i, &req)
+                .unwrap();
+        }
+        REDEMPTION_COUNTER
+            .save(deps.as_mut().storage, &3u64)
+            .unwrap();
+
+        // page 1
+        let page1 = all_redemption_requests(&deps.as_ref(), None, Some(2)).unwrap();
+        assert_eq!(page1.requests.len(), 2);
+        assert_eq!(page1.requests[0].id, 1);
+        assert_eq!(page1.requests[1].id, 2);
+        assert_eq!(page1.next_start_after, Some(2));
+
+        // page 2
+        let page2 =
+            all_redemption_requests(&deps.as_ref(), page1.next_start_after, Some(2)).unwrap();
+        assert_eq!(page2.requests.len(), 1);
+        assert_eq!(page2.requests[0].id, 3);
+        assert_eq!(page2.next_start_after, None);
     }
 
     #[test]
