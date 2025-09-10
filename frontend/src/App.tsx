@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import './App.css'
 import { connectKeplr } from './wallet'
 import { BABYLON } from './chain'
@@ -10,7 +10,6 @@ import { ManagerActions } from './components/ManagerActions'
 import { OracleActions } from './components/OracleActions'
 import { RecentTxs } from './components/RecentTxs'
 import { Redemptions } from './components/Redemptions'
-import { useMemo } from 'react'
 
 function App() {
   const [address, setAddress] = useState<string>("")
