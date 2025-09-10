@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use crate::asset::query_asset_info_decimals;
-use crate::error::ContractError;
+use crate::error::{ContractError, ContractResult};
 use crate::helpers::validate_addrs;
 use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
@@ -19,7 +19,7 @@ use crate::tower::{init_oracle_prices, update_tower_config};
 /// # Errors
 /// Will return error if migrate fails
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResult<Response> {
     Ok(Response::new())
 }
 
@@ -32,7 +32,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
     cw20_base::contract::instantiate(
@@ -104,7 +104,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let sender = info.sender.clone();
     Ok(match msg {
         ExecuteMsg::AddToRole { role, address } => {

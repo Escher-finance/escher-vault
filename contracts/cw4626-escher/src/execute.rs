@@ -8,8 +8,9 @@ use cosmwasm_std::{
 };
 
 use crate::{
-    access_control::only_role,
+    access_control::validate_only_role,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
+    error::ContractResult,
     helpers::{internal_deposit, validate_addrs, PreviewDepositKind},
     msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
@@ -38,8 +39,8 @@ pub fn add_to_role(
     sender: &Addr,
     role: AccessControlRole,
     address: &Addr,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, sender, AccessControlRole::Manager {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, sender, AccessControlRole::Manager {})?;
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let mut addrs = addrs.unwrap_or_default();
         addrs.push(address.clone());
@@ -59,8 +60,8 @@ pub fn remove_from_role(
     sender: &Addr,
     role: AccessControlRole,
     address: &Addr,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, sender, AccessControlRole::Manager {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, sender, AccessControlRole::Manager {})?;
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
         let addrs = validate_addrs(
             addrs
@@ -83,8 +84,8 @@ pub fn oracle_update_prices(
     deps: &mut DepsMut,
     sender: &Addr,
     prices: &PricesMap,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, sender, AccessControlRole::Oracle {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, sender, AccessControlRole::Oracle {})?;
     update_and_validate_prices(deps, prices.clone())?;
     Ok(generate_oracle_update_prices_response(
         sender.as_ref(),
@@ -101,8 +102,8 @@ pub fn bond(
     amount: Uint128,
     salt: String,
     slippage: Option<Decimal>,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = &env.contract.address;
@@ -120,8 +121,8 @@ pub fn unbond(
     env: &Env,
     info: &MessageInfo,
     amount: Uint128,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = &env.contract.address;
@@ -168,7 +169,7 @@ pub fn deposit(
     info: &MessageInfo,
     assets: Uint128,
     receiver: &Addr,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let MaxDepositResponse { max_assets } = query::max_deposit(receiver.clone())?;
     if assets > max_assets {
         return Err(ContractError::ExceededMaxDeposit {
@@ -197,8 +198,8 @@ pub fn add_liquidity(
     env: &Env,
     info: &MessageInfo,
     underlying_token_amount: Uint128,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let lp_price = Decimal::try_from(deps.querier.query_wasm_smart::<Decimal256>(
@@ -253,8 +254,8 @@ pub fn remove_liquidity(
     env: &Env,
     info: &MessageInfo,
     lp_token_amount: Uint128,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let this = &env.contract.address;
@@ -272,8 +273,8 @@ pub fn remove_liquidity(
 
 /// # Errors
 /// Will return error if internal helper fails
-pub fn claim_incentives(deps: &mut DepsMut, info: &MessageInfo) -> Result<Response, ContractError> {
-    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+pub fn claim_incentives(deps: &mut DepsMut, info: &MessageInfo) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let msg = claim_tower_incentives(&tower_config)?;
@@ -290,8 +291,8 @@ pub fn swap(
     info: &MessageInfo,
     amount: Uint128,
     asset_info: AssetInfo,
-) -> Result<Response, ContractError> {
-    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
 
@@ -324,7 +325,7 @@ pub fn receive(
     info: &MessageInfo,
     cw20_contract: Addr,
     cw20_receive_msg: &cw20::Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let msg = from_json::<ReceiveMsg>(&cw20_receive_msg.msg)?;
     let sender = deps.api.addr_validate(&cw20_receive_msg.sender)?;
     let received_balance = cw20::Cw20CoinVerified {
@@ -348,7 +349,7 @@ pub fn receive_deposit(
     sender: &Addr,
     received_balance: &cw20::Cw20CoinVerified,
     receiver: &Addr,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     if received_balance.address.to_string() != UNDERLYING_ASSET.load(deps.storage)?.to_string() {
         return Err(ContractError::WrongCw20Received {});
     }
@@ -379,7 +380,7 @@ pub fn request_redeem(
     shares: Uint128,
     receiver: &Addr,
     owner: &Addr,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     crate::redemption::request_redemption(&mut deps, env, info, shares, receiver, owner)
 }
 
@@ -391,9 +392,9 @@ pub fn complete_redemption_with_distribution(
     info: &MessageInfo,
     redemption_id: u64,
     tx_hash: &str,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     // Restrict completion to managers
-    only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     crate::redemption::complete_redemption_with_distribution(&mut deps, env, redemption_id, tx_hash)
 }
 

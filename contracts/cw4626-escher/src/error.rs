@@ -6,6 +6,8 @@ use thiserror::Error;
 
 use crate::state::AccessControlRole;
 
+pub type ContractResult<T> = Result<T, ContractError>;
+
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]

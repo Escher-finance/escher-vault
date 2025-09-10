@@ -19,6 +19,7 @@ use crate::{
         asset_cw20_send_or_attach_funds, asset_generate_increase_allowance_or_funds,
         get_asset_info_address, query_asset_info_balance,
     },
+    error::ContractResult,
     state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
 };
@@ -32,7 +33,7 @@ pub fn update_tower_config(
     slippage_tolerance: Decimal,
     lp_incentives: Vec<AssetInfo>,
     underlying_asset_info: AssetInfo,
-) -> Result<TowerConfig, ContractError> {
+) -> ContractResult<TowerConfig> {
     let invalid_tower_config_err = Err(ContractError::InvalidTowerConfig {});
     if deps
         .querier
@@ -87,10 +88,7 @@ pub fn update_tower_config(
 
 /// # Errors
 /// Will return error if storage update fails
-pub fn init_oracle_prices(
-    deps: &mut DepsMut,
-    tower_config: &TowerConfig,
-) -> Result<(), ContractError> {
+pub fn init_oracle_prices(deps: &mut DepsMut, tower_config: &TowerConfig) -> ContractResult<()> {
     let mut assets = Vec::from([tower_config.lp_other_asset.clone()]);
     assets.extend(tower_config.lp_incentives.clone());
     let initial_prices: HashMap<_, _> = assets
@@ -109,10 +107,7 @@ pub fn init_oracle_prices(
 
 /// # Errors
 /// Will return error if queries or validation fails
-pub fn update_and_validate_prices(
-    deps: &mut DepsMut,
-    prices: PricesMap,
-) -> Result<(), ContractError> {
+pub fn update_and_validate_prices(deps: &mut DepsMut, prices: PricesMap) -> ContractResult<()> {
     if !prices.values().all(|p| *p > Decimal::zero()) {
         return Err(ContractError::OracleZeroPrice {});
     }
@@ -131,7 +126,7 @@ pub fn update_and_validate_prices(
 
 /// # Errors
 /// Will return error if queries or validation fails
-pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> Result<PricesMap, ContractError> {
+pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> ContractResult<PricesMap> {
     let prices = ORACLE_PRICES.load(storage)?;
     if !prices.values().all(|p| *p > Decimal::zero()) {
         return Err(ContractError::OracleZeroPrice {});
@@ -145,7 +140,7 @@ pub fn add_tower_liquidity(
     tower_config: &TowerConfig,
     underlying_asset_amount: Uint128,
     other_lp_asset_amount: Uint128,
-) -> Result<Vec<CosmosMsg>, ContractError> {
+) -> ContractResult<Vec<CosmosMsg>> {
     let underlying_asset = Asset {
         info: tower_config.lp_underlying_asset.clone(),
         amount: underlying_asset_amount,
@@ -196,7 +191,7 @@ pub fn add_tower_liquidity(
 pub fn remove_tower_liquidity(
     tower_config: &TowerConfig,
     lp_token_amount: Uint128,
-) -> Result<Vec<CosmosMsg>, ContractError> {
+) -> ContractResult<Vec<CosmosMsg>> {
     let incentives_execute_msg = IncentivesExecuteMsg::Withdraw {
         lp_token: tower_config.lp_token.to_string(),
         amount: lp_token_amount,
@@ -224,7 +219,7 @@ pub fn remove_tower_liquidity(
 
 /// # Errors
 /// Will return error if messages fail to serialize
-pub fn claim_tower_incentives(tower_config: &TowerConfig) -> Result<CosmosMsg, ContractError> {
+pub fn claim_tower_incentives(tower_config: &TowerConfig) -> ContractResult<CosmosMsg> {
     let incentives_execute_msg = IncentivesExecuteMsg::ClaimRewards {
         lp_tokens: Vec::from([tower_config.lp_token.to_string()]),
     };
@@ -243,7 +238,7 @@ pub fn calculate_assets_ownership(
     querier: &QuerierWrapper,
     tower_config: &TowerConfig,
     this: &Addr,
-) -> Result<Vec<Asset>, ContractError> {
+) -> ContractResult<Vec<Asset>> {
     let mut assets: HashMap<AssetInfo, Asset> = HashMap::new();
 
     // underlying asset balance
@@ -311,7 +306,7 @@ pub fn calculate_total_assets(
     querier: &QuerierWrapper,
     storage: &dyn Storage,
     this: &Addr,
-) -> Result<Uint128, ContractError> {
+) -> ContractResult<Uint128> {
     let prices = get_and_validate_oracle_prices(storage)?;
     let tower_config = TOWER_CONFIG.load(storage)?;
     let mut total_balance = Uint128::zero();
@@ -336,7 +331,7 @@ pub fn tower_swap(
     tower_config: &TowerConfig,
     amount: Uint128,
     asset_info: &AssetInfo,
-) -> Result<Vec<CosmosMsg>, ContractError> {
+) -> ContractResult<Vec<CosmosMsg>> {
     let offer_asset = Asset {
         info: asset_info.clone(),
         amount,

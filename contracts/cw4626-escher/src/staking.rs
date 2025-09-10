@@ -4,6 +4,7 @@ use cosmwasm_std::{to_json_binary, Addr, Decimal, DepsMut, StdError, Timestamp, 
 
 use crate::{
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
+    error::ContractResult,
     helpers::validate_salt,
     state::UNDERLYING_ASSET,
     ContractError,
@@ -57,7 +58,7 @@ pub fn internal_bond(
     amount: Uint128,
     salt: String,
     slippage: Option<Decimal>,
-) -> Result<(WasmMsg, Uint128), ContractError> {
+) -> ContractResult<(WasmMsg, Uint128)> {
     validate_salt(&salt)?;
 
     let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(

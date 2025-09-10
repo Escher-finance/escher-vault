@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
+    error::ContractResult,
     msg::PreviewDepositResponse,
     responses::{generate_deposit_response, generate_deposit_with_fee_response},
     state::EntryFeeConfig,
@@ -72,7 +73,7 @@ pub fn internal_convert_to_shares(
     total_assets: Uint128,
     assets: Uint128,
     rounding: Rounding,
-) -> Result<Uint128, StdError> {
+) -> StdResult<Uint128> {
     let frac = (total_shares + Uint128::one(), total_assets + Uint128::one());
     match rounding {
         Rounding::Ceil => assets.checked_mul_ceil(frac),
@@ -90,7 +91,7 @@ pub fn internal_convert_to_assets(
     total_assets: Uint128,
     shares: Uint128,
     rounding: Rounding,
-) -> Result<Uint128, StdError> {
+) -> StdResult<Uint128> {
     let frac = (total_assets + Uint128::one(), total_shares + Uint128::one());
     match rounding {
         Rounding::Ceil => shares.checked_mul_ceil(frac),
@@ -180,11 +181,7 @@ pub fn internal_preview_deposit(
 ///
 /// # Errors
 /// Will return error if storage queries or saves fail
-pub fn internal_mint(
-    deps: &mut DepsMut,
-    recipient: &str,
-    amount: Uint128,
-) -> Result<(), ContractError> {
+pub fn internal_mint(deps: &mut DepsMut, recipient: &str, amount: Uint128) -> ContractResult<()> {
     let mut config = cw20_base::state::TOKEN_INFO.load(deps.storage)?;
 
     // update supply and enforce cap
@@ -221,7 +218,7 @@ pub fn internal_deposit(
     assets: Uint128,
     shares: Uint128,
     via_receive: bool,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     let asset = Asset {
         amount: assets,
@@ -271,7 +268,7 @@ pub fn internal_deposit(
 ///
 /// # Errors
 /// Will return error if validations fail
-pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, ContractError> {
+pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> ContractResult<Vec<Addr>> {
     let addrs = addrs
         .collect::<HashSet<_>>()
         .into_iter()
@@ -287,7 +284,7 @@ pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, Co
 
 /// # Errors
 /// Will return error if validations fail
-pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
+pub fn validate_salt(salt: &str) -> ContractResult<()> {
     let hex = salt
         .strip_prefix("0x")
         .ok_or(ContractError::InvalidSalt {})?;

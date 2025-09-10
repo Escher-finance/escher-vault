@@ -9,14 +9,14 @@ use cosmwasm_std::{
 use cw20;
 use cw_utils::must_pay;
 
-use crate::ContractError;
+use crate::{error::ContractResult, ContractError};
 
 /// # Errors
 /// Will return error validation fails
 pub fn validate_cw20(
     querier: &QuerierWrapper,
     token_address: &Addr,
-) -> Result<cw20::TokenInfoResponse, ContractError> {
+) -> ContractResult<cw20::TokenInfoResponse> {
     querier
         .query_wasm_smart::<cw20::TokenInfoResponse>(
             token_address,
@@ -41,7 +41,7 @@ pub fn query_asset_info_balance(
     querier: &QuerierWrapper,
     asset_info: AssetInfo,
     addr: &Addr,
-) -> Result<Uint128, cosmwasm_std::StdError> {
+) -> StdResult<Uint128> {
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => query_token_balance(querier, contract_addr, addr),
         AssetInfo::NativeToken { denom } => query_balance(querier, addr, denom),
@@ -53,7 +53,7 @@ pub fn query_asset_info_balance(
 pub fn query_asset_info_decimals(
     querier: &QuerierWrapper,
     asset_info: AssetInfo,
-) -> Result<u8, ContractError> {
+) -> ContractResult<u8> {
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => {
             let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(querier, &contract_addr)?;
@@ -71,7 +71,7 @@ pub fn assert_send_asset_to_contract(
     info: &MessageInfo,
     env: &Env,
     asset: Asset,
-) -> Result<Option<WasmMsg>, ContractError> {
+) -> ContractResult<Option<WasmMsg>> {
     let caller = info.sender.clone();
     let this = env.contract.address.clone();
     match asset.info {
@@ -95,7 +95,7 @@ pub fn assert_send_asset_to_contract(
 
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
-pub fn send_asset_from_contract(asset: Asset, receiver: &Addr) -> Result<CosmosMsg, ContractError> {
+pub fn send_asset_from_contract(asset: Asset, receiver: &Addr) -> ContractResult<CosmosMsg> {
     let cosmos_msg = match asset.info {
         AssetInfo::NativeToken { denom } => CosmosMsg::Bank(BankMsg::Send {
             to_address: receiver.to_string(),
