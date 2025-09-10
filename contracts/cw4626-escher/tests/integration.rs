@@ -353,6 +353,7 @@ fn instantiate_vault(
     let admin = addr(api, ADMIN);
     let oracle = addr(api, ORACLE);
     let msg = InstantiateMsg {
+        minimum_deposit: Some(Uint128::new(10)),
         managers: Vec::from([admin.clone()]),
         oracles: Vec::from([oracle.clone()]),
         share_name: "Share Token".to_string(),
@@ -1097,6 +1098,7 @@ fn instantiate_rejects_invalid_staking_contract() {
     let admin = addr(api, ADMIN);
     let oracle = addr(api, ORACLE);
     let msg = InstantiateMsg {
+        minimum_deposit: Some(Uint128::new(10)),
         managers: Vec::from([admin.clone()]),
         oracles: Vec::from([oracle.clone()]),
         share_name: "Share Token".to_string(),
