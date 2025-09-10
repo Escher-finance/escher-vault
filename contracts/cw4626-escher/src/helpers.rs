@@ -26,6 +26,8 @@ pub struct Tokens {
     pub total_assets: Uint128,
 }
 
+/// Helper to get the share and asset `AssetInfo`s and `total_shares` and `total_assets`
+///
 /// # Errors
 /// Will return error if queries fail
 pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
@@ -64,7 +66,7 @@ pub enum Rounding {
     Ceil,
 }
 
-/// Internal conversion
+/// Internal conversion from assets to shares
 ///
 /// # Errors
 /// Will return error if calculation fails
@@ -82,7 +84,7 @@ pub fn internal_convert_to_shares(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-/// Internal conversion
+/// Internal conversion from shares to assets
 ///
 /// # Errors
 /// Will return error if calculation fails
@@ -109,6 +111,7 @@ pub enum PreviewDepositKind {
 }
 
 impl PreviewDepositKind {
+    /// Method to see whether `self` kind needs amounts correction
     #[must_use]
     pub fn needs_correction(&self) -> bool {
         match self {
@@ -143,7 +146,7 @@ pub fn calculate_entry_fee_share_amounts(
     (user_shares, fee_shares)
 }
 
-/// Preview deposit calculation
+/// Internal preview deposit calculation
 ///
 /// # Errors
 /// Will return error if queries fail
@@ -177,7 +180,7 @@ pub fn internal_preview_deposit(
     })
 }
 
-// Internal unchecked `mint`
+/// Internal unchecked `mint`
 ///
 /// # Errors
 /// Will return error if storage queries or saves fail
@@ -282,6 +285,8 @@ pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> ContractResult<Vec<A
     Ok(addrs)
 }
 
+/// Validates `salt` for usage with ZKGM
+///
 /// # Errors
 /// Will return error if validations fail
 pub fn validate_salt(salt: &str) -> ContractResult<()> {
