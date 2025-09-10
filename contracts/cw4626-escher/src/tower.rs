@@ -17,12 +17,15 @@ use cosmwasm_std::{
 use crate::{
     asset::{
         asset_cw20_send_or_attach_funds, asset_generate_increase_allowance_or_funds,
-        get_asset_info_address, query_asset_info_balance,
+        query_asset_info_balance,
     },
+    error::ContractResult,
     state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
     ContractError,
 };
 
+/// Makes all necessary checks that the pool can be integrated in the vault and if so stores it
+///
 /// # Errors
 /// Will return error if arg validation fails
 pub fn update_tower_config(
@@ -32,7 +35,7 @@ pub fn update_tower_config(
     slippage_tolerance: Decimal,
     lp_incentives: Vec<AssetInfo>,
     underlying_asset_info: AssetInfo,
-) -> Result<TowerConfig, ContractError> {
+) -> ContractResult<TowerConfig> {
     let invalid_tower_config_err = Err(ContractError::InvalidTowerConfig {});
     if deps
         .querier
@@ -85,12 +88,11 @@ pub fn update_tower_config(
     Ok(config)
 }
 
+/// Defines which tokens should be in the oracle prices, initializing the map with zero values
+///
 /// # Errors
 /// Will return error if storage update fails
-pub fn init_oracle_prices(
-    deps: &mut DepsMut,
-    tower_config: &TowerConfig,
-) -> Result<(), ContractError> {
+pub fn init_oracle_prices(deps: &mut DepsMut, tower_config: &TowerConfig) -> ContractResult<()> {
     let mut assets = Vec::from([tower_config.lp_other_asset.clone()]);
     assets.extend(tower_config.lp_incentives.clone());
     let initial_prices: HashMap<_, _> = assets
@@ -107,12 +109,12 @@ pub fn init_oracle_prices(
     Ok(())
 }
 
+/// Validates and updates the oracle prices making sure that no price is zero and has the right
+/// tokens
+///
 /// # Errors
 /// Will return error if queries or validation fails
-pub fn update_and_validate_prices(
-    deps: &mut DepsMut,
-    prices: PricesMap,
-) -> Result<(), ContractError> {
+pub fn update_and_validate_prices(deps: &mut DepsMut, prices: PricesMap) -> ContractResult<()> {
     if !prices.values().all(|p| *p > Decimal::zero()) {
         return Err(ContractError::OracleZeroPrice {});
     }
@@ -129,9 +131,11 @@ pub fn update_and_validate_prices(
     Ok(())
 }
 
+/// Getter for oracle prices which checks that they cannot be zero
+///
 /// # Errors
 /// Will return error if queries or validation fails
-pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> Result<PricesMap, ContractError> {
+pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> ContractResult<PricesMap> {
     let prices = ORACLE_PRICES.load(storage)?;
     if !prices.values().all(|p| *p > Decimal::zero()) {
         return Err(ContractError::OracleZeroPrice {});
@@ -139,13 +143,15 @@ pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> Result<PricesMap
     Ok(prices)
 }
 
+/// Generates required messages to add liquidity to the pool with the specified amounts
+///
 /// # Errors
 /// Will return error if messages fail to serialize
 pub fn add_tower_liquidity(
     tower_config: &TowerConfig,
     underlying_asset_amount: Uint128,
     other_lp_asset_amount: Uint128,
-) -> Result<Vec<CosmosMsg>, ContractError> {
+) -> ContractResult<Vec<CosmosMsg>> {
     let underlying_asset = Asset {
         info: tower_config.lp_underlying_asset.clone(),
         amount: underlying_asset_amount,
@@ -189,6 +195,7 @@ pub fn add_tower_liquidity(
     Ok(msgs)
 }
 
+/// Generates required messages to remove liquidity from the pool with the specified amount
 /// NOTE: This also claims incentives everytime
 ///
 /// # Errors
@@ -196,7 +203,7 @@ pub fn add_tower_liquidity(
 pub fn remove_tower_liquidity(
     tower_config: &TowerConfig,
     lp_token_amount: Uint128,
-) -> Result<Vec<CosmosMsg>, ContractError> {
+) -> ContractResult<Vec<CosmosMsg>> {
     let incentives_execute_msg = IncentivesExecuteMsg::Withdraw {
         lp_token: tower_config.lp_token.to_string(),
         amount: lp_token_amount,
@@ -222,9 +229,11 @@ pub fn remove_tower_liquidity(
     ]))
 }
 
+/// Generates required messages to claim all pending pool incentives
+///
 /// # Errors
 /// Will return error if messages fail to serialize
-pub fn claim_tower_incentives(tower_config: &TowerConfig) -> Result<CosmosMsg, ContractError> {
+pub fn claim_tower_incentives(tower_config: &TowerConfig) -> ContractResult<CosmosMsg> {
     let incentives_execute_msg = IncentivesExecuteMsg::ClaimRewards {
         lp_tokens: Vec::from([tower_config.lp_token.to_string()]),
     };
@@ -235,7 +244,7 @@ pub fn claim_tower_incentives(tower_config: &TowerConfig) -> Result<CosmosMsg, C
     }))
 }
 
-/// Calculates all available balances
+/// Calculates all available balances of the tracked vault tokens
 ///
 /// # Errors
 /// Will return error if queries fail
@@ -243,7 +252,7 @@ pub fn calculate_assets_ownership(
     querier: &QuerierWrapper,
     tower_config: &TowerConfig,
     this: &Addr,
-) -> Result<Vec<Asset>, ContractError> {
+) -> ContractResult<Vec<Asset>> {
     let mut assets: HashMap<AssetInfo, Asset> = HashMap::new();
 
     // underlying asset balance
@@ -311,7 +320,7 @@ pub fn calculate_total_assets(
     querier: &QuerierWrapper,
     storage: &dyn Storage,
     this: &Addr,
-) -> Result<Uint128, ContractError> {
+) -> ContractResult<Uint128> {
     let prices = get_and_validate_oracle_prices(storage)?;
     let tower_config = TOWER_CONFIG.load(storage)?;
     let mut total_balance = Uint128::zero();
@@ -319,7 +328,7 @@ pub fn calculate_total_assets(
         total_balance += if asset.info == tower_config.lp_underlying_asset {
             asset.amount
         } else {
-            let Some(asset_price) = prices.get(&get_asset_info_address(&asset.info)) else {
+            let Some(asset_price) = prices.get(&asset.info.to_string()) else {
                 return Err(ContractError::OracleInvalidPrices {});
             };
             asset.amount.mul_floor(*asset_price)
@@ -336,7 +345,7 @@ pub fn tower_swap(
     tower_config: &TowerConfig,
     amount: Uint128,
     asset_info: &AssetInfo,
-) -> Result<Vec<CosmosMsg>, ContractError> {
+) -> ContractResult<Vec<CosmosMsg>> {
     let offer_asset = Asset {
         info: asset_info.clone(),
         amount,
@@ -391,6 +400,8 @@ pub fn tower_swap(
     Ok(msgs)
 }
 
+/// Getter of the current liquidity deposit in the pool (as `lp_token` amount)
+///
 /// # Errors
 /// Will return error if query fails
 pub fn get_tower_lp_token_deposit(
@@ -407,7 +418,8 @@ pub fn get_tower_lp_token_deposit(
     )
 }
 
-/// NOTE: This query errors if the user has not created a position yet
+/// Getter for pending rewards in the liquidity pool
+/// NOTE: This Astroport query errors if the user has not created a position yet
 /// <https://github.com/quasar-finance/babydex/blob/8fce1b955a1769a1f4286c73cbfd36701753ac1e/contracts/tokenomics/incentives/src/query.rs#L174>
 ///
 /// # Errors

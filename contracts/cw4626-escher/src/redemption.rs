@@ -3,6 +3,7 @@ use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
     asset::send_asset_from_contract,
+    error::ContractResult,
     msg::PreviewRedeemMultiAssetResponse,
     responses::{generate_complete_redemption_response, generate_request_redemption_response},
     state::{
@@ -22,7 +23,7 @@ pub fn calculate_user_asset_share(
     user_shares: Uint128,
     total_shares: Uint128,
     this: &Addr,
-) -> Result<Vec<Asset>, ContractError> {
+) -> ContractResult<Vec<Asset>> {
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
     let mut user_assets = Vec::new();
 
@@ -44,7 +45,7 @@ pub fn internal_lock_shares(
     redemption_id: u64,
     owner: &Addr,
     contract_addr: &Addr,
-) -> Result<(), ContractError> {
+) -> ContractResult<()> {
     // Update locked shares tracking
     let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
         total_locked: Uint128::zero(),
@@ -60,7 +61,7 @@ pub fn internal_lock_shares(
     cw20_base::state::BALANCES.update(
         storage,
         owner,
-        |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
+        |balance: Option<Uint128>| -> ContractResult<Uint128> {
             let current = balance.unwrap_or_default();
             if current < shares {
                 return Err(ContractError::InsufficientShares {
@@ -75,7 +76,7 @@ pub fn internal_lock_shares(
     cw20_base::state::BALANCES.update(
         storage,
         contract_addr,
-        |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
+        |balance: Option<Uint128>| -> ContractResult<Uint128> {
             Ok(balance.unwrap_or_default() + shares)
         },
     )?;
@@ -92,7 +93,7 @@ pub fn internal_burn_locked_shares(
     shares: Uint128,
     redemption_id: u64,
     contract_addr: &Addr,
-) -> Result<(), ContractError> {
+) -> ContractResult<()> {
     // Update locked shares tracking
     let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
         total_locked: Uint128::zero(),
@@ -111,7 +112,7 @@ pub fn internal_burn_locked_shares(
     cw20_base::state::BALANCES.update(
         storage,
         contract_addr,
-        |balance: Option<Uint128>| -> Result<Uint128, ContractError> {
+        |balance: Option<Uint128>| -> ContractResult<Uint128> {
             let current = balance.unwrap_or_default();
             if current < shares {
                 return Err(ContractError::InsufficientLockedShares {
@@ -146,7 +147,7 @@ pub fn request_redemption(
     shares: Uint128,
     receiver: &Addr,
     owner: &Addr,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     if shares.is_zero() {
         return Err(ContractError::ZeroShareAmount {});
     }
@@ -244,7 +245,7 @@ pub fn complete_redemption_with_distribution(
     env: &Env,
     redemption_id: u64,
     tx_hash: &str,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     // Load redemption request
     let mut request = REDEMPTION_REQUESTS
         .may_load(deps.storage, redemption_id)?
@@ -298,7 +299,7 @@ pub fn preview_redeem_multi_asset(
     deps: Deps,
     shares: Uint128,
     contract_addr: &Addr,
-) -> Result<PreviewRedeemMultiAssetResponse, ContractError> {
+) -> ContractResult<PreviewRedeemMultiAssetResponse> {
     if shares.is_zero() {
         return Ok(PreviewRedeemMultiAssetResponse {
             expected_assets: Vec::new(),

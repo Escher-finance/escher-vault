@@ -6,6 +6,8 @@ use thiserror::Error;
 
 use crate::state::AccessControlRole;
 
+pub type ContractResult<T> = Result<T, ContractError>;
+
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
@@ -121,4 +123,7 @@ pub enum ContractError {
         current_block: u64,
         required_block: u64,
     },
+
+    #[error("deposit amount must be greater than or equal to {minimum_deposit}")]
+    DepositTooSmall { minimum_deposit: Uint128 },
 }

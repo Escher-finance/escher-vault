@@ -1,17 +1,20 @@
 use cosmwasm_std::{Addr, Storage};
 
 use crate::{
+    error::ContractResult,
     state::{AccessControlRole, ACCESS_CONTROL},
     ContractError,
 };
 
+/// Validates that the `sender` has to have the specified `role`
+///
 /// # Errors
 /// Will return error if validation fails
-pub fn only_role(
+pub fn validate_only_role(
     storage: &dyn Storage,
     sender: &Addr,
     role: AccessControlRole,
-) -> Result<(), ContractError> {
+) -> ContractResult<()> {
     let unauthorized_err = Err(ContractError::Unauthorized(role));
     let Ok(Some(addresses)) = ACCESS_CONTROL.may_load(storage, role.key()) else {
         return unauthorized_err;

@@ -3,13 +3,13 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use crate::asset::query_asset_info_decimals;
-use crate::error::ContractError;
+use crate::error::ContractResult;
+use crate::helpers::internal_update_minimum_deposit;
 use crate::helpers::validate_addrs;
 use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::staking::EscherHubQueryMsg;
-use crate::staking::EscherHubStakingLiquidity;
+use crate::staking::validate_and_store_staking_contract;
 use crate::state::{
     AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
     UNDERLYING_DECIMALS,
@@ -19,7 +19,7 @@ use crate::tower::{init_oracle_prices, update_tower_config};
 /// # Errors
 /// Will return error if migrate fails
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResult<Response> {
     Ok(Response::new())
 }
 
@@ -32,7 +32,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let underlying_decimals =
         query_asset_info_decimals(&deps.querier, msg.underlying_token.clone())?;
     cw20_base::contract::instantiate(
@@ -51,18 +51,6 @@ pub fn instantiate(
     UNDERLYING_ASSET.save(deps.storage, &msg.underlying_token)?;
     UNDERLYING_DECIMALS.save(deps.storage, &underlying_decimals)?;
 
-    // Save staking contract address if provided
-    if let Some(staking_contract) = msg.staking_contract {
-        let _ = deps
-            .querier
-            .query_wasm_smart::<EscherHubStakingLiquidity>(
-                staking_contract.clone(),
-                &EscherHubQueryMsg::StakingLiquidity {},
-            )
-            .map_err(|_| ContractError::InvalidStakingContract {})?;
-        crate::state::STAKING_CONTRACT.save(deps.storage, &staking_contract)?;
-    }
-
     ACCESS_CONTROL.save(
         deps.storage,
         AccessControlRole::Manager {}.key(),
@@ -73,6 +61,7 @@ pub fn instantiate(
         AccessControlRole::Oracle {}.key(),
         &validate_addrs(msg.oracles.into_iter())?,
     )?;
+
     let tower_config = update_tower_config(
         &mut deps.branch(),
         msg.tower_incentives,
@@ -81,6 +70,16 @@ pub fn instantiate(
         msg.incentives,
         msg.underlying_token,
     )?;
+
+    // Save staking contract address if provided
+    if let Some(staking_contract) = msg.staking_contract {
+        validate_and_store_staking_contract(
+            &mut deps,
+            &staking_contract,
+            &tower_config.lp_other_asset,
+        )?;
+    }
+
     init_oracle_prices(&mut deps.branch(), &tower_config)?;
 
     // Initialize entry fee configuration
@@ -91,6 +90,8 @@ pub fn instantiate(
             fee_recipient: msg.entry_fee_recipient,
         },
     )?;
+
+    internal_update_minimum_deposit(&mut deps, msg.minimum_deposit)?;
 
     Ok(Response::new())
 }
@@ -104,7 +105,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let sender = info.sender.clone();
     Ok(match msg {
         ExecuteMsg::AddToRole { role, address } => {
@@ -115,6 +116,12 @@ pub fn execute(
         }
         ExecuteMsg::OracleUpdatePrices { prices } => {
             crate::execute::oracle_update_prices(&mut deps, &sender, &prices)?
+        }
+        ExecuteMsg::UpdateStakingContract { address } => {
+            crate::execute::update_staking_contract(&mut deps, &info, &address)?
+        }
+        ExecuteMsg::UpdateMinimumDeposit { amount } => {
+            crate::execute::update_minimum_deposit(&mut deps, &info, amount)?
         }
         ExecuteMsg::Bond {
             amount,

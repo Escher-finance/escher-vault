@@ -1,9 +1,10 @@
 use std::collections::HashSet;
 
 use crate::{
+    error::ContractResult,
     msg::PreviewDepositResponse,
     responses::{generate_deposit_response, generate_deposit_with_fee_response},
-    state::EntryFeeConfig,
+    state::{EntryFeeConfig, MINIMUM_DEPOSIT},
 };
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
@@ -25,6 +26,8 @@ pub struct Tokens {
     pub total_assets: Uint128,
 }
 
+/// Helper to get the share and asset `AssetInfo`s and `total_shares` and `total_assets`
+///
 /// # Errors
 /// Will return error if queries fail
 pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
@@ -63,7 +66,7 @@ pub enum Rounding {
     Ceil,
 }
 
-/// Internal conversion
+/// Internal conversion from assets to shares
 ///
 /// # Errors
 /// Will return error if calculation fails
@@ -72,7 +75,7 @@ pub fn internal_convert_to_shares(
     total_assets: Uint128,
     assets: Uint128,
     rounding: Rounding,
-) -> Result<Uint128, StdError> {
+) -> StdResult<Uint128> {
     let frac = (total_shares + Uint128::one(), total_assets + Uint128::one());
     match rounding {
         Rounding::Ceil => assets.checked_mul_ceil(frac),
@@ -81,7 +84,7 @@ pub fn internal_convert_to_shares(
     .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-/// Internal conversion
+/// Internal conversion from shares to assets
 ///
 /// # Errors
 /// Will return error if calculation fails
@@ -90,7 +93,7 @@ pub fn internal_convert_to_assets(
     total_assets: Uint128,
     shares: Uint128,
     rounding: Rounding,
-) -> Result<Uint128, StdError> {
+) -> StdResult<Uint128> {
     let frac = (total_assets + Uint128::one(), total_shares + Uint128::one());
     match rounding {
         Rounding::Ceil => shares.checked_mul_ceil(frac),
@@ -108,6 +111,7 @@ pub enum PreviewDepositKind {
 }
 
 impl PreviewDepositKind {
+    /// Method to see whether `self` kind needs amounts correction
     #[must_use]
     pub fn needs_correction(&self) -> bool {
         match self {
@@ -142,16 +146,23 @@ pub fn calculate_entry_fee_share_amounts(
     (user_shares, fee_shares)
 }
 
-/// Preview deposit calculation
+/// Internal preview deposit validation and calculation
 ///
 /// # Errors
-/// Will return error if queries fail
+/// Will return error if queries or validation fails
 pub fn internal_preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
     preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<PreviewDepositResponse> {
+    let minimum_deposit = MINIMUM_DEPOSIT.load(deps.storage)?;
+    if assets < minimum_deposit {
+        return Err(StdError::generic_err(
+            ContractError::DepositTooSmall { minimum_deposit }.to_string(),
+        ));
+    }
+
     let Tokens {
         total_shares,
         mut total_assets,
@@ -176,15 +187,11 @@ pub fn internal_preview_deposit(
     })
 }
 
-// Internal unchecked `mint`
+/// Internal unchecked `mint`
 ///
 /// # Errors
 /// Will return error if storage queries or saves fail
-pub fn internal_mint(
-    deps: &mut DepsMut,
-    recipient: &str,
-    amount: Uint128,
-) -> Result<(), ContractError> {
+pub fn internal_mint(deps: &mut DepsMut, recipient: &str, amount: Uint128) -> ContractResult<()> {
     let mut config = cw20_base::state::TOKEN_INFO.load(deps.storage)?;
 
     // update supply and enforce cap
@@ -221,7 +228,7 @@ pub fn internal_deposit(
     assets: Uint128,
     shares: Uint128,
     via_receive: bool,
-) -> Result<Response, ContractError> {
+) -> ContractResult<Response> {
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
     let asset = Asset {
         amount: assets,
@@ -267,11 +274,23 @@ pub fn internal_deposit(
     }
 }
 
+/// Sets minimum deposit to `amount` if Some(`amount`), if `None` sets it to zero
+///
+/// # Errors
+/// Will return error if state storage fails
+pub fn internal_update_minimum_deposit(
+    deps: &mut DepsMut,
+    amount: Option<Uint128>,
+) -> ContractResult<()> {
+    MINIMUM_DEPOSIT.save(deps.storage, &amount.unwrap_or_default())?;
+    Ok(())
+}
+
 /// Validates addrs uniqueness, minimum and maximum length
 ///
 /// # Errors
 /// Will return error if validations fail
-pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, ContractError> {
+pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> ContractResult<Vec<Addr>> {
     let addrs = addrs
         .collect::<HashSet<_>>()
         .into_iter()
@@ -285,9 +304,11 @@ pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> Result<Vec<Addr>, Co
     Ok(addrs)
 }
 
+/// Validates `salt` for usage with ZKGM
+///
 /// # Errors
 /// Will return error if validations fail
-pub fn validate_salt(salt: &str) -> Result<(), ContractError> {
+pub fn validate_salt(salt: &str) -> ContractResult<()> {
     let hex = salt
         .strip_prefix("0x")
         .ok_or(ContractError::InvalidSalt {})?;

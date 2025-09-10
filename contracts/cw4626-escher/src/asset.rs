@@ -9,14 +9,16 @@ use cosmwasm_std::{
 use cw20;
 use cw_utils::must_pay;
 
-use crate::ContractError;
+use crate::{error::ContractResult, ContractError};
 
+/// Validates that `token_address` is a CW20 contract
+///
 /// # Errors
-/// Will return error validation fails
+/// Will return error if validation fails
 pub fn validate_cw20(
     querier: &QuerierWrapper,
     token_address: &Addr,
-) -> Result<cw20::TokenInfoResponse, ContractError> {
+) -> ContractResult<cw20::TokenInfoResponse> {
     querier
         .query_wasm_smart::<cw20::TokenInfoResponse>(
             token_address,
@@ -27,33 +29,29 @@ pub fn validate_cw20(
         })
 }
 
-#[must_use]
-pub fn get_asset_info_address(asset_info: &AssetInfo) -> String {
-    match asset_info {
-        AssetInfo::NativeToken { denom } => denom.clone(),
-        AssetInfo::Token { contract_addr } => contract_addr.to_string(),
-    }
-}
-
+/// Getter for the balance of an `AssetInfo`
+///
 /// # Errors
-/// Will return error query fails
+/// Will return error if query fails
 pub fn query_asset_info_balance(
     querier: &QuerierWrapper,
     asset_info: AssetInfo,
     addr: &Addr,
-) -> Result<Uint128, cosmwasm_std::StdError> {
+) -> StdResult<Uint128> {
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => query_token_balance(querier, contract_addr, addr),
         AssetInfo::NativeToken { denom } => query_balance(querier, addr, denom),
     }
 }
 
+/// Getter for the decimals of an `AssetInfo`
+///
 /// # Errors
-/// Will return error query fails
+/// Will return error if query fails
 pub fn query_asset_info_decimals(
     querier: &QuerierWrapper,
     asset_info: AssetInfo,
-) -> Result<u8, ContractError> {
+) -> ContractResult<u8> {
     match asset_info {
         AssetInfo::Token { contract_addr, .. } => {
             let cw20::TokenInfoResponse { decimals, .. } = validate_cw20(querier, &contract_addr)?;
@@ -63,7 +61,7 @@ pub fn query_asset_info_decimals(
     }
 }
 
-/// Only returns `WasmMsg` if `AssetInfo::Token`
+/// Returns `Some(WasmMsg)` if `AssetInfo::Token`, if `AssetInfo::NativeToken` it asserts via `must_pay`
 ///
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
@@ -71,7 +69,7 @@ pub fn assert_send_asset_to_contract(
     info: &MessageInfo,
     env: &Env,
     asset: Asset,
-) -> Result<Option<WasmMsg>, ContractError> {
+) -> ContractResult<Option<WasmMsg>> {
     let caller = info.sender.clone();
     let this = env.contract.address.clone();
     match asset.info {
@@ -93,9 +91,11 @@ pub fn assert_send_asset_to_contract(
     }
 }
 
+/// Sends `Asset` from this contract to a `receiver`
+///
 /// # Errors
-/// Will return error if messages fail to serialize or validation fails
-pub fn send_asset_from_contract(asset: Asset, receiver: &Addr) -> Result<CosmosMsg, ContractError> {
+/// Will return error if messages fail to serialize
+pub fn send_asset_from_contract(asset: Asset, receiver: &Addr) -> ContractResult<CosmosMsg> {
     let cosmos_msg = match asset.info {
         AssetInfo::NativeToken { denom } => CosmosMsg::Bank(BankMsg::Send {
             to_address: receiver.to_string(),
