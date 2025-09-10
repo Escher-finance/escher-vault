@@ -1,10 +1,6 @@
-use astroport::{
-    asset::AssetInfo,
-    pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
-};
+use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
 use cosmwasm_std::{
-    from_json, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response,
-    StdError, Uint128,
+    from_json, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
 };
 
 use crate::{
@@ -21,11 +17,9 @@ use crate::{
         generate_remove_role_response, generate_unbond_response, remove_liquidity_event,
         swap_event,
     },
-    staking::{
-        internal_bond, internal_unbond,
-    },
+    staking::{internal_bond, internal_unbond},
     state::{
-        AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
+        AccessControlRole, PricesMap, TowerConfig, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
     },
     tower::{
@@ -127,10 +121,12 @@ pub fn unbond(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
 
+    let TowerConfig { lp_other_asset, .. } = TOWER_CONFIG.load(deps.storage)?;
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = &env.contract.address;
 
-    let (unbond_msg, expected) = internal_unbond(deps, info, &staking_contract, amount)?;
+    let (unbond_msg, expected) =
+        internal_unbond(deps, info, lp_other_asset, &staking_contract, amount)?;
 
     Ok(generate_unbond_response(this, expected, &staking_contract).add_message(unbond_msg))
 }

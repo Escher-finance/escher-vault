@@ -170,6 +170,7 @@ pub fn internal_bond(
 pub fn internal_unbond(
     deps: &mut DepsMut,
     info: &MessageInfo,
+    other_lp_token: AssetInfo,
     staking_contract: &Addr,
     amount: Uint128,
 ) -> ContractResult<(WasmMsg, Uint128)> {
@@ -188,11 +189,7 @@ pub fn internal_unbond(
     // The staking contract's Receive handler will process the unbond when it receives the eBABY tokens
     let unbond_msg = asset_cw20_send_or_attach_funds(
         Asset {
-            info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(
-                    "bbn1cnx34p82zngq0uuaendsne0x4s5gsm7gpwk2es8zk8rz8tnj938qqyq8f9",
-                ), // eBABY contract
-            },
+            info: other_lp_token,
             amount,
         },
         staking_contract,
