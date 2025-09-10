@@ -46,6 +46,8 @@ pub enum ExecuteMsg {
     },
     /// Oracle update prices
     OracleUpdatePrices { prices: PricesMap },
+    /// Manager update staking contract
+    UpdateStakingContract { address: Addr },
     /// Manager bond
     Bond {
         amount: Uint128,

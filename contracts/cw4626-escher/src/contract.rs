@@ -113,6 +113,9 @@ pub fn execute(
         ExecuteMsg::OracleUpdatePrices { prices } => {
             crate::execute::oracle_update_prices(&mut deps, &sender, &prices)?
         }
+        ExecuteMsg::UpdateStakingContract { address } => {
+            crate::execute::update_staking_contract(&mut deps, &info, &address)?
+        }
         ExecuteMsg::Bond {
             amount,
             salt,

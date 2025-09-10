@@ -17,7 +17,7 @@ use crate::{
         generate_remove_role_response, generate_unbond_response, remove_liquidity_event,
         swap_event,
     },
-    staking::{internal_bond, internal_unbond},
+    staking::{internal_bond, internal_unbond, validate_and_store_staking_contract},
     state::{
         AccessControlRole, PricesMap, TowerConfig, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
@@ -88,6 +88,19 @@ pub fn oracle_update_prices(
         sender.as_ref(),
         prices,
     ))
+}
+
+/// # Errors
+/// Will return error if internal helper fails
+pub fn update_staking_contract(
+    deps: &mut DepsMut,
+    info: &MessageInfo,
+    address: &Addr,
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+    let TowerConfig { lp_other_asset, .. } = TOWER_CONFIG.load(deps.storage)?;
+    validate_and_store_staking_contract(deps, address, &lp_other_asset)?;
+    Ok(Response::new())
 }
 
 /// # Errors
