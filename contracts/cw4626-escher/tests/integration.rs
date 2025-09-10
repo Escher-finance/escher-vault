@@ -120,16 +120,29 @@ fn instantiate_cw20_asset(app: &mut App) -> AssetInfo {
 }
 
 mod staking_mock {
-    use cosmwasm_std::to_json_binary;
-    use cw4626_escher::staking::{EscherHubQueryMsg, EscherHubStakingLiquidity};
+    use cosmwasm_schema::cw_serde;
+    use cosmwasm_std::{to_json_binary, Timestamp};
+    use cw4626_escher::staking::{
+        EscherHubParameters, EscherHubQueryMsg, EscherHubStakingLiquidity,
+    };
+    use cw_storage_plus::Item;
 
     use super::*;
+
+    const A: Item<Addr> = Item::new("asset");
+
+    #[cw_serde]
+    pub struct InstantiateMsg {
+        pub other_lp: Addr,
+    }
+
     pub fn instantiate(
-        _deps: DepsMut,
+        deps: DepsMut,
         _env: Env,
         _info: MessageInfo,
-        _msg: Empty,
+        msg: InstantiateMsg,
     ) -> StdResult<Response> {
+        A.save(deps.storage, &msg.other_lp)?;
         Ok(Response::default())
     }
     pub fn execute(
@@ -140,26 +153,58 @@ mod staking_mock {
     ) -> StdResult<Response> {
         Ok(Response::default())
     }
-    pub fn query(_deps: Deps, _env: Env, msg: EscherHubQueryMsg) -> StdResult<Binary> {
+    pub fn query(deps: Deps, _env: Env, msg: EscherHubQueryMsg) -> StdResult<Binary> {
         match msg {
             EscherHubQueryMsg::StakingLiquidity {} => to_json_binary(&EscherHubStakingLiquidity {
                 exchange_rate: Decimal::one(),
-                ..Default::default()
+                time: Timestamp::default(),
+                amount: Uint128::default(),
+                reward: Uint128::default(),
+                delegated: Uint128::default(),
+                total_supply: Uint128::default(),
+                adjusted_supply: Uint128::default(),
+                unclaimed_reward: Uint128::default(),
             }),
-            _ => todo!(),
+            EscherHubQueryMsg::Parameters {} => {
+                let cw20_address = A.load(deps.storage)?;
+                to_json_binary(&EscherHubParameters {
+                    cw20_address,
+                    underlying_coin_denom: String::default(),
+                    liquidstaking_denom: String::default(),
+                    ucs03_relay_contract: String::default(),
+                    unbonding_time: u64::default(),
+                    reward_address: Addr::unchecked("reward"),
+                    fee_rate: Decimal::default(),
+                    fee_receiver: Addr::unchecked("fee_receiver"),
+                    batch_period: u64::default(),
+                    min_bond: Uint128::default(),
+                    min_unbond: Uint128::default(),
+                    batch_limit: u32::default(),
+                    transfer_handler: String::default(),
+                    transfer_fee: Uint128::default(),
+                    zkgm_token_minter: String::default(),
+                })
+            }
         }
     }
 }
 
-fn instantiate_staking(app: &mut App) -> Addr {
+fn instantiate_staking(app: &mut App, other_lp: Addr) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         staking_mock::execute,
         staking_mock::instantiate,
         staking_mock::query,
     )));
     let api = app.api();
-    app.instantiate_contract(code, addr(api, ADMIN), &Empty {}, &[], "staking", None)
-        .unwrap()
+    app.instantiate_contract(
+        code,
+        addr(api, ADMIN),
+        &staking_mock::InstantiateMsg { other_lp },
+        &[],
+        "staking",
+        None,
+    )
+    .unwrap()
 }
 
 mod lp_mock {
@@ -171,10 +216,12 @@ mod lp_mock {
     use super::*;
 
     const A: Item<AssetInfo> = Item::new("asset");
+    const B: Item<AssetInfo> = Item::new("other_lp");
 
     #[cw_serde]
     pub struct InstantiateMsg {
         pub underlying: AssetInfo,
+        pub other_lp: AssetInfo,
     }
 
     pub fn instantiate(
@@ -184,6 +231,7 @@ mod lp_mock {
         msg: InstantiateMsg,
     ) -> StdResult<Response> {
         A.save(deps.storage, &msg.underlying)?;
+        B.save(deps.storage, &msg.other_lp)?;
         Ok(Response::default())
     }
     pub fn execute(
@@ -198,13 +246,9 @@ mod lp_mock {
         match msg {
             pair_concentrated::QueryMsg::Pair {} => {
                 let a = A.load(deps.storage)?;
+                let b = B.load(deps.storage)?;
                 to_json_binary(&PairInfo {
-                    asset_infos: Vec::from([
-                        a,
-                        AssetInfo::NativeToken {
-                            denom: "other_lp_tkn".to_string(),
-                        },
-                    ]),
+                    asset_infos: Vec::from([a, b]),
                     contract_addr: make_valid_addr(),
                     liquidity_token: make_valid_addr().to_string(),
                     pair_type: astroport::factory::PairType::Concentrated {},
@@ -216,7 +260,7 @@ mod lp_mock {
     }
 }
 
-fn instantiate_lp(app: &mut App, underlying_token: AssetInfo) -> Addr {
+fn instantiate_lp(app: &mut App, underlying_token: AssetInfo, other_lp_token: AssetInfo) -> Addr {
     let code = app.store_code(Box::new(ContractWrapper::new(
         lp_mock::execute,
         lp_mock::instantiate,
@@ -228,6 +272,7 @@ fn instantiate_lp(app: &mut App, underlying_token: AssetInfo) -> Addr {
         addr(api, ADMIN),
         &lp_mock::InstantiateMsg {
             underlying: underlying_token,
+            other_lp: other_lp_token,
         },
         &[],
         "lp",
@@ -339,8 +384,12 @@ fn proper_instantiate(app: &mut App, cw20_underlying: bool, with_fee: bool) -> A
     } else {
         instantiate_denom_asset(app)
     };
-    let staking = instantiate_staking(app);
-    let lp = instantiate_lp(app, asset.clone());
+    let other_lp = Addr::unchecked("other_lp");
+    let other_lp_asset = AssetInfo::Token {
+        contract_addr: other_lp.clone(),
+    };
+    let staking = instantiate_staking(app, other_lp);
+    let lp = instantiate_lp(app, asset.clone(), other_lp_asset);
     let tower_incentives = instantiate_incentives(app);
     instantiate_vault(
         app,
@@ -429,7 +478,7 @@ fn vault_exchange_rate_query_returns_pps_string() {
     let prices = HashMap::from_iter(
         [
             (
-                "other_lp_tkn".to_string(),
+                Addr::unchecked("other_lp").to_string(),
                 Decimal::from_str("1.0").unwrap(),
             ),
             ("incentive1".to_string(), Decimal::from_str("1.0").unwrap()),
@@ -580,7 +629,7 @@ fn deposit_cw20_no_yield_must_be_one_to_one() {
     let prices = HashMap::from_iter(
         [
             (
-                "other_lp_tkn".to_string(),
+                Addr::unchecked("other_lp").to_string(),
                 Decimal::from_str("1.78786").unwrap(),
             ),
             ("incentive1".to_string(), Decimal::from_str("0.8").unwrap()),
@@ -793,7 +842,7 @@ fn swap_insufficient_funds_errors() {
             &ExecuteMsg::Swap {
                 amount: Uint128::new(1),
                 asset_info: AssetInfo::NativeToken {
-                    denom: "other_lp_tkn".to_string(),
+                    denom: Addr::unchecked("other_lp").to_string(),
                 },
             },
             &[],
@@ -815,7 +864,7 @@ fn swap_valid_with_exact_balance_emits_event() {
     let prices = HashMap::from_iter(
         [
             (
-                "other_lp_tkn".to_string(),
+                Addr::unchecked("other_lp").to_string(),
                 Decimal::from_str("1.0").unwrap(),
             ),
             ("incentive1".to_string(), Decimal::from_str("1.0").unwrap()),
@@ -1030,7 +1079,13 @@ fn instantiate_rejects_invalid_staking_contract() {
     // Use an address that is not a contract with the expected query interface
     let invalid_staking = make_valid_addr();
     let underlying = instantiate_denom_asset(&mut app);
-    let lp = instantiate_lp(&mut app, underlying.clone());
+    let lp = instantiate_lp(
+        &mut app,
+        underlying.clone(),
+        AssetInfo::Token {
+            contract_addr: Addr::unchecked("other lp"),
+        },
+    );
     let tower_incentives = instantiate_incentives(&mut app);
 
     let code = app.store_code(Box::new(ContractWrapper::new(
@@ -1194,7 +1249,7 @@ fn deposit_cw20_with_fee_no_yield_must_be_one_to_one() {
     let prices = HashMap::from_iter(
         [
             (
-                "other_lp_tkn".to_string(),
+                Addr::unchecked("other_lp").to_string(),
                 Decimal::from_str("1.78786").unwrap(),
             ),
             ("incentive1".to_string(), Decimal::from_str("0.8").unwrap()),
@@ -1376,7 +1431,7 @@ fn deposit_native_no_yield_must_be_one_to_one() {
     let prices = HashMap::from_iter(
         [
             (
-                "other_lp_tkn".to_string(),
+                Addr::unchecked("other_lp").to_string(),
                 Decimal::from_str("1.78786").unwrap(),
             ),
             ("incentive1".to_string(), Decimal::from_str("0.8").unwrap()),
@@ -1508,7 +1563,7 @@ fn deposit_native_with_fee_no_yield_must_be_one_to_one() {
     let prices = HashMap::from_iter(
         [
             (
-                "other_lp_tkn".to_string(),
+                Addr::unchecked("other_lp").to_string(),
                 Decimal::from_str("1.78786").unwrap(),
             ),
             ("incentive1".to_string(), Decimal::from_str("0.8").unwrap()),

@@ -42,7 +42,6 @@ pub struct EscherHubParameters {
 }
 
 #[cw_serde]
-#[derive(Default)]
 pub struct EscherHubStakingLiquidity {
     pub amount: Uint128,
     pub delegated: Uint128,
