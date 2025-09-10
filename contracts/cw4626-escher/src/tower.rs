@@ -24,6 +24,8 @@ use crate::{
     ContractError,
 };
 
+/// Makes all necessary checks that the pool can be integrated in the vault and if so stores it
+///
 /// # Errors
 /// Will return error if arg validation fails
 pub fn update_tower_config(
@@ -86,6 +88,8 @@ pub fn update_tower_config(
     Ok(config)
 }
 
+/// Defines which tokens should be in the oracle prices, initializing the map with zero values
+///
 /// # Errors
 /// Will return error if storage update fails
 pub fn init_oracle_prices(deps: &mut DepsMut, tower_config: &TowerConfig) -> ContractResult<()> {
@@ -105,6 +109,9 @@ pub fn init_oracle_prices(deps: &mut DepsMut, tower_config: &TowerConfig) -> Con
     Ok(())
 }
 
+/// Validates and updates the oracle prices making sure that no price is zero and has the right
+/// tokens
+///
 /// # Errors
 /// Will return error if queries or validation fails
 pub fn update_and_validate_prices(deps: &mut DepsMut, prices: PricesMap) -> ContractResult<()> {
@@ -124,6 +131,8 @@ pub fn update_and_validate_prices(deps: &mut DepsMut, prices: PricesMap) -> Cont
     Ok(())
 }
 
+/// Getter for oracle prices which checks that they cannot be zero
+///
 /// # Errors
 /// Will return error if queries or validation fails
 pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> ContractResult<PricesMap> {
@@ -134,6 +143,8 @@ pub fn get_and_validate_oracle_prices(storage: &dyn Storage) -> ContractResult<P
     Ok(prices)
 }
 
+/// Generates required messages to add liquidity to the pool with the specified amounts
+///
 /// # Errors
 /// Will return error if messages fail to serialize
 pub fn add_tower_liquidity(
@@ -184,6 +195,7 @@ pub fn add_tower_liquidity(
     Ok(msgs)
 }
 
+/// Generates required messages to remove liquidity from the pool with the specified amount
 /// NOTE: This also claims incentives everytime
 ///
 /// # Errors
@@ -217,6 +229,8 @@ pub fn remove_tower_liquidity(
     ]))
 }
 
+/// Generates required messages to claim all pending pool incentives
+///
 /// # Errors
 /// Will return error if messages fail to serialize
 pub fn claim_tower_incentives(tower_config: &TowerConfig) -> ContractResult<CosmosMsg> {
@@ -230,7 +244,7 @@ pub fn claim_tower_incentives(tower_config: &TowerConfig) -> ContractResult<Cosm
     }))
 }
 
-/// Calculates all available balances
+/// Calculates all available balances of the tracked vault tokens
 ///
 /// # Errors
 /// Will return error if queries fail
@@ -386,6 +400,8 @@ pub fn tower_swap(
     Ok(msgs)
 }
 
+/// Getter of the current liquidity deposit in the pool (as `lp_token` amount)
+///
 /// # Errors
 /// Will return error if query fails
 pub fn get_tower_lp_token_deposit(
@@ -402,7 +418,8 @@ pub fn get_tower_lp_token_deposit(
     )
 }
 
-/// NOTE: This query errors if the user has not created a position yet
+/// Getter for pending rewards in the liquidity pool
+/// NOTE: This Astroport query errors if the user has not created a position yet
 /// <https://github.com/quasar-finance/babydex/blob/8fce1b955a1769a1f4286c73cbfd36701753ac1e/contracts/tokenomics/incentives/src/query.rs#L174>
 ///
 /// # Errors
