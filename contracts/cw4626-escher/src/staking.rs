@@ -1,6 +1,8 @@
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_json_binary, Addr, Decimal, DepsMut, StdError, Timestamp, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_json_binary, Addr, Decimal, DepsMut, MessageInfo, StdError, Timestamp, Uint128, WasmMsg,
+};
 
 use crate::{
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
@@ -159,4 +161,48 @@ pub fn internal_bond(
     )?;
 
     Ok((bond_msg, expected))
+}
+
+/// Returns (`unbond_msg`, `expected`)
+///
+/// # Errors
+/// Will return error if messages fail to serialize or validation fails
+pub fn internal_unbond(
+    deps: &mut DepsMut,
+    info: &MessageInfo,
+    staking_contract: &Addr,
+    amount: Uint128,
+) -> ContractResult<(WasmMsg, Uint128)> {
+    // Query the staking contract to get current liquidity info
+    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
+        staking_contract.clone(),
+        &EscherHubQueryMsg::StakingLiquidity {},
+    )?;
+
+    // Calculate the expected amount of underlying tokens to receive
+    let expected = amount
+        .checked_mul_floor(exchange_rate)
+        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
+
+    // Create the unbond message by sending eBABY tokens to the staking contract
+    // The staking contract's Receive handler will process the unbond when it receives the eBABY tokens
+    let unbond_msg = asset_cw20_send_or_attach_funds(
+        Asset {
+            info: AssetInfo::Token {
+                contract_addr: Addr::unchecked(
+                    "bbn1cnx34p82zngq0uuaendsne0x4s5gsm7gpwk2es8zk8rz8tnj938qqyq8f9",
+                ), // eBABY contract
+            },
+            amount,
+        },
+        staking_contract,
+        to_json_binary(&EscherHubExecuteMsg::Unstake {
+            amount,
+            recipient: Some(info.sender.to_string()), // Send unstaked tokens back to the caller
+            recipient_channel_id: None,
+            recipient_ibc_channel_id: None,
+        })?,
+    )?;
+
+    Ok((unbond_msg, expected))
 }

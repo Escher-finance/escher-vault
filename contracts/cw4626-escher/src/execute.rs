@@ -1,15 +1,15 @@
 use astroport::{
-    asset::{Asset, AssetInfo},
+    asset::AssetInfo,
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response,
+    from_json, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response,
     StdError, Uint128,
 };
 
 use crate::{
     access_control::validate_only_role,
-    asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
+    asset::query_asset_info_balance,
     error::ContractResult,
     helpers::{internal_deposit, validate_addrs, PreviewDepositKind},
     msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
@@ -21,7 +21,9 @@ use crate::{
         generate_remove_role_response, generate_unbond_response, remove_liquidity_event,
         swap_event,
     },
-    staking::{internal_bond, EscherHubExecuteMsg, EscherHubQueryMsg, EscherHubStakingLiquidity},
+    staking::{
+        internal_bond, internal_unbond,
+    },
     state::{
         AccessControlRole, PricesMap, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
         UNDERLYING_ASSET,
@@ -128,36 +130,7 @@ pub fn unbond(
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let this = &env.contract.address;
 
-    // Query the staking contract to get current liquidity info
-    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
-        staking_contract.clone(),
-        &EscherHubQueryMsg::StakingLiquidity {},
-    )?;
-
-    // Calculate the expected amount of underlying tokens to receive
-    let expected = amount
-        .checked_mul_floor(exchange_rate)
-        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
-
-    // Create the unbond message by sending eBABY tokens to the staking contract
-    // The staking contract's Receive handler will process the unbond when it receives the eBABY tokens
-    let unbond_msg = asset_cw20_send_or_attach_funds(
-        Asset {
-            info: AssetInfo::Token {
-                contract_addr: Addr::unchecked(
-                    "bbn1cnx34p82zngq0uuaendsne0x4s5gsm7gpwk2es8zk8rz8tnj938qqyq8f9",
-                ), // eBABY contract
-            },
-            amount,
-        },
-        &staking_contract,
-        to_json_binary(&EscherHubExecuteMsg::Unstake {
-            amount,
-            recipient: Some(info.sender.to_string()), // Send unstaked tokens back to the caller
-            recipient_channel_id: None,
-            recipient_ibc_channel_id: None,
-        })?,
-    )?;
+    let (unbond_msg, expected) = internal_unbond(deps, info, &staking_contract, amount)?;
 
     Ok(generate_unbond_response(this, expected, &staking_contract).add_message(unbond_msg))
 }
