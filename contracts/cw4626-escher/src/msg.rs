@@ -73,13 +73,13 @@ pub enum ExecuteMsg {
     //
     /// Mints shares to receiver by depositing exact amount of underlying tokens
     Deposit { assets: Uint128, receiver: Addr },
-    /// Request redemption with proper multi-asset distribution
+    /// Create a request for redemption with proper multi-asset distribution
     RequestRedeem {
         shares: Uint128,
         receiver: Addr,
         owner: Addr,
     },
-    /// Complete redemption by burning shares AND distributing assets in one transaction
+    /// Manager complete redemption by burning shares AND distributing assets in one transaction
     CompleteRedemption { redemption_id: u64, tx_hash: String },
     /// CW20 receive
     Receive(cw20::Cw20ReceiveMsg),
