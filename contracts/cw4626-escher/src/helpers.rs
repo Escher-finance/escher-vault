@@ -4,7 +4,7 @@ use crate::{
     error::ContractResult,
     msg::PreviewDepositResponse,
     responses::{generate_deposit_response, generate_deposit_with_fee_response},
-    state::EntryFeeConfig,
+    state::{EntryFeeConfig, MINIMUM_DEPOSIT},
 };
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
@@ -146,16 +146,23 @@ pub fn calculate_entry_fee_share_amounts(
     (user_shares, fee_shares)
 }
 
-/// Internal preview deposit calculation
+/// Internal preview deposit validation and calculation
 ///
 /// # Errors
-/// Will return error if queries fail
+/// Will return error if queries or validation fails
 pub fn internal_preview_deposit(
     this: &Addr,
     deps: &Deps,
     assets: Uint128,
     preview_deposit_kind: PreviewDepositKind,
 ) -> StdResult<PreviewDepositResponse> {
+    let minimum_deposit = MINIMUM_DEPOSIT.load(deps.storage)?;
+    if assets < minimum_deposit {
+        return Err(StdError::generic_err(
+            ContractError::DepositTooSmall { minimum_deposit }.to_string(),
+        ));
+    }
+
     let Tokens {
         total_shares,
         mut total_assets,
