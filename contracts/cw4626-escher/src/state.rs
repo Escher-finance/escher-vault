@@ -111,13 +111,15 @@ pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
 /// Prices map in terms of the underlying asset
 /// NOTE: It's an Item of a `HashMap` and not a Map because it needs to be read & updated completely every time
 pub const ORACLE_PRICES: Item<PricesMap> = Item::new("oracle-prices");
-// Staking contract configuration
+/// Staking contract configuration
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
 // Redemption system
 pub const REDEMPTION_COUNTER: Item<u64> = Item::new("redemption_counter");
 pub const REDEMPTION_REQUESTS: Map<u64, RedemptionRequest> = Map::new("redemption_requests");
 pub const USER_REDEMPTION_IDS: Map<Addr, Vec<u64>> = Map::new("user_redemption_ids");
-// Locked shares system
+/// Locked shares system
 pub const LOCKED_SHARES: Item<LockedShares> = Item::new("locked_shares");
-// Entry fee configuration for deposits/mints
+/// Entry fee configuration for deposits/mints
 pub const ENTRY_FEE_CONFIG: Item<EntryFeeConfig> = Item::new("entry_fee_config");
+/// Minimum assets deposit amount
+pub const MINIMUM_DEPOSIT: Item<Uint128> = Item::new("minimum-deposit");

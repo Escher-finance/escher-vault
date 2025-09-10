@@ -9,6 +9,7 @@ use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::validate_and_store_staking_contract;
+use crate::state::MINIMUM_DEPOSIT;
 use crate::state::{
     AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
     UNDERLYING_DECIMALS,
@@ -60,6 +61,7 @@ pub fn instantiate(
         AccessControlRole::Oracle {}.key(),
         &validate_addrs(msg.oracles.into_iter())?,
     )?;
+
     let tower_config = update_tower_config(
         &mut deps.branch(),
         msg.tower_incentives,
@@ -88,6 +90,8 @@ pub fn instantiate(
             fee_recipient: msg.entry_fee_recipient,
         },
     )?;
+
+    MINIMUM_DEPOSIT.save(deps.storage, &msg.minimum_deposit.unwrap_or_default())?;
 
     Ok(Response::new())
 }

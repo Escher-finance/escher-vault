@@ -24,6 +24,7 @@ pub struct InstantiateMsg {
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
     pub staking_contract: Option<Addr>,
+    pub minimum_deposit: Option<Uint128>,
     // Entry fee configuration (applied on deposit/mint)
     pub entry_fee_rate: Option<Decimal>, // e.g., 0.1 (10%); None => 0
     pub entry_fee_recipient: Addr,       // If None, defaults to fee_recipient
