@@ -11,6 +11,37 @@ use crate::{
 };
 
 #[cw_serde]
+pub struct EscherHubParameters {
+    pub underlying_coin_denom: String,
+    pub liquidstaking_denom: String,
+    pub ucs03_relay_contract: String,
+    pub unbonding_time: u64,
+    // liquid_staking denom/cw20 contract address
+    pub cw20_address: Addr,
+    // reward contract address
+    pub reward_address: Addr,
+    // fee fee_rate
+    pub fee_rate: Decimal,
+    // fee receiver
+    pub fee_receiver: Addr,
+    // batch period range in seconds to execute batch
+    pub batch_period: u64,
+    // minimum bond/stake amount
+    pub min_bond: Uint128,
+    // minimum unbond/unstake amount
+    pub min_unbond: Uint128,
+    // limit per batch
+    // this is the max number of unbonding records that can be processed in one batch
+    pub batch_limit: u32,
+    // handler of cw20 staking token transfer, as ucs03 fee payer address and also minted cw20 staking token receiver
+    pub transfer_handler: String,
+    // ucs03 transfer fee from babylon to other
+    pub transfer_fee: Uint128,
+    // zkgm token_minter address as cw20 allowance spender
+    pub zkgm_token_minter: String,
+}
+
+#[cw_serde]
 #[derive(Default)]
 pub struct EscherHubStakingLiquidity {
     pub amount: Uint128,
@@ -28,6 +59,8 @@ pub struct EscherHubStakingLiquidity {
 pub enum EscherHubQueryMsg {
     #[returns(EscherHubStakingLiquidity)]
     StakingLiquidity {},
+    #[returns(EscherHubParameters)]
+    Parameters {},
 }
 
 #[cw_serde]

@@ -146,6 +146,7 @@ mod staking_mock {
                 exchange_rate: Decimal::one(),
                 ..Default::default()
             }),
+            _ => todo!(),
         }
     }
 }
