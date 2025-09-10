@@ -274,6 +274,18 @@ pub fn internal_deposit(
     }
 }
 
+/// Sets minimum deposit to `amount` if Some(`amount`), if `None` sets it to zero
+///
+/// # Errors
+/// Will return error if state storage fails
+pub fn internal_update_minimum_deposit(
+    deps: &mut DepsMut,
+    amount: Option<Uint128>,
+) -> ContractResult<()> {
+    MINIMUM_DEPOSIT.save(deps.storage, &amount.unwrap_or_default())?;
+    Ok(())
+}
+
 /// Validates addrs uniqueness, minimum and maximum length
 ///
 /// # Errors

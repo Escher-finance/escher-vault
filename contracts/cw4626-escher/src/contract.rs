@@ -4,12 +4,12 @@ use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Resp
 
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractResult;
+use crate::helpers::internal_update_minimum_deposit;
 use crate::helpers::validate_addrs;
 use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::validate_and_store_staking_contract;
-use crate::state::MINIMUM_DEPOSIT;
 use crate::state::{
     AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
     UNDERLYING_DECIMALS,
@@ -91,7 +91,7 @@ pub fn instantiate(
         },
     )?;
 
-    MINIMUM_DEPOSIT.save(deps.storage, &msg.minimum_deposit.unwrap_or_default())?;
+    internal_update_minimum_deposit(&mut deps, msg.minimum_deposit)?;
 
     Ok(Response::new())
 }
@@ -119,6 +119,9 @@ pub fn execute(
         }
         ExecuteMsg::UpdateStakingContract { address } => {
             crate::execute::update_staking_contract(&mut deps, &info, &address)?
+        }
+        ExecuteMsg::UpdateMinimumDeposit { amount } => {
+            crate::execute::update_minimum_deposit(&mut deps, &info, amount)?
         }
         ExecuteMsg::Bond {
             amount,

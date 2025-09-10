@@ -7,7 +7,9 @@ use crate::{
     access_control::validate_only_role,
     asset::query_asset_info_balance,
     error::ContractResult,
-    helpers::{internal_deposit, validate_addrs, PreviewDepositKind},
+    helpers::{
+        internal_deposit, internal_update_minimum_deposit, validate_addrs, PreviewDepositKind,
+    },
     msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
     receive::receive_deposit,
@@ -100,6 +102,18 @@ pub fn update_staking_contract(
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     let TowerConfig { lp_other_asset, .. } = TOWER_CONFIG.load(deps.storage)?;
     validate_and_store_staking_contract(deps, address, &lp_other_asset)?;
+    Ok(Response::new())
+}
+
+/// # Errors
+/// Will return error if internal helper fails
+pub fn update_minimum_deposit(
+    deps: &mut DepsMut,
+    info: &MessageInfo,
+    amount: Uint128,
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+    internal_update_minimum_deposit(deps, Some(amount))?;
     Ok(Response::new())
 }
 
