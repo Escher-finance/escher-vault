@@ -269,7 +269,7 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
 /// limit: max number of items to return (cap to 200, default 50)
 ///
 /// # Errors
-/// 
+///
 /// Returns `StdError` if there's an issue accessing storage or parsing data
 pub fn all_redemption_requests(
     deps: &Deps,
