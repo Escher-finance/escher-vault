@@ -256,7 +256,10 @@ pub enum QueryMsg {
     RedemptionStats,
     /// List all redemption requests with pagination
     #[returns(AllRedemptionRequestsResponse)]
-    AllRedemptionRequests { start_after: Option<u64>, limit: Option<u32> },
+    AllRedemptionRequests {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 
     //
     // CW4626

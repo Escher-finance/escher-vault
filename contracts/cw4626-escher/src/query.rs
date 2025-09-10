@@ -8,16 +8,16 @@ use crate::{
         internal_preview_deposit, PreviewDepositKind, Rounding, Tokens,
     },
     msg::{
-        AccessControlRoleResponse, AssetResponse, ConfigResponse, ConvertToAssetsResponse,
-        ConvertToSharesResponse, ExchangeRateResponse, GitInfoResponse, LpPositionResponse,
-        MaxDepositResponse, MaxRedeemResponse, OraclePricesResponse, OracleTokensListResponse,
-        PendingIncentivesResponse, PreviewDepositResponse, PreviewRedeemMultiAssetResponse,
-        PreviewRedeemResponse, RedemptionRequestResponse, RedemptionStatsResponse,
-        TotalAssetsResponse, UserRedemptionRequestsResponse, AllRedemptionRequestsResponse,
+        AccessControlRoleResponse, AllRedemptionRequestsResponse, AssetResponse, ConfigResponse,
+        ConvertToAssetsResponse, ConvertToSharesResponse, ExchangeRateResponse, GitInfoResponse,
+        LpPositionResponse, MaxDepositResponse, MaxRedeemResponse, OraclePricesResponse,
+        OracleTokensListResponse, PendingIncentivesResponse, PreviewDepositResponse,
+        PreviewRedeemMultiAssetResponse, PreviewRedeemResponse, RedemptionRequestResponse,
+        RedemptionStatsResponse, TotalAssetsResponse, UserRedemptionRequestsResponse,
     },
     state::{
-        AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, STAKING_CONTRACT,
-        TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
+        STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
     },
     tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
 };
@@ -282,8 +282,15 @@ pub fn all_redemption_requests(
         }
         next_id += 1;
     }
-    let next_start_after = if next_id <= total { Some(next_id - 1) } else { None };
-    Ok(AllRedemptionRequestsResponse { requests: out, next_start_after })
+    let next_start_after = if next_id <= total {
+        Some(next_id - 1)
+    } else {
+        None
+    };
+    Ok(AllRedemptionRequestsResponse {
+        requests: out,
+        next_start_after,
+    })
 }
 
 /// # Errors
@@ -316,7 +323,8 @@ mod tests {
     use super::*;
     use crate::state::{
         AccessControlRole, RedemptionRequest, RedemptionStatus, TowerConfig, ACCESS_CONTROL,
-        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
+        USER_REDEMPTION_IDS,
     };
     use astroport::asset::{Asset, AssetInfo};
     use cosmwasm_std::{testing::mock_dependencies, Addr, DepsMut, Uint128};
@@ -491,14 +499,22 @@ mod tests {
                 receiver: Addr::unchecked(format!("cosmos1recv{i}")),
                 shares_locked: Uint128::new(100 * i as u128),
                 expected_assets: vec![],
-                status: if i % 2 == 0 { RedemptionStatus::Completed(cosmwasm_std::Timestamp::from_seconds(1)) } else { RedemptionStatus::Pending },
+                status: if i % 2 == 0 {
+                    RedemptionStatus::Completed(cosmwasm_std::Timestamp::from_seconds(1))
+                } else {
+                    RedemptionStatus::Pending
+                },
                 created_at: 1,
                 completed_at: None,
                 completion_tx_hash: None,
             };
-            REDEMPTION_REQUESTS.save(deps.as_mut().storage, i, &req).unwrap();
+            REDEMPTION_REQUESTS
+                .save(deps.as_mut().storage, i, &req)
+                .unwrap();
         }
-        REDEMPTION_COUNTER.save(deps.as_mut().storage, &3u64).unwrap();
+        REDEMPTION_COUNTER
+            .save(deps.as_mut().storage, &3u64)
+            .unwrap();
 
         // page 1
         let page1 = all_redemption_requests(&deps.as_ref(), None, Some(2)).unwrap();
@@ -508,7 +524,8 @@ mod tests {
         assert_eq!(page1.next_start_after, Some(2));
 
         // page 2
-        let page2 = all_redemption_requests(&deps.as_ref(), page1.next_start_after, Some(2)).unwrap();
+        let page2 =
+            all_redemption_requests(&deps.as_ref(), page1.next_start_after, Some(2)).unwrap();
         assert_eq!(page2.requests.len(), 1);
         assert_eq!(page2.requests[0].id, 3);
         assert_eq!(page2.next_start_after, None);
