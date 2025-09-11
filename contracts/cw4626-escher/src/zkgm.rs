@@ -103,15 +103,15 @@ pub fn send_token_order_v2_and_call_lst(
     quote_token: String,
     quote_amount: Uint128,
     salt: String,
-    lst_contract: String,
+    proxy_account_address: String,
     contract_calldata: Bytes,
 ) -> Result<Binary, ContractError> {
-    let recipient_address = match Bytes::from_str(lst_contract.as_str()) {
+    let proxy_account_address = match Bytes::from_str(proxy_account_address.as_str()) {
         Ok(rec) => rec,
         Err(_) => {
             return Err(ContractError::InvalidAddress {
-                kind: "recipient".into(),
-                address: lst_contract,
+                kind: "proxy_account_address".into(),
+                address: proxy_account_address,
                 reason: "address must be in hex and starts with 0x".to_string(),
             })
         }
@@ -141,7 +141,7 @@ pub fn send_token_order_v2_and_call_lst(
         opcode: OP_TOKEN_ORDER,
         operand: TokenOrderV2 {
             sender: sender_bytes,
-            receiver: Vec::from(recipient_address.clone()).into(),
+            receiver: Vec::from(proxy_account_address.clone()).into(),
             base_token: base_token.as_bytes().to_vec().into(),
             base_amount: AlloyUint256::from(base_amount.u128()),
             quote_token: Vec::from(quote_token).into(),
@@ -159,7 +159,7 @@ pub fn send_token_order_v2_and_call_lst(
         operand: Call {
             sender: sender.as_bytes().to_vec().into(),
             eureka: false,
-            contract_address: Vec::from(recipient_address).into(),
+            contract_address: Vec::from(proxy_account_address).into(),
             contract_calldata,
         }
         .abi_encode_params()
