@@ -83,4 +83,11 @@ pub enum ContractError {
 
     #[error("redemption request {id} already completed")]
     RedemptionAlreadyCompleted { id: u64 },
+
+    #[error("invalid {kind} address: {address}, reason: {reason}")]
+    InvalidAddress {
+        kind: String,
+        address: String,
+        reason: String,
+    },
 }
