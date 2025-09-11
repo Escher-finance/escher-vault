@@ -25,6 +25,13 @@ thiserror = { workspace = true }
 astroport = { workspace = true }
 astroport-pair = { workspace = true }
 astroport-pair-concentrated = { workspace = true }
+unionlabs-primitives = { workspace = true }
+ucs03-zkgm = { workspace = true }
+alloy = { workspace = true }
+alloy-primitives  =  { workspace = true }
+ibc-union-spec = { workspace = true }
+lst = { workspace = true }
+unionlabs = { workspace = true}
 
 [build-dependencies]
 vergen-git2 = { workspace = true }

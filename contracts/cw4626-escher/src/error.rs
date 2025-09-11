@@ -126,4 +126,11 @@ pub enum ContractError {
 
     #[error("deposit amount must be greater than or equal to {minimum_deposit}")]
     DepositTooSmall { minimum_deposit: Uint128 },
+
+    #[error("invalid {kind} address: {address}, reason: {reason}")]
+    InvalidAddress {
+        kind: String,
+        address: String,
+        reason: String,
+    },
 }

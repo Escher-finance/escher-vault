@@ -14,5 +14,6 @@ pub mod responses;
 pub mod staking;
 pub mod state;
 pub mod tower;
+pub mod zkgm;
 
 pub use crate::error::ContractError;

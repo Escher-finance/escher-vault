@@ -147,6 +147,17 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(cw20::Logo),
+    /// Dev only
+    /// TODO: remove this
+    TokenOrderV2 {
+        ucs03: Addr,
+        channel_id: u32,
+        receiver: String,
+        amount: Uint128,
+        denom: String,
+        quote_token: String,
+        salt: String,
+    },
 }
 
 #[cw_serde]
