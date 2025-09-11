@@ -495,6 +495,10 @@ mod tests {
         let env = mock_env();
         setup_test_contract(&mut deps.as_mut());
 
+        PAUSED_STATUS
+            .save(&mut deps.storage, &PausedStatus::NotPaused {})
+            .unwrap();
+
         let manager = ACCESS_CONTROL
             .load(deps.as_ref().storage, AccessControlRole::Manager {}.key())
             .unwrap()[0]
