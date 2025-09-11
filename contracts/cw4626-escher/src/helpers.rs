@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, str::FromStr};
 
 use crate::{
     error::ContractResult,
@@ -6,6 +6,7 @@ use crate::{
     responses::{generate_deposit_response, generate_deposit_with_fee_response},
     state::{EntryFeeConfig, MINIMUM_DEPOSIT},
 };
+use alloy_primitives::Bytes;
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
     Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
@@ -316,6 +317,17 @@ pub fn validate_salt(salt: &str) -> ContractResult<()> {
         return Err(ContractError::InvalidSalt {});
     }
     Ok(())
+}
+
+/// Validates and returns `address` as `Bytes` for usage with ZKGM
+///
+/// # Errors
+/// Will return error if validations fail
+pub fn validate_and_parse_address(address: &str) -> ContractResult<Bytes> {
+    let hex = address
+        .strip_prefix("0x")
+        .ok_or(ContractError::InvalidHexAddress {})?;
+    Bytes::from_str(hex).map_err(|_| ContractError::InvalidHexAddress {})
 }
 
 #[cfg(test)]

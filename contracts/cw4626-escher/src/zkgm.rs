@@ -3,7 +3,7 @@ use ucs03_zkgm::com::{
     OP_BATCH, OP_CALL, OP_TOKEN_ORDER, TOKEN_ORDER_KIND_SOLVE,
 };
 
-use crate::ContractError;
+use crate::{error::ContractResult, helpers::validate_and_parse_address, ContractError};
 use alloy::sol_types::SolValue;
 use alloy_primitives::{Bytes, Uint};
 use cosmwasm_std::{to_json_binary, Binary, StdError, Uint128, Uint64};
@@ -25,27 +25,9 @@ pub fn send_token_order_v2(
     quote_token: String,
     quote_amount: Uint128,
     salt: String,
-) -> Result<Binary, ContractError> {
-    let recipient_address = match Bytes::from_str(receiver.as_str()) {
-        Ok(rec) => rec,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {
-                kind: "recipient".into(),
-                address: receiver,
-                reason: "address must be in hex and starts with 0x".to_string(),
-            })
-        }
-    };
-    let quote_token = match Bytes::from_str(quote_token.as_str()) {
-        Ok(token) => token,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {
-                kind: "quote_token".into(),
-                address: quote_token,
-                reason: "address must be in hex and starts with 0x".to_string(),
-            })
-        }
-    };
+) -> ContractResult<Binary> {
+    let recipient_address = validate_and_parse_address(&receiver)?;
+    let quote_token = validate_and_parse_address(&quote_token)?;
 
     let metadata = SolverMetadata {
         solverAddress: Vec::from(quote_token.clone()).into(),
@@ -69,15 +51,14 @@ pub fn send_token_order_v2(
         .into(),
     };
 
-    let timeout_timestamp = get_timeout_timestamp_from_time(time);
+    let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
     let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt.as_str())
     {
         Ok(s) => s,
         Err(e) => {
             return Err(ContractError::Std(StdError::generic_err(format!(
-                "failed to parse salt: {}, reason: {}",
-                salt, e
+                "failed to parse salt: {salt}, reason: {e}"
             ))))
         }
     };
@@ -105,27 +86,9 @@ pub fn send_token_order_v2_and_call_lst(
     salt: String,
     proxy_account_address: String,
     contract_calldata: Bytes,
-) -> Result<Binary, ContractError> {
-    let proxy_account_address = match Bytes::from_str(proxy_account_address.as_str()) {
-        Ok(rec) => rec,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {
-                kind: "proxy_account_address".into(),
-                address: proxy_account_address,
-                reason: "address must be in hex and starts with 0x".to_string(),
-            })
-        }
-    };
-    let quote_token = match Bytes::from_str(quote_token.as_str()) {
-        Ok(token) => token,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {
-                kind: "quote_token".into(),
-                address: quote_token,
-                reason: "address must be in hex and starts with 0x".to_string(),
-            })
-        }
-    };
+) -> ContractResult<Binary> {
+    let proxy_account_address = validate_and_parse_address(&proxy_account_address)?;
+    let quote_token = validate_and_parse_address(&quote_token)?;
 
     let sender_bytes = sender.as_bytes().to_vec().into();
 
@@ -176,15 +139,14 @@ pub fn send_token_order_v2_and_call_lst(
         .into(),
     };
 
-    let timeout_timestamp = get_timeout_timestamp_from_time(time);
+    let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
     let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt.as_str())
     {
         Ok(s) => s,
         Err(e) => {
             return Err(ContractError::Std(StdError::generic_err(format!(
-                "failed to parse salt: {}, reason: {}",
-                salt, e
+                "failed to parse salt: {salt}, reason: {e}"
             ))))
         }
     };
@@ -201,25 +163,19 @@ pub fn send_token_order_v2_and_call_lst(
     Ok(transfer_relay_msg)
 }
 
-/// function to send call instruction to ucs03 and return cosmos msg execute call to ucs03
+/// Sends call instruction to ucs03 and return cosmos msg execute call to ucs03
+///
+/// # Errors
+/// Will return error if validation or message serialization fails
 pub fn ucs03_call_lst(
-    sender: String,
+    sender: &str,
     channel_id: u32,
     time: Timestamp,
-    contract_address: String,
+    contract_address: &str,
     contract_calldata: Bytes,
     salt: H256,
-) -> Result<Binary, ContractError> {
-    let contract_address = match Bytes::from_str(contract_address.as_str()) {
-        Ok(rec) => rec,
-        Err(_) => {
-            return Err(ContractError::InvalidAddress {
-                kind: "contract_address".into(),
-                address: contract_address,
-                reason: "address must be in hex and starts with 0x".to_string(),
-            })
-        }
-    };
+) -> ContractResult<Binary> {
+    let contract_address = validate_and_parse_address(contract_address)?;
 
     let call_instruction = Instruction {
         version: INSTR_VERSION_0,
@@ -234,10 +190,10 @@ pub fn ucs03_call_lst(
         .into(),
     };
 
-    let timeout_timestamp = get_timeout_timestamp_from_time(time);
+    let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
     let ucs03_send_msg: ucs03_zkgm::msg::ExecuteMsg = ucs03_zkgm::msg::ExecuteMsg::Send {
-        channel_id: ChannelId::from_raw(channel_id).unwrap(),
+        channel_id: ChannelId::from_raw(channel_id).ok_or(ContractError::InvalidChannelId {})?,
         timeout_height: Uint64::from(0u64),
         timeout_timestamp,
         salt,
@@ -248,9 +204,15 @@ pub fn ucs03_call_lst(
     Ok(ucc03_msg_bin)
 }
 
-pub fn get_timeout_timestamp_from_time(time: Timestamp) -> Timestamp {
+/// # Errors
+/// Will return error if overflow
+pub fn get_timeout_timestamp_from_time(time: Timestamp) -> ContractResult<Timestamp> {
     let duration_offset = Duration::from_secs(TIMEOUT_OFFSET);
-    Timestamp::from_nanos(time.plus_duration(duration_offset).unwrap().as_nanos())
+    Ok(Timestamp::from_nanos(
+        time.plus_duration(duration_offset)
+            .ok_or(ContractError::TimestampOverflow {})?
+            .as_nanos(),
+    ))
 }
 
 // generate 3 payload inside 1 call
