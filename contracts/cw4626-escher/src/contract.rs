@@ -10,6 +10,8 @@ use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::validate_and_store_staking_contract;
+use crate::state::PausedStatus;
+use crate::state::PAUSED_STATUS;
 use crate::state::{
     AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
     UNDERLYING_DECIMALS,
@@ -93,6 +95,8 @@ pub fn instantiate(
 
     internal_update_minimum_deposit(&mut deps, msg.minimum_deposit)?;
 
+    PAUSED_STATUS.save(deps.storage, &PausedStatus::NotPaused {})?;
+
     Ok(Response::new())
 }
 
@@ -122,6 +126,9 @@ pub fn execute(
         }
         ExecuteMsg::UpdateMinimumDeposit { amount } => {
             crate::execute::update_minimum_deposit(&mut deps, &info, amount)?
+        }
+        ExecuteMsg::UpdatePausedStatus { status } => {
+            crate::execute::update_paused_status(&mut deps, &info, &status)?
         }
         ExecuteMsg::Bond {
             amount,
@@ -243,6 +250,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AllPendingIncentives {} => {
             to_json_binary(&crate::query::all_pending_incentives(&this, &deps)?)
         }
+        QueryMsg::Paused {} => to_json_binary(&crate::query::paused(&deps)?),
         //
         // Redemption System
         //

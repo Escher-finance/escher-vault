@@ -4,7 +4,7 @@ use cw20_base::ContractError as Cw20ContractError;
 use cw_utils::PaymentError;
 use thiserror::Error;
 
-use crate::state::AccessControlRole;
+use crate::state::{AccessControlRole, PausedStatus};
 
 pub type ContractResult<T> = Result<T, ContractError>;
 
@@ -21,6 +21,9 @@ pub enum ContractError {
 
     #[error("only {0} role")]
     Unauthorized(AccessControlRole),
+
+    #[error("action is currently paused: {0}")]
+    Paused(PausedStatus),
 
     #[error("tower config is not valid")]
     InvalidTowerConfig {},

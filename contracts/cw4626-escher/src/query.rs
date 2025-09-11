@@ -15,8 +15,9 @@ use crate::{
         RedemptionStatsResponse, TotalAssetsResponse, UserRedemptionRequestsResponse,
     },
     state::{
-        AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
-        STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        AccessControlRole, PausedStatus, ACCESS_CONTROL, ORACLE_PRICES, PAUSED_STATUS,
+        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET,
+        USER_REDEMPTION_IDS,
     },
     tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
 };
@@ -319,6 +320,13 @@ pub fn preview_redeem(
     } = get_tokens(this, deps)?;
     let assets = internal_convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(PreviewRedeemResponse { assets })
+}
+
+/// # Errors
+/// Will return error if queries fail
+pub fn paused(deps: &Deps) -> StdResult<PausedStatus> {
+    let status = PAUSED_STATUS.load(deps.storage)?;
+    Ok(status)
 }
 
 #[cfg(test)]
