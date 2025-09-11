@@ -15,7 +15,9 @@ library = []
 cw4626 = { workspace = true }
 cw4626-base = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true,  features = [
+   "cosmwasm_1_2", "cosmwasm_1_4"
+] }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw20 = { workspace = true }
@@ -32,6 +34,7 @@ alloy = { workspace = true }
 alloy-primitives  =  { workspace = true }
 ibc-union-spec = { workspace = true }
 lst = { workspace = true }
+unionlabs = { workspace = true}
 
 [build-dependencies]
 vergen-git2 = { workspace = true }

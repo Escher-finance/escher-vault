@@ -1,5 +1,5 @@
 use astroport::asset::AssetInfo;
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{Instantiate2AddressError, StdError, Uint128};
 use cw20_base::ContractError as Cw20ContractError;
 use cw4626_base::ContractError as Cw4626BaseContractError;
 use cw_utils::PaymentError;
@@ -20,6 +20,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     PaymentError(#[from] PaymentError),
+
+    #[error("{0}")]
+    ProxyAccountInstantiate2Error(#[from] Instantiate2AddressError),
 
     #[error("only {0} role")]
     Unauthorized(AccessControlRole),

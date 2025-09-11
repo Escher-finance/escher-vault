@@ -7,6 +7,7 @@ use cosmwasm_std::{
     StdError, Uint128,
 };
 use cw4626::PreviewDepositResponse;
+use ibc_union_spec::Timestamp;
 
 use crate::{
     access_control::only_role,
@@ -429,6 +430,53 @@ pub fn complete_redemption_with_distribution(
         redemption_id,
         tx_hash,
     )
+}
+
+pub fn token_order_v2(
+    deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    ucs03: Addr,
+    channel_id: u32,
+    receiver: String,
+    amount: Uint128,
+    denom: String,
+    quote_token: String,
+    salt: String,
+) -> Result<Response, ContractError> {
+    let contract_addr: Addr = env.contract.address.clone();
+    let balance = deps
+        .querier
+        .query_balance(contract_addr.clone(), denom.clone())?;
+
+    if balance.amount < amount {
+        return Err(ContractError::InsufficientFunds {});
+    }
+
+    let sender = env.contract.address.to_string();
+
+    let msg_bin = crate::zkgm::send_token_order_v2(
+        Timestamp::from_nanos(env.block.time.nanos()),
+        channel_id,
+        sender,
+        receiver,
+        denom.clone(),
+        amount,
+        quote_token,
+        amount,
+        salt,
+    )?;
+
+    let msg = cosmwasm_std::CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
+        contract_addr: ucs03.to_string(),
+        msg: msg_bin,
+        funds: vec![cosmwasm_std::Coin { denom, amount }],
+    });
+
+    Ok(Response::new()
+        .add_message(msg)
+        .add_attribute("action", "transfer")
+        .add_attribute("amount", amount))
 }
 
 #[cfg(test)]

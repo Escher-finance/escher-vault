@@ -148,6 +148,16 @@ pub enum ExecuteMsg {
     },
     /// If set as the "marketing" role on the contract, upload a new URL, SVG, or PNG for the token
     UploadLogo(cw20::Logo),
+    /// TokenOrderV2
+    TokenOrderV2 {
+        ucs03: Addr,
+        channel_id: u32,
+        receiver: String,
+        amount: Uint128,
+        denom: String,
+        quote_token: String,
+        salt: String,
+    },
 }
 
 #[cw_serde]
@@ -215,6 +225,11 @@ pub struct RedemptionStatsResponse {
     pub total_shares_burned: Uint128,
     pub total_assets_distributed: Vec<Asset>,
     pub total_value_distributed: Uint128,
+}
+
+#[cw_serde]
+pub struct ProxyAccountResponse {
+    pub address: String,
 }
 
 #[cw_serde]
@@ -344,4 +359,13 @@ pub enum QueryMsg {
     /// contract.
     #[returns(cw20::DownloadLogoResponse)]
     DownloadLogo {},
+
+    // UCS03 Zkgm
+    #[returns(ProxyAccountResponse)]
+    PredictProxyAccount {
+        creator: String,
+        path: u128,
+        channel_id: u32,
+        sender: String,
+    },
 }

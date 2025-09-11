@@ -1168,6 +1168,7 @@ dependencies = [
  "serde",
  "thiserror 1.0.69",
  "ucs03-zkgm",
+ "unionlabs",
  "unionlabs-primitives",
  "vergen-git2",
 ]

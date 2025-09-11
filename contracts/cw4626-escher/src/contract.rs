@@ -6,6 +6,7 @@ use cw4626_base::query as cw4626_base_queries;
 
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractError;
+use crate::execute;
 use crate::helpers::validate_addrs;
 use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
@@ -209,6 +210,26 @@ pub fn execute(
         ExecuteMsg::UploadLogo(logo) => {
             cw20_base::contract::execute_upload_logo(deps, env, info, logo)?
         }
+        ExecuteMsg::TokenOrderV2 {
+            ucs03,
+            channel_id,
+            receiver,
+            amount,
+            denom,
+            quote_token,
+            salt,
+        } => execute::token_order_v2(
+            deps,
+            env,
+            info,
+            ucs03,
+            channel_id,
+            receiver,
+            amount,
+            denom,
+            quote_token,
+            salt,
+        )?,
     })
 }
 
@@ -312,5 +333,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::DownloadLogo {} => {
             to_json_binary(&cw20_base::contract::query_download_logo(deps)?)
         }
+        QueryMsg::PredictProxyAccount {
+            creator,
+            path,
+            channel_id,
+            sender,
+        } => to_json_binary(&crate::query::proxy_account_address(
+            deps, creator, path, channel_id, sender,
+        )?),
     }
 }

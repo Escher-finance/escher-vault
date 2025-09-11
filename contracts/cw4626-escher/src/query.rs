@@ -10,8 +10,8 @@ use crate::{
     msg::{
         AccessControlRoleResponse, ConfigResponse, ExchangeRateResponse, GitInfoResponse,
         LpPositionResponse, OraclePricesResponse, OracleTokensListResponse,
-        PendingIncentivesResponse, PreviewRedeemMultiAssetResponse, RedemptionRequestResponse,
-        RedemptionStatsResponse, UserRedemptionRequestsResponse,
+        PendingIncentivesResponse, PreviewRedeemMultiAssetResponse, ProxyAccountResponse,
+        RedemptionRequestResponse, RedemptionStatsResponse, UserRedemptionRequestsResponse,
     },
     state::{
         AccessControlRole, ACCESS_CONTROL, ORACLE_PRICES, REDEMPTION_REQUESTS, STAKING_CONTRACT,
@@ -247,6 +247,21 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
         total_assets_distributed,
         total_value_distributed,
     })
+}
+
+pub fn proxy_account_address(
+    deps: Deps,
+    creator: String,
+    path: u128,
+    channel_id: u32,
+    sender: String,
+) -> StdResult<ProxyAccountResponse> {
+    match crate::zkgm::predict_call_proxy_account(deps, creator, path, channel_id, sender) {
+        Ok(address) => Ok(ProxyAccountResponse {
+            address: address.to_string(),
+        }),
+        Err(e) => Err(StdError::generic_err(e.to_string())),
+    }
 }
 
 #[cfg(test)]
