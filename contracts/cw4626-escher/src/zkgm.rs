@@ -55,14 +55,7 @@ pub fn send_token_order_v2(
 
     let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
-    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt) {
-        Ok(s) => s,
-        Err(e) => {
-            return Err(ContractError::Std(StdError::generic_err(format!(
-                "failed to parse salt: {salt}, reason: {e}"
-            ))))
-        }
-    };
+    let salt = validate_and_parse_salt(salt)?;
 
     let relay_transfer_msg: ucs03_zkgm::msg::ExecuteMsg = ucs03_zkgm::msg::ExecuteMsg::Send {
         channel_id: ChannelId::from_raw(channel_id).ok_or(ContractError::InvalidChannelId {})?,
