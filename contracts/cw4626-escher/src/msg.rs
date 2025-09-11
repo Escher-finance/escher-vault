@@ -51,6 +51,8 @@ pub enum ExecuteMsg {
     UpdateStakingContract { address: Addr },
     /// Manager update minimum deposit
     UpdateMinimumDeposit { amount: Uint128 },
+    /// Manager control paused status
+    UpdatePausedStatus { status: PausedStatus },
     /// Manager bond
     Bond {
         amount: Uint128,

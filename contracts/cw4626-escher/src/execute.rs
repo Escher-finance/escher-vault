@@ -21,8 +21,8 @@ use crate::{
     },
     staking::{internal_bond, internal_unbond, validate_and_store_staking_contract},
     state::{
-        AccessControlRole, PricesMap, TowerConfig, ACCESS_CONTROL, STAKING_CONTRACT, TOWER_CONFIG,
-        UNDERLYING_ASSET,
+        AccessControlRole, PausedStatus, PricesMap, TowerConfig, ACCESS_CONTROL, PAUSED_STATUS,
+        STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET,
     },
     tower::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
@@ -114,6 +114,18 @@ pub fn update_minimum_deposit(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     internal_update_minimum_deposit(deps, Some(amount))?;
+    Ok(Response::new())
+}
+
+/// # Errors
+/// Will return error if internal helper fails
+pub fn update_paused_status(
+    deps: &mut DepsMut,
+    info: &MessageInfo,
+    status: &PausedStatus,
+) -> ContractResult<Response> {
+    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
+    PAUSED_STATUS.save(deps.storage, status)?;
     Ok(Response::new())
 }
 
