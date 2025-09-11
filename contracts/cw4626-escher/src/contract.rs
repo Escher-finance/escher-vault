@@ -243,6 +243,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AllPendingIncentives {} => {
             to_json_binary(&crate::query::all_pending_incentives(&this, &deps)?)
         }
+        QueryMsg::Paused {} => to_json_binary(&crate::query::paused(&deps)?),
         //
         // Redemption System
         //

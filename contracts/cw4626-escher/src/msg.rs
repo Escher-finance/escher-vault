@@ -3,7 +3,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 use cw20_base::msg::InstantiateMarketingInfo;
 
-use crate::state::{AccessControlRole, PricesMap, RedemptionRequest, TowerConfig};
+use crate::state::{AccessControlRole, PausedStatus, PricesMap, RedemptionRequest, TowerConfig};
 
 #[cw_serde]
 pub enum ReceiveMsg {
@@ -223,6 +223,11 @@ pub struct RedemptionStatsResponse {
 }
 
 #[cw_serde]
+pub struct PausedResponse {
+    status: PausedStatus,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GitInfoResponse)]
@@ -243,6 +248,8 @@ pub enum QueryMsg {
     LpPosition {},
     #[returns(PendingIncentivesResponse)]
     AllPendingIncentives {},
+    #[returns(PausedResponse)]
+    Paused {},
 
     //
     // Redemption System
