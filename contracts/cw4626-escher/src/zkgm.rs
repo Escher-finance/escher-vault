@@ -3,7 +3,7 @@ use ucs03_zkgm::com::{
     OP_BATCH, OP_CALL, OP_TOKEN_ORDER, TOKEN_ORDER_KIND_SOLVE,
 };
 
-use crate::{error::ContractResult, helpers::validate_and_parse_address, ContractError};
+use crate::{error::ContractResult, ContractError};
 use alloy::sol_types::SolValue;
 use alloy_primitives::{Bytes, Uint};
 use cosmwasm_std::{to_json_binary, Binary, StdError, Uint128, Uint64};
@@ -84,10 +84,10 @@ pub fn send_token_order_v2_and_call_lst(
     quote_token: String,
     quote_amount: Uint128,
     salt: String,
-    proxy_account_address: String,
+    proxy_account_address: &str,
     contract_calldata: Bytes,
 ) -> ContractResult<Binary> {
-    let proxy_account_address = validate_and_parse_address(&proxy_account_address)?;
+    let proxy_account_address = validate_and_parse_address(proxy_account_address)?;
     let quote_token = validate_and_parse_address(&quote_token)?;
 
     let sender_bytes = sender.as_bytes().to_vec().into();
@@ -96,7 +96,7 @@ pub fn send_token_order_v2_and_call_lst(
 
     let metadata = SolverMetadata {
         solverAddress: Vec::from(quote_token.clone()).into(),
-        metadata: Default::default(),
+        metadata: Bytes::default(),
     };
 
     let fungible_order_instruction = Instruction {
@@ -141,8 +141,7 @@ pub fn send_token_order_v2_and_call_lst(
 
     let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
-    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt.as_str())
-    {
+    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(&salt) {
         Ok(s) => s,
         Err(e) => {
             return Err(ContractError::Std(StdError::generic_err(format!(
@@ -152,7 +151,7 @@ pub fn send_token_order_v2_and_call_lst(
     };
 
     let relay_transfer_msg = ucs03_zkgm::msg::ExecuteMsg::Send {
-        channel_id: ChannelId::from_raw(channel_id).unwrap(),
+        channel_id: ChannelId::from_raw(channel_id).ok_or(ContractError::InvalidChannelId {})?,
         timeout_height: Uint64::from(0u64),
         timeout_timestamp,
         salt,
@@ -213,6 +212,28 @@ pub fn get_timeout_timestamp_from_time(time: Timestamp) -> ContractResult<Timest
             .ok_or(ContractError::TimestampOverflow {})?
             .as_nanos(),
     ))
+}
+
+/// Validates and returns `salt` as `unionlabs_primitives::H256` for usage with ZKGM
+///
+/// # Errors
+/// Will return error if validations fail
+pub fn validate_and_parse_salt(salt: &str) -> ContractResult<unionlabs_primitives::H256> {
+    let hex = salt
+        .strip_prefix("0x")
+        .ok_or(ContractError::InvalidSalt {})?;
+    unionlabs_primitives::H256::from_str(hex).map_err(|_| ContractError::InvalidSalt {})
+}
+
+/// Validates and returns `address` as `Bytes` for usage with ZKGM
+///
+/// # Errors
+/// Will return error if validations fail
+pub fn validate_and_parse_address(address: &str) -> ContractResult<Bytes> {
+    let hex = address
+        .strip_prefix("0x")
+        .ok_or(ContractError::InvalidHexAddress {})?;
+    Bytes::from_str(hex).map_err(|_| ContractError::InvalidHexAddress {})
 }
 
 // generate 3 payload inside 1 call
