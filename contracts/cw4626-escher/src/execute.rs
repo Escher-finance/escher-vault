@@ -366,17 +366,19 @@ pub fn complete_redemption_with_distribution(
 }
 
 // DEV only: test token_order_v2
+///
+/// # Errors
+/// Will return error if internal helper fails
 pub fn token_order_v2(
-    deps: DepsMut,
-    env: Env,
-    _info: MessageInfo,
-    ucs03: Addr,
+    deps: &mut DepsMut,
+    env: &Env,
+    ucs03: &Addr,
     channel_id: u32,
-    receiver: String,
+    receiver: &str,
     amount: Uint128,
     denom: String,
-    quote_token: String,
-    salt: String,
+    quote_token: &str,
+    salt: &str,
 ) -> Result<Response, ContractError> {
     let contract_addr: Addr = env.contract.address.clone();
     let balance = deps
@@ -392,9 +394,9 @@ pub fn token_order_v2(
     let msg_bin = crate::zkgm::send_token_order_v2(
         Timestamp::from_nanos(env.block.time.nanos()),
         channel_id,
-        sender,
+        &sender,
         receiver,
-        denom.clone(),
+        &denom,
         amount,
         quote_token,
         amount,

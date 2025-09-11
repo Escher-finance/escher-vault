@@ -233,16 +233,15 @@ pub fn execute(
             quote_token,
             salt,
         } => crate::execute::token_order_v2(
-            deps,
-            env,
-            info,
-            ucs03,
+            &mut deps,
+            &env,
+            &ucs03,
             channel_id,
-            receiver,
+            &receiver,
             amount,
             denom,
-            quote_token,
-            salt,
+            &quote_token,
+            &salt,
         )?,
     })
 }

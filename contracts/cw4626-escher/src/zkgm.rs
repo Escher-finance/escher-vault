@@ -13,25 +13,27 @@ use ucs03_zkgm;
 use unionlabs_primitives::H256;
 type AlloyUint256 = Uint<256, 4>;
 
-const TIMEOUT_OFFSET: u64 = 604800; // 7 days period
+const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 
+/// # Errors
+/// Will return error if message serialization or validation fails
 pub fn send_token_order_v2(
     time: Timestamp,
     channel_id: u32,
-    sender: String,
-    receiver: String,
-    base_token: String,
+    sender: &str,
+    receiver: &str,
+    base_token: &str,
     base_amount: Uint128,
-    quote_token: String,
+    quote_token: &str,
     quote_amount: Uint128,
-    salt: String,
+    salt: &str,
 ) -> ContractResult<Binary> {
-    let recipient_address = validate_and_parse_address(&receiver)?;
-    let quote_token = validate_and_parse_address(&quote_token)?;
+    let recipient_address = validate_and_parse_address(receiver)?;
+    let quote_token = validate_and_parse_address(quote_token)?;
 
     let metadata = SolverMetadata {
         solverAddress: Vec::from(quote_token.clone()).into(),
-        metadata: Default::default(),
+        metadata: Bytes::default(),
     };
 
     let token_order_instruction = Instruction {
@@ -53,8 +55,7 @@ pub fn send_token_order_v2(
 
     let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
-    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt.as_str())
-    {
+    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt) {
         Ok(s) => s,
         Err(e) => {
             return Err(ContractError::Std(StdError::generic_err(format!(
@@ -64,7 +65,7 @@ pub fn send_token_order_v2(
     };
 
     let relay_transfer_msg: ucs03_zkgm::msg::ExecuteMsg = ucs03_zkgm::msg::ExecuteMsg::Send {
-        channel_id: ChannelId::from_raw(channel_id).unwrap(),
+        channel_id: ChannelId::from_raw(channel_id).ok_or(ContractError::InvalidChannelId {})?,
         timeout_height: Uint64::from(0u64),
         timeout_timestamp,
         salt,
@@ -75,20 +76,22 @@ pub fn send_token_order_v2(
     Ok(transfer_relay_msg)
 }
 
+/// # Errors
+/// Will return error if messages fail to serialize or validation fails
 pub fn send_token_order_v2_and_call_lst(
     time: Timestamp,
     channel_id: u32,
-    sender: String,
-    base_token: String,
+    sender: &str,
+    base_token: &str,
     base_amount: Uint128,
-    quote_token: String,
+    quote_token: &str,
     quote_amount: Uint128,
-    salt: String,
+    salt: &str,
     proxy_account_address: &str,
     contract_calldata: Bytes,
 ) -> ContractResult<Binary> {
     let proxy_account_address = validate_and_parse_address(proxy_account_address)?;
-    let quote_token = validate_and_parse_address(&quote_token)?;
+    let quote_token = validate_and_parse_address(quote_token)?;
 
     let sender_bytes = sender.as_bytes().to_vec().into();
 
@@ -141,7 +144,7 @@ pub fn send_token_order_v2_and_call_lst(
 
     let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
-    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(&salt) {
+    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt) {
         Ok(s) => s,
         Err(e) => {
             return Err(ContractError::Std(StdError::generic_err(format!(
