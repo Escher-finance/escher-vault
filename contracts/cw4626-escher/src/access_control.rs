@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Storage};
 
 use crate::{
     error::ContractResult,
-    state::{AccessControlRole, ACCESS_CONTROL},
+    state::{AccessControlRole, PausedStatus, ACCESS_CONTROL, PAUSED_STATUS},
     ContractError,
 };
 
@@ -23,4 +23,22 @@ pub fn validate_only_role(
         return unauthorized_err;
     }
     Ok(())
+}
+
+/// # Errors
+/// Will return error if validation fails
+pub fn validate_only_not_paused(storage: &dyn Storage, sender: &Addr) -> ContractResult<()> {
+    let managers = ACCESS_CONTROL.load(storage, AccessControlRole::Manager {}.key())?;
+    let is_manager = managers.contains(sender);
+    let paused_status = PAUSED_STATUS.load(storage)?;
+    match paused_status {
+        PausedStatus::NotPaused {} => return Ok(()),
+        PausedStatus::PausedMaintenance {} => {
+            if is_manager {
+                return Ok(());
+            }
+        }
+        PausedStatus::PausedOngoingBonding {} => {}
+    }
+    Err(ContractError::Paused(paused_status))
 }
