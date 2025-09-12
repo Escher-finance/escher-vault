@@ -104,6 +104,27 @@ pub struct FeeInfo {
     pub distributed: bool,   // Whether fee has been distributed
 }
 
+#[cw_serde]
+pub enum PausedStatus {
+    NotPaused {},
+    PausedMaintenance {},
+    PausedOngoingBonding {},
+}
+
+impl Display for PausedStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::NotPaused {} => "not paused",
+                Self::PausedMaintenance {} => "paused due to maintenance",
+                Self::PausedOngoingBonding {} => "paused due to ongoing bonding",
+            }
+        )
+    }
+}
+
 pub const UNDERLYING_ASSET: Item<AssetInfo> = Item::new("asset");
 pub const UNDERLYING_DECIMALS: Item<u8> = Item::new("asset-decimals");
 pub const ACCESS_CONTROL: Map<String, Vec<Addr>> = Map::new("access-control");
@@ -123,3 +144,5 @@ pub const LOCKED_SHARES: Item<LockedShares> = Item::new("locked_shares");
 pub const ENTRY_FEE_CONFIG: Item<EntryFeeConfig> = Item::new("entry_fee_config");
 /// Minimum assets deposit amount
 pub const MINIMUM_DEPOSIT: Item<Uint128> = Item::new("minimum-deposit");
+/// Paused status
+pub const PAUSED_STATUS: Item<PausedStatus> = Item::new("paused-status");

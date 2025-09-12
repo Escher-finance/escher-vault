@@ -4,4 +4,4 @@ schema = "run --bin schema"
 cov = "llvm-cov --ignore-filename-regex schema"
 
 [target.wasm32-unknown-unknown]
-rustflags = ["-C", "target-cpu=mvp"]
+rustflags = ["-C", "target-feature=-reference-types,-bulk-memory", "-C", "target-cpu=mvp"]
