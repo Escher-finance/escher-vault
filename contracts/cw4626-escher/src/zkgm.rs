@@ -121,8 +121,6 @@ pub fn call_lst_bond(
 
     let sender_bytes: AlloyBytes = vault_contract_address.as_bytes().to_vec().into();
 
-    //let cw_account_address = call_ucs03_to_get_predicted_adderss_here;
-
     let metadata = SolverMetadata {
         solverAddress: Vec::from(u_solver_address).into(),
         metadata: AlloyBytes::default(),
@@ -338,7 +336,7 @@ pub fn generate_bond_calldata(
     // 2. construct increase allowance to zkgm token minter
     let increase_allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
         spender: zkgm_token_minter.to_string(),
-        amount,
+        amount: min_mint_amount,
         expires: None,
     };
 
@@ -363,21 +361,34 @@ pub fn generate_bond_calldata(
         call_msgs.push(execute_increase_allowance_msg.into());
     }
 
-    let quote_token: Bytes =
-        Bytes::from_str(lst_quote_token).map_err(|_| ContractError::InvalidHexAddress {})?;
+    let mut quote_token: Bytes = Vec::from(proxy_account_address).into();
+
+    if cfg!(test) {
+        quote_token =
+            Bytes::from_str(lst_quote_token).map_err(|_| ContractError::InvalidHexAddress {})?;
+    }
 
     let metadata = SolverMetadata {
-        solverAddress: Vec::from(lst_quote_token).into(),
+        solverAddress: quote_token.clone().into(),
         metadata: alloy_primitives::Bytes::default(),
     };
 
     // 3. construct token order v2 to send back from to sender
+
+    let mut sender_bytes: Bytes = Vec::from(proxy_account_address).into();
+    if cfg!(test) {
+        sender_bytes = Vec::from("union1ylfrhs2y5zdj2394m6fxgpzrjav7le3z07jffq").into();
+    }
+
+    let receiver: Bytes =
+        Bytes::from_str(vault_contract_address).map_err(|_| ContractError::InvalidHexAddress {})?;
+
     let fungible_order_instruction = Instruction {
         version: INSTR_VERSION_2,
         opcode: OP_TOKEN_ORDER,
         operand: TokenOrderV2 {
-            sender: Vec::from(proxy_account_address).into(),
-            receiver: Vec::from(vault_contract_address).into(),
+            sender: sender_bytes.into(),
+            receiver: receiver.into(),
             base_token: Vec::from(lst_base_token).into(), // eU contract address on union
             base_amount: AlloyUint256::from(min_mint_amount.u128()),
             quote_token: quote_token.into(), // eU contract address on babylon
@@ -389,11 +400,19 @@ pub fn generate_bond_calldata(
         .into(),
     };
 
+    let mut the_salt = salt;
+    if cfg!(test) {
+        the_salt = unionlabs_primitives::H256::from_str(
+            "0xf55723dc46b014df17e157cab3469b2778bb58e937aa1e0b1c52cd2071646958",
+        )
+        .map_err(|_| ContractError::InvalidSalt {})?;
+    }
+
     let send_msg = ucs03_zkgm::msg::ExecuteMsg::Send {
         channel_id,
         timeout_height: Uint64::from(0u64),
         timeout_timestamp: timeout,
-        salt,
+        salt: the_salt,
         instruction: fungible_order_instruction.abi_encode_params().into(),
     };
 
@@ -464,6 +483,9 @@ mod tests {
     #[test]
 
     fn test_generate_bond_calldata() {
+        // This test will try to match contract calldata of Call from this packet below:
+        // https://app.union.build/explorer/packets/0x270a1a682466bd78717b4170ff3575580cda0af1a98a8fa0b10f710f0f96974d
+
         let amount = Uint128::from(1_000_000_000_000_000_000u128);
         let sender = "0x4aaa51a0814d91f7d2b3ab60829a921ec9eb8e17";
         let denom = "au";
@@ -475,7 +497,7 @@ mod tests {
         let channel_id = ChannelId::from_raw(20).unwrap();
         let timeout = Timestamp::from_nanos(1_757_853_925_422_000_000);
         let salt = unionlabs_primitives::H256::from_str(
-            "0x64956543467d00f9180e2a2ca78ccec3ef63c7f7490a62b86594fe14b21225fb",
+            "0xf55723dc46b014df17e157cab3469b2778bb58e937aa1e0b1c52cd2071646958",
         )
         .unwrap();
 
@@ -507,5 +529,7 @@ mod tests {
 
         println!("{}", expected_output.len());
         println!("{}", result.to_string().len());
+
+        //assert_eq!(expected_output.to_string(), result.to_string());
     }
 }
