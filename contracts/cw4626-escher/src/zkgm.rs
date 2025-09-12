@@ -1,8 +1,10 @@
+use cosmwasm_schema::cw_serde;
 use ucs03_zkgm::com::{
     Batch, Call, Instruction, SolverMetadata, TokenOrderV2, INSTR_VERSION_0, INSTR_VERSION_2,
     OP_BATCH, OP_CALL, OP_TOKEN_ORDER, TOKEN_ORDER_KIND_SOLVE,
 };
 
+use crate::error::{ContractError, ContractResult};
 use alloy::sol_types::SolValue;
 use alloy_primitives::Bytes as AlloyBytes;
 use alloy_primitives::Uint;
@@ -13,8 +15,27 @@ use ibc_union_spec::{ChannelId, Duration, Timestamp};
 use std::str::FromStr;
 use ucs03_zkgm;
 use unionlabs_primitives::{Bytes, H256};
+
+#[cw_serde]
+pub enum LstExecuteMsg {
+    /// Initiates the bonding process for a user.
+    Bond {
+        /// The address to mint the LST to.
+        mint_to_address: Addr,
+        /// Minimum expected amount of LST tokens to be received
+        /// for the operation to be considered valid.
+        min_mint_amount: Uint128,
+    },
+    /// Initiates the unbonding process for a user.
+    Unbond {
+        /// The address that will receive the native tokens on.
+        staker: Addr,
+        /// The amount to unstake.
+        amount: Uint128,
+    },
+}
+
 type AlloyUint256 = Uint<256, 4>;
-use crate::error::{ContractError, ContractResult};
 
 const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 
@@ -290,7 +311,7 @@ pub fn generate_bond_calldata(
     let mut call_msgs: Vec<CosmosMsg> = vec![];
 
     // 1. construct bond msg call to LST
-    let bond_msg = lst::msg::ExecuteMsg::Bond {
+    let bond_msg = LstExecuteMsg::Bond {
         mint_to_address: Addr::unchecked(proxy_account_address),
         min_mint_amount,
     };

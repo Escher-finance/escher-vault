@@ -36,10 +36,9 @@ cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
 unionlabs-primitives = { git = "https://github.com/unionlabs/union", default-features = false }
 ucs03-zkgm = { git = "https://github.com/unionlabs/union", default-features = false }
 ibc-union-spec = { git = "https://github.com/unionlabs/union", default-features = false }
-lst =  { git = "https://github.com/unionlabs/union", default-features = false }
-unionlabs =  { git = "https://github.com/unionlabs/union", default-features = false }
+unionlabs = { git = "https://github.com/unionlabs/union", default-features = false }
 
-alloy            = { version = "1.0.9", default-features = false }
+alloy = { version = "1.0.9", default-features = false }
 alloy-primitives = { version = "1.1.2", default-features = false }
 
 [profile.release]
