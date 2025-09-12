@@ -120,13 +120,15 @@ pub fn update_minimum_deposit(
 
 /// # Errors
 /// Will return error if internal helper fails
-pub fn update_paused_status(
-    deps: &mut DepsMut,
-    info: &MessageInfo,
-    status: &PausedStatus,
-) -> ContractResult<Response> {
+pub fn toggle_paused_status(deps: &mut DepsMut, info: &MessageInfo) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    PAUSED_STATUS.save(deps.storage, status)?;
+    PAUSED_STATUS.update::<_, ContractError>(deps.storage, |status| match status {
+        PausedStatus::NotPaused {} => Ok(PausedStatus::PausedMaintenance {}),
+        PausedStatus::PausedMaintenance {} => Ok(PausedStatus::NotPaused {}),
+        // Not even managers should be able to resume if it's paused due to ongoing bonding since
+        // the exchange rate won't be correct during that period
+        PausedStatus::PausedOngoingBonding {} => Err(ContractError::Paused(status)),
+    })?;
     Ok(Response::new())
 }
 

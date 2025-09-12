@@ -52,7 +52,7 @@ pub enum ExecuteMsg {
     /// Manager update minimum deposit
     UpdateMinimumDeposit { amount: Uint128 },
     /// Manager control paused status
-    UpdatePausedStatus { status: PausedStatus },
+    TogglePausedStatus {},
     /// Manager bond
     Bond {
         amount: Uint128,

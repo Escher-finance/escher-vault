@@ -127,8 +127,8 @@ pub fn execute(
         ExecuteMsg::UpdateMinimumDeposit { amount } => {
             crate::execute::update_minimum_deposit(&mut deps, &info, amount)?
         }
-        ExecuteMsg::UpdatePausedStatus { status } => {
-            crate::execute::update_paused_status(&mut deps, &info, &status)?
+        ExecuteMsg::TogglePausedStatus {} => {
+            crate::execute::toggle_paused_status(&mut deps, &info)?
         }
         ExecuteMsg::Bond {
             amount,
