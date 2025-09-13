@@ -1,9 +1,3 @@
-use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
-use cosmwasm_std::{
-    from_json, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
-};
-use ibc_union_spec::Timestamp;
-
 use crate::{
     access_control::{validate_only_not_paused, validate_only_role},
     asset::query_asset_info_balance,
@@ -30,6 +24,10 @@ use crate::{
         remove_tower_liquidity, tower_swap, update_and_validate_prices,
     },
     ContractError,
+};
+use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
+use cosmwasm_std::{
+    from_json, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
 };
 
 /// # Errors
@@ -390,56 +388,6 @@ pub fn complete_redemption_with_distribution(
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     validate_only_not_paused(deps.storage, &info.sender)?;
     crate::redemption::complete_redemption_with_distribution(&mut deps, env, redemption_id, tx_hash)
-}
-
-// DEV only: test token_order_v2
-///
-/// # Errors
-/// Will return error if internal helper fails
-pub fn token_order_v2(
-    deps: &mut DepsMut,
-    env: &Env,
-    ucs03: &Addr,
-    channel_id: u32,
-    receiver: &str,
-    amount: Uint128,
-    denom: String,
-    quote_token: &str,
-    salt: &str,
-) -> Result<Response, ContractError> {
-    let contract_addr: Addr = env.contract.address.clone();
-    let balance = deps
-        .querier
-        .query_balance(contract_addr.clone(), denom.clone())?;
-
-    if balance.amount < amount {
-        return Err(ContractError::InsufficientFunds {});
-    }
-
-    let sender = env.contract.address.to_string();
-
-    let msg_bin = crate::zkgm::send_token_order_v2(
-        Timestamp::from_nanos(env.block.time.nanos()),
-        channel_id,
-        &sender,
-        receiver,
-        &denom,
-        amount,
-        quote_token,
-        amount,
-        salt,
-    )?;
-
-    let msg = cosmwasm_std::CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
-        contract_addr: ucs03.to_string(),
-        msg: msg_bin,
-        funds: vec![cosmwasm_std::Coin { denom, amount }],
-    });
-
-    Ok(Response::new()
-        .add_message(msg)
-        .add_attribute("action", "transfer")
-        .add_attribute("amount", amount))
 }
 
 #[cfg(test)]

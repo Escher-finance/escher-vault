@@ -229,27 +229,6 @@ pub fn execute(
         ExecuteMsg::UploadLogo(logo) => {
             cw20_base::contract::execute_upload_logo(deps, env, info, logo)?
         }
-        // TODO: remove this
-        // DEV only
-        ExecuteMsg::TokenOrderV2 {
-            ucs03,
-            channel_id,
-            receiver,
-            amount,
-            denom,
-            quote_token,
-            salt,
-        } => crate::execute::token_order_v2(
-            &mut deps,
-            &env,
-            &ucs03,
-            channel_id,
-            &receiver,
-            amount,
-            denom,
-            &quote_token,
-            &salt,
-        )?,
     })
 }
 
