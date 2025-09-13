@@ -22,6 +22,7 @@ cw-ownable = "2.1.0"
 cw-utils = "2.0.0"
 vergen-git2 = "1.0.7"
 anyhow = "1.0.99"
+sha3 = "0.10.8"
 alloy = { version = "1.0.9", default-features = false }
 alloy-primitives = { version = "1.1.2", default-features = false }
 

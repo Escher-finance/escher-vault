@@ -1,8 +1,14 @@
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::instantiate2_address;
+use cosmwasm_std::Api;
+use sha3::Digest;
+use sha3::Keccak256;
 use ucs03_zkgm::com::{
     Batch, Call, Instruction, SolverMetadata, TokenOrderV2, INSTR_VERSION_0, INSTR_VERSION_2,
     OP_BATCH, OP_CALL, OP_TOKEN_ORDER, TOKEN_ORDER_KIND_SOLVE,
 };
+use unionlabs_primitives::encoding::HexPrefixed;
+use unionlabs_primitives::FixedBytes;
 
 use crate::error::{ContractError, ContractResult};
 use alloy::sol_types::SolValue;
@@ -14,7 +20,7 @@ use cosmwasm_std::{
 use ibc_union_spec::{ChannelId, Duration, Timestamp};
 use std::str::FromStr;
 use ucs03_zkgm;
-use unionlabs_primitives::{Bytes, H256};
+use unionlabs_primitives::{Bytes, H256, U256};
 
 #[cw_serde]
 pub enum LstExecuteMsg {
@@ -277,10 +283,7 @@ pub fn get_timeout_timestamp_from_time(time: Timestamp) -> ContractResult<Timest
 /// # Errors
 /// Will return error if validations fail
 pub fn validate_and_parse_salt(salt: &str) -> ContractResult<unionlabs_primitives::H256> {
-    let hex = salt
-        .strip_prefix("0x")
-        .ok_or(ContractError::InvalidSalt {})?;
-    unionlabs_primitives::H256::from_str(hex).map_err(|_| ContractError::InvalidSalt {})
+    unionlabs_primitives::H256::from_str(salt).map_err(|_| ContractError::InvalidSalt {})
 }
 
 /// Validates and returns `address` as `Bytes` for usage with ZKGM
@@ -288,10 +291,7 @@ pub fn validate_and_parse_salt(salt: &str) -> ContractResult<unionlabs_primitive
 /// # Errors
 /// Will return error if validations fail
 pub fn validate_and_parse_address(address: &str) -> ContractResult<Bytes> {
-    let hex = address
-        .strip_prefix("0x")
-        .ok_or(ContractError::InvalidHexAddress {})?;
-    Bytes::from_str(hex).map_err(|_| ContractError::InvalidHexAddress {})
+    Bytes::from_str(address).map_err(|_| ContractError::InvalidHexAddress {})
 }
 
 #[cosmwasm_schema::cw_serde]
@@ -429,6 +429,49 @@ pub fn generate_bond_calldata(
     Ok(msgs_bytes)
 }
 
+fn proxy_account_salt(
+    CallProxySalt {
+        path,
+        channel_id,
+        sender,
+    }: &CallProxySalt,
+) -> H256 {
+    keccak256(
+        (
+            Into::<alloy_primitives::U256>::into(*path),
+            channel_id.raw(),
+            sender,
+        )
+            .abi_encode_params(),
+    )
+}
+
+pub fn keccak256(bytes: impl AsRef<[u8]>) -> H256 {
+    Keccak256::new().chain_update(bytes).finalize().into()
+}
+
+#[cw_serde]
+pub struct CallProxySalt {
+    pub path: U256,
+    pub channel_id: ChannelId,
+    pub sender: Bytes,
+}
+
+fn predict_call_proxy_account(
+    api: &dyn Api,
+    call_proxy_salt: &CallProxySalt,
+    code_hash: &str,
+    contract_addr: &str,
+) -> Result<Addr, ContractError> {
+    let code_hash: FixedBytes<32, HexPrefixed> = H256::from_str(code_hash).unwrap();
+    let token_addr = instantiate2_address(
+        &code_hash.into_bytes(),
+        &api.addr_canonicalize(contract_addr)?,
+        proxy_account_salt(call_proxy_salt).get().as_slice(),
+    )?;
+    Ok(api.addr_humanize(&token_addr)?)
+}
+
 // generate 3 payload inside 1 call
 // First:
 //     {
@@ -474,8 +517,15 @@ pub fn generate_bond_calldata(
 #[cfg(test)]
 mod tests {
 
+    use super::*;
     use crate::zkgm::generate_bond_calldata;
+    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::Uint128;
+    use cw_multi_test::AppBuilder;
+    use cw_multi_test::BasicAppBuilder;
+    use cw_multi_test::MockApiBech32;
+    use cw_multi_test::MockApiBech32m;
     use ibc_union_spec::ChannelId;
     use ibc_union_spec::Timestamp;
     use std::str::FromStr;
@@ -531,5 +581,31 @@ mod tests {
         println!("{}", result.to_string().len());
 
         //assert_eq!(expected_output.to_string(), result.to_string());
+    }
+
+    #[test]
+    fn instantiate2_address() {
+        let addr = "0x4aaa51a0814d91f7d2b3ab60829a921ec9eb8e17";
+        let expected = "union1cnntu09j3s49kqspr7st5rpatvn68h4yueapjskc9sug8t2mu7ys46tfq9";
+        let union_ucs03_zkgm = "union1336jj8ertl8h7rdvnz4dh5rqahd09cy0x43guhsxx6xyrztx292qpe64fh";
+        let code_hash = "0xec827349ed4c1fec5a9c3462ff7c979d4c40e7aa43b16ed34469d04ff835f2a1";
+
+        let app = AppBuilder::default()
+            .with_api(MockApiBech32::new("union"))
+            .build(|_, _, _| {});
+        let api = app.api();
+        let predicted = predict_call_proxy_account(
+            api,
+            &CallProxySalt {
+                path: U256::from(0_u32),
+                channel_id: ChannelId::from_raw(20).unwrap(),
+                sender: validate_and_parse_address(addr).unwrap(),
+            },
+            code_hash,
+            union_ucs03_zkgm,
+        )
+        .unwrap();
+
+        assert_eq!(predicted.to_string(), expected);
     }
 }

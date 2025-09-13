@@ -30,6 +30,7 @@ ucs03-zkgm = { workspace = true }
 alloy = { workspace = true }
 alloy-primitives = { workspace = true }
 ibc-union-spec = { workspace = true }
+sha3 = { workspace = true }
 
 [build-dependencies]
 vergen-git2 = { workspace = true }

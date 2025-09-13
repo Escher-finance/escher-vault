@@ -1125,6 +1125,7 @@ dependencies = [
  "ibc-union-spec",
  "schemars",
  "serde",
+ "sha3",
  "thiserror 1.0.69",
  "ucs03-zkgm",
  "unionlabs-primitives",
