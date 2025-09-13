@@ -579,7 +579,7 @@ mod tests {
 
         println!("{}", expected_output.len());
         println!("{}", result.to_string().len());
-
+        assert_eq!(expected_output.len(), result.to_string().len());
         //assert_eq!(expected_output.to_string(), result.to_string());
     }
 
