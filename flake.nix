@@ -33,9 +33,11 @@
         unionSrc = pkgs.fetchFromGitHub {
           owner = "unionlabs";
           repo = "union";
-          rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f";
-          sha256 = "";
+          rev = "main";
+          sha256 = pkgs.lib.fakeHash;
         };
+
+
 
         # Rust toolchain with specific version
         rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
@@ -134,6 +136,11 @@
             prePatch = ''
               export CARGO_HOME=$(pwd)/.cargo-home
               mkdir -p $CARGO_HOME
+              
+              # Patch Union's Cargo.toml to remove static_assertions git dependency
+              echo "Patching Union repository to remove static_assertions git dependency..."
+              find ${unionSrc} -name "Cargo.toml" -exec sed -i 's/static_assertions = { git = "https:\/\/github.com\/nvzqz\/static-assertions" }/#static_assertions = { git = "https:\/\/github.com\/nvzqz\/static-assertions" }/g' {} \;
+              
               cat > $CARGO_HOME/config.toml <<'CFG'
               [patch.'https://github.com/quasar-finance/babydex.git']
               astroport = { path = "${astroportSrc}/packages/astroport" }
@@ -143,7 +150,7 @@
               astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
 
               [patch.'https://github.com/unionlabs/union']
-              unionlabs-primitives = { path = "${unionSrc}/lib/unionlabs" }
+              unionlabs-primitives = { path = "${unionSrc}/lib/unionlabs-primitives" }
               ucs03-zkgm = { path = "${unionSrc}/cosmwasm/ucs/ucs03-zkgm" }
               ibc-union-spec = { path = "${unionSrc}/lib/ibc-union-spec" }
               CFG
