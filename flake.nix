@@ -107,7 +107,7 @@
             src = ./.;
 
             # This will be computed automatically by Nix when you first build
-            cargoHash = "sha256-Dhm5BbqYf8gq+itd2dfhHhT3JaB/85Y1H0hsMKPcRPc=";
+            cargoHash = "sha256-Kl6iHzYzm7mcNxqDdIhLkhz+CYwzVF5IbqUx52SEkTI=";
 
             # Use our custom toolchain
             rustc = rustToolchain;
