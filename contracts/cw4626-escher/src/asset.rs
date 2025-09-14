@@ -24,9 +24,7 @@ pub fn validate_cw20(
             token_address,
             &cw20::Cw20QueryMsg::TokenInfo {},
         )
-        .map_err(|_| ContractError::InvalidCw20 {
-            addr: token_address.clone(),
-        })
+        .map_err(|_| ContractError::InvalidCw20 { addr: token_address.clone() })
 }
 
 /// Getter for the balance of an `AssetInfo`
@@ -99,10 +97,7 @@ pub fn send_asset_from_contract(asset: Asset, receiver: &Addr) -> ContractResult
     let cosmos_msg = match asset.info {
         AssetInfo::NativeToken { denom } => CosmosMsg::Bank(BankMsg::Send {
             to_address: receiver.to_string(),
-            amount: vec![cosmwasm_std::Coin {
-                denom: denom.clone(),
-                amount: asset.amount,
-            }],
+            amount: vec![cosmwasm_std::Coin { denom: denom.clone(), amount: asset.amount }],
         }),
         AssetInfo::Token { contract_addr } => CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_addr.to_string(),

@@ -50,32 +50,16 @@ pub enum ContractError {
     UnsupportedCw20Received { addr: Addr },
 
     #[error("{receiver} deposit of {assets} assets exceeds the max {max_assets}")]
-    ExceededMaxDeposit {
-        receiver: Addr,
-        assets: Uint128,
-        max_assets: Uint128,
-    },
+    ExceededMaxDeposit { receiver: Addr, assets: Uint128, max_assets: Uint128 },
 
     #[error("{receiver} mint of {shares} shares exceeds the max {max_shares}")]
-    ExceededMaxMint {
-        receiver: Addr,
-        shares: Uint128,
-        max_shares: Uint128,
-    },
+    ExceededMaxMint { receiver: Addr, shares: Uint128, max_shares: Uint128 },
 
     #[error("{owner} withdraw of {assets} assets exceeds the max {max_assets}")]
-    ExceededMaxWithdraw {
-        owner: Addr,
-        assets: Uint128,
-        max_assets: Uint128,
-    },
+    ExceededMaxWithdraw { owner: Addr, assets: Uint128, max_assets: Uint128 },
 
     #[error("{owner} withdraw of {shares} shares exceeds the max {max_shares}")]
-    ExceededMaxRedeem {
-        owner: Addr,
-        shares: Uint128,
-        max_shares: Uint128,
-    },
+    ExceededMaxRedeem { owner: Addr, shares: Uint128, max_shares: Uint128 },
 
     #[error("invalid token type for this operation")]
     InvalidTokenType {},
@@ -105,16 +89,10 @@ pub enum ContractError {
     WrongCw20Received {},
 
     #[error("insufficient shares: requested {requested}, available {available}")]
-    InsufficientShares {
-        requested: Uint128,
-        available: Uint128,
-    },
+    InsufficientShares { requested: Uint128, available: Uint128 },
 
     #[error("insufficient locked shares: requested {requested}, available {available}")]
-    InsufficientLockedShares {
-        requested: Uint128,
-        available: Uint128,
-    },
+    InsufficientLockedShares { requested: Uint128, available: Uint128 },
 
     #[error("redemption request {id} not found")]
     RedemptionNotFound { id: u64 },
@@ -125,10 +103,7 @@ pub enum ContractError {
     #[error(
         "fee calculation too early: current block {current_block}, required block {required_block}"
     )]
-    FeeCalculationTooEarly {
-        current_block: u64,
-        required_block: u64,
-    },
+    FeeCalculationTooEarly { current_block: u64, required_block: u64 },
 
     #[error("deposit amount must be greater than or equal to {minimum_deposit}")]
     DepositTooSmall { minimum_deposit: Uint128 },

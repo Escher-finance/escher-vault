@@ -212,10 +212,7 @@ pub fn generate_complete_redemption_response(
         .add_attribute("completed_at", completed_at.to_string())
         .add_attribute("tx_hash", tx_hash)
         .add_attribute("distributed_assets", distributed_assets_str)
-        .add_attribute(
-            "distributed_assets_count",
-            distributed_assets.len().to_string(),
-        );
+        .add_attribute("distributed_assets_count", distributed_assets.len().to_string());
 
     Response::new().add_event(e)
 }
@@ -226,15 +223,9 @@ pub fn generate_oracle_update_prices_response(
     prices: &crate::state::PricesMap,
 ) -> Response {
     Response::new().add_event(
-        Event::new(EVENT_ORACLE_UPDATE_PRICES)
-            .add_attribute("sender", sender)
-            .add_attribute(
-                "prices",
-                prices
-                    .iter()
-                    .map(|(k, v)| format!("{k}={v}"))
-                    .collect::<Vec<_>>()
-                    .join(","),
-            ),
+        Event::new(EVENT_ORACLE_UPDATE_PRICES).add_attribute("sender", sender).add_attribute(
+            "prices",
+            prices.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join(","),
+        ),
     )
 }

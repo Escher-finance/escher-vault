@@ -44,11 +44,7 @@ pub fn add_to_role(
         addrs.push(address.clone());
         validate_addrs(addrs.into_iter())
     })?;
-    Ok(generate_add_role_response(
-        sender.as_ref(),
-        &role.to_string(),
-        address.as_ref(),
-    ))
+    Ok(generate_add_role_response(sender.as_ref(), &role.to_string(), address.as_ref()))
 }
 
 /// # Errors
@@ -61,19 +57,10 @@ pub fn remove_from_role(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, sender, AccessControlRole::Manager {})?;
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
-        let addrs = validate_addrs(
-            addrs
-                .unwrap_or_default()
-                .into_iter()
-                .filter(|a| a != address),
-        )?;
+        let addrs = validate_addrs(addrs.unwrap_or_default().into_iter().filter(|a| a != address))?;
         Ok(addrs)
     })?;
-    Ok(generate_remove_role_response(
-        sender.as_ref(),
-        &role.to_string(),
-        address.as_ref(),
-    ))
+    Ok(generate_remove_role_response(sender.as_ref(), &role.to_string(), address.as_ref()))
 }
 
 /// # Errors
@@ -85,10 +72,7 @@ pub fn oracle_update_prices(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, sender, AccessControlRole::Oracle {})?;
     update_and_validate_prices(deps, prices.clone())?;
-    Ok(generate_oracle_update_prices_response(
-        sender.as_ref(),
-        prices,
-    ))
+    Ok(generate_oracle_update_prices_response(sender.as_ref(), prices))
 }
 
 /// # Errors
@@ -231,11 +215,8 @@ pub fn add_liquidity(
     .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
 
     let this = &env.contract.address;
-    let underlying_balance = query_asset_info_balance(
-        &deps.querier,
-        tower_config.lp_underlying_asset.clone(),
-        this,
-    )?;
+    let underlying_balance =
+        query_asset_info_balance(&deps.querier, tower_config.lp_underlying_asset.clone(), this)?;
     let other_lp_balance =
         query_asset_info_balance(&deps.querier, tower_config.lp_other_asset.clone(), this)?;
 
@@ -247,11 +228,7 @@ pub fn add_liquidity(
         return Err(ContractError::InsufficientFunds {});
     }
 
-    let msgs = add_tower_liquidity(
-        &tower_config,
-        underlying_token_amount,
-        other_lp_token_amount,
-    )?;
+    let msgs = add_tower_liquidity(&tower_config, underlying_token_amount, other_lp_token_amount)?;
 
     let event = add_liquidity_event(
         &info.sender,
@@ -349,10 +326,8 @@ pub fn receive(
 
     validate_only_not_paused(deps.storage, &sender)?;
 
-    let received_balance = cw20::Cw20CoinVerified {
-        address: cw20_contract,
-        amount: cw20_receive_msg.amount,
-    };
+    let received_balance =
+        cw20::Cw20CoinVerified { address: cw20_contract, amount: cw20_receive_msg.amount };
 
     match msg {
         ReceiveMsg::Deposit { receiver } => {
@@ -406,19 +381,13 @@ mod tests {
         let manager =
             Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd"); // Valid bech32 address
         let managers = vec![manager];
-        ACCESS_CONTROL
-            .save(deps.storage, AccessControlRole::Manager {}.key(), &managers)
-            .unwrap();
+        ACCESS_CONTROL.save(deps.storage, AccessControlRole::Manager {}.key(), &managers).unwrap();
 
         // Set up tower config with LP assets
         let tower_config = TowerConfig {
             lp: Addr::unchecked("lp_contract"),
-            lp_underlying_asset: AssetInfo::NativeToken {
-                denom: "ubbn".to_string(),
-            },
-            lp_other_asset: AssetInfo::Token {
-                contract_addr: Addr::unchecked("cw20_token"),
-            },
+            lp_underlying_asset: AssetInfo::NativeToken { denom: "ubbn".to_string() },
+            lp_other_asset: AssetInfo::Token { contract_addr: Addr::unchecked("cw20_token") },
             lp_token: Addr::unchecked("lp_token"),
             lp_incentives: vec![],
             is_underlying_first_lp_asset: true,
@@ -428,9 +397,7 @@ mod tests {
         TOWER_CONFIG.save(deps.storage, &tower_config).unwrap();
 
         // Set up staking contract
-        STAKING_CONTRACT
-            .save(deps.storage, &Addr::unchecked("tower_incentives"))
-            .unwrap();
+        STAKING_CONTRACT.save(deps.storage, &Addr::unchecked("tower_incentives")).unwrap();
     }
 
     #[test]
@@ -452,13 +419,7 @@ mod tests {
         };
 
         // This might fail due to missing underlying asset setup, but should not panic
-        let result = receive(
-            &mut deps.as_mut(),
-            &env,
-            &info,
-            cw20_contract,
-            &cw20_receive_msg,
-        );
+        let result = receive(&mut deps.as_mut(), &env, &info, cw20_contract, &cw20_receive_msg);
 
         // We expect this to fail due to missing setup, but the function should handle it gracefully
         assert!(result.is_err());
@@ -476,10 +437,7 @@ mod tests {
         let result = unbond(
             &mut deps.as_mut(),
             &env,
-            &MessageInfo {
-                sender: sender.clone(),
-                funds: vec![],
-            },
+            &MessageInfo { sender: sender.clone(), funds: vec![] },
             amount,
         );
 
@@ -497,9 +455,7 @@ mod tests {
         let env = mock_env();
         setup_test_contract(&mut deps.as_mut());
 
-        PAUSED_STATUS
-            .save(&mut deps.storage, &PausedStatus::NotPaused {})
-            .unwrap();
+        PAUSED_STATUS.save(&mut deps.storage, &PausedStatus::NotPaused {}).unwrap();
 
         let manager = ACCESS_CONTROL
             .load(deps.as_ref().storage, AccessControlRole::Manager {}.key())
@@ -511,9 +467,7 @@ mod tests {
         assert!(!res.messages.is_empty());
         // event present
         assert!(
-            res.events
-                .iter()
-                .any(|e| e.ty.as_str() == crate::responses::EVENT_CLAIM_INCENTIVES)
+            res.events.iter().any(|e| e.ty.as_str() == crate::responses::EVENT_CLAIM_INCENTIVES)
         );
         let _ = env; // silence unused
     }

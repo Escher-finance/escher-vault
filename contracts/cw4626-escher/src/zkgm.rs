@@ -142,11 +142,9 @@ pub fn call_lst_bond(
     let batch_instruction = Instruction {
         version: INSTR_VERSION_0,
         opcode: OP_BATCH,
-        operand: Batch {
-            instructions: vec![token_order_v2, call_instruction],
-        }
-        .abi_encode_params()
-        .into(),
+        operand: Batch { instructions: vec![token_order_v2, call_instruction] }
+            .abi_encode_params()
+            .into(),
     };
 
     let channel_id = ChannelId::from_raw(vault_zkgm_config.channel_id)
@@ -217,9 +215,7 @@ pub fn ucs03_call_lst(
 pub fn get_timeout_timestamp_from_time(time: Timestamp) -> ContractResult<Timestamp> {
     let duration_offset = Duration::from_secs(TIMEOUT_OFFSET);
     Ok(Timestamp::from_nanos(
-        time.plus_duration(duration_offset)
-            .ok_or(ContractError::TimestampOverflow {})?
-            .as_nanos(),
+        time.plus_duration(duration_offset).ok_or(ContractError::TimestampOverflow {})?.as_nanos(),
     ))
 }
 
@@ -268,10 +264,7 @@ pub fn generate_bond_calldata(
     let execute_bond_msg = WasmMsg::Execute {
         contract_addr: lst_contract_address.clone(),
         msg: to_json_binary(&bond_msg)?,
-        funds: vec![Coin {
-            denom: request.denom.clone(),
-            amount: request.amount,
-        }],
+        funds: vec![Coin { denom: request.denom.clone(), amount: request.amount }],
     };
     call_msgs.push(execute_bond_msg.into());
 
@@ -364,20 +357,9 @@ pub fn generate_bond_calldata(
 }
 
 #[allow(dead_code)]
-fn proxy_account_salt(
-    CallProxySalt {
-        path,
-        channel_id,
-        sender,
-    }: &CallProxySalt,
-) -> H256 {
+fn proxy_account_salt(CallProxySalt { path, channel_id, sender }: &CallProxySalt) -> H256 {
     keccak256(
-        (
-            Into::<alloy_primitives::U256>::into(*path),
-            channel_id.raw(),
-            sender,
-        )
-            .abi_encode_params(),
+        (Into::<alloy_primitives::U256>::into(*path), channel_id.raw(), sender).abi_encode_params(),
     )
 }
 
@@ -500,13 +482,7 @@ mod tests {
             "union1uuuuuuuuu9un2qpksam7rlttpxc8dc76mcphhsmp39pxjnsvrtcqvyv57r".to_string();
 
         let result = generate_bond_calldata(
-            &BondRequest {
-                sender,
-                proxy_account,
-                amount,
-                min_mint_amount,
-                denom,
-            },
+            &BondRequest { sender, proxy_account, amount, min_mint_amount, denom },
             LstZkgmConfig {
                 union_ucs03_zkgm,
                 zkgm_token_minter,
@@ -536,9 +512,7 @@ mod tests {
         let union_ucs03_zkgm = "union1336jj8ertl8h7rdvnz4dh5rqahd09cy0x43guhsxx6xyrztx292qpe64fh";
         let code_hash = "0xec827349ed4c1fec5a9c3462ff7c979d4c40e7aa43b16ed34469d04ff835f2a1";
 
-        let app = AppBuilder::default()
-            .with_api(MockApiBech32::new("union"))
-            .build(|_, _, _| {});
+        let app = AppBuilder::default().with_api(MockApiBech32::new("union")).build(|_, _, _| {});
         let api = app.api();
         let predicted = predict_call_proxy_account(
             api,

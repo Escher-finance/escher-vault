@@ -104,9 +104,7 @@ pub fn validate_and_store_staking_contract(
             &EscherHubQueryMsg::Parameters {},
         )
         .map_err(|_| ContractError::InvalidStakingContract {})?;
-    let cw20_info = AssetInfo::Token {
-        contract_addr: cw20_address,
-    };
+    let cw20_info = AssetInfo::Token { contract_addr: cw20_address };
     if cw20_info != *other_lp_token {
         return Err(ContractError::InvalidStakingContract {});
     }
@@ -128,10 +126,9 @@ pub fn internal_bond(
 ) -> ContractResult<(WasmMsg, Uint128)> {
     validate_salt(&salt)?;
 
-    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
-        staking_contract.clone(),
-        &EscherHubQueryMsg::StakingLiquidity {},
-    )?;
+    let EscherHubStakingLiquidity { exchange_rate, .. } = deps
+        .querier
+        .query_wasm_smart(staking_contract.clone(), &EscherHubQueryMsg::StakingLiquidity {})?;
 
     let expected = amount
         .checked_div_floor(exchange_rate)
@@ -148,10 +145,7 @@ pub fn internal_bond(
 
     // Create the bond message for the staking contract
     let bond_msg = asset_cw20_send_or_attach_funds(
-        Asset {
-            info: asset_info,
-            amount,
-        },
+        Asset { info: asset_info, amount },
         staking_contract,
         to_json_binary(&EscherHubExecuteMsg::Bond {
             slippage,
@@ -177,10 +171,9 @@ pub fn internal_unbond(
     amount: Uint128,
 ) -> ContractResult<(WasmMsg, Uint128)> {
     // Query the staking contract to get current liquidity info
-    let EscherHubStakingLiquidity { exchange_rate, .. } = deps.querier.query_wasm_smart(
-        staking_contract.clone(),
-        &EscherHubQueryMsg::StakingLiquidity {},
-    )?;
+    let EscherHubStakingLiquidity { exchange_rate, .. } = deps
+        .querier
+        .query_wasm_smart(staking_contract.clone(), &EscherHubQueryMsg::StakingLiquidity {})?;
 
     // Calculate the expected amount of underlying tokens to receive
     let expected = amount
@@ -190,10 +183,7 @@ pub fn internal_unbond(
     // Create the unbond message by sending eBABY tokens to the staking contract
     // The staking contract's Receive handler will process the unbond when it receives the eBABY tokens
     let unbond_msg = asset_cw20_send_or_attach_funds(
-        Asset {
-            info: other_lp_token,
-            amount,
-        },
+        Asset { info: other_lp_token, amount },
         staking_contract,
         to_json_binary(&EscherHubExecuteMsg::Unstake {
             amount,

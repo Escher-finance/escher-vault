@@ -130,15 +130,13 @@ pub fn execute(
         ExecuteMsg::TogglePausedStatus {} => {
             crate::execute::toggle_paused_status(&mut deps, &info)?
         }
-        ExecuteMsg::Bond {
-            amount,
-            salt,
-            slippage,
-        } => crate::execute::bond(&mut deps, &env, &info, amount, salt, slippage)?,
+        ExecuteMsg::Bond { amount, salt, slippage } => {
+            crate::execute::bond(&mut deps, &env, &info, amount, salt, slippage)?
+        }
         ExecuteMsg::Unbond { amount } => crate::execute::unbond(&mut deps, &env, &info, amount)?,
-        ExecuteMsg::AddLiquidity {
-            underlying_token_amount,
-        } => crate::execute::add_liquidity(&mut deps, &env, &info, underlying_token_amount)?,
+        ExecuteMsg::AddLiquidity { underlying_token_amount } => {
+            crate::execute::add_liquidity(&mut deps, &env, &info, underlying_token_amount)?
+        }
         ExecuteMsg::RemoveLiquidity { lp_token_amount } => {
             crate::execute::remove_liquidity(&mut deps, &env, &info, lp_token_amount)?
         }
@@ -152,21 +150,18 @@ pub fn execute(
         ExecuteMsg::Deposit { assets, receiver } => {
             crate::execute::deposit(&mut deps, &env, &info, assets, &receiver)?
         }
-        ExecuteMsg::RequestRedeem {
-            shares,
-            receiver,
-            owner,
-        } => crate::execute::request_redeem(deps, &env, &info, shares, &receiver, &owner)?,
-        ExecuteMsg::CompleteRedemption {
-            redemption_id,
-            tx_hash,
-        } => crate::execute::complete_redemption_with_distribution(
-            deps,
-            &env,
-            &info,
-            redemption_id,
-            &tx_hash,
-        )?,
+        ExecuteMsg::RequestRedeem { shares, receiver, owner } => {
+            crate::execute::request_redeem(deps, &env, &info, shares, &receiver, &owner)?
+        }
+        ExecuteMsg::CompleteRedemption { redemption_id, tx_hash } => {
+            crate::execute::complete_redemption_with_distribution(
+                deps,
+                &env,
+                &info,
+                redemption_id,
+                &tx_hash,
+            )?
+        }
         ExecuteMsg::Receive(cw20_receive_msg) => {
             crate::execute::receive(&mut deps, &env, &info, sender, &cw20_receive_msg)?
         }
@@ -177,55 +172,38 @@ pub fn execute(
             cw20_base::contract::execute_transfer(deps, env, info, recipient, amount)?
         }
         ExecuteMsg::Burn { amount } => cw20_base::contract::execute_burn(deps, env, info, amount)?,
-        ExecuteMsg::Send {
-            contract,
-            amount,
-            msg,
-        } => cw20_base::contract::execute_send(deps, env, info, contract, amount, msg)?,
-        ExecuteMsg::IncreaseAllowance {
-            spender,
-            amount,
-            expires,
-        } => cw20_base::allowances::execute_increase_allowance(
-            deps, env, info, spender, amount, expires,
-        )?,
-        ExecuteMsg::DecreaseAllowance {
-            spender,
-            amount,
-            expires,
-        } => cw20_base::allowances::execute_decrease_allowance(
-            deps, env, info, spender, amount, expires,
-        )?,
-        ExecuteMsg::TransferFrom {
-            owner,
-            recipient,
-            amount,
-        } => {
+        ExecuteMsg::Send { contract, amount, msg } => {
+            cw20_base::contract::execute_send(deps, env, info, contract, amount, msg)?
+        }
+        ExecuteMsg::IncreaseAllowance { spender, amount, expires } => {
+            cw20_base::allowances::execute_increase_allowance(
+                deps, env, info, spender, amount, expires,
+            )?
+        }
+        ExecuteMsg::DecreaseAllowance { spender, amount, expires } => {
+            cw20_base::allowances::execute_decrease_allowance(
+                deps, env, info, spender, amount, expires,
+            )?
+        }
+        ExecuteMsg::TransferFrom { owner, recipient, amount } => {
             cw20_base::allowances::execute_transfer_from(deps, env, info, owner, recipient, amount)?
         }
         ExecuteMsg::BurnFrom { owner, amount } => {
             cw20_base::allowances::execute_burn_from(deps, env, info, owner, amount)?
         }
-        ExecuteMsg::SendFrom {
-            owner,
-            contract,
-            amount,
-            msg,
-        } => {
+        ExecuteMsg::SendFrom { owner, contract, amount, msg } => {
             cw20_base::allowances::execute_send_from(deps, env, info, owner, contract, amount, msg)?
         }
-        ExecuteMsg::UpdateMarketing {
-            project,
-            description,
-            marketing,
-        } => cw20_base::contract::execute_update_marketing(
-            deps,
-            env,
-            info,
-            project,
-            description,
-            marketing,
-        )?,
+        ExecuteMsg::UpdateMarketing { project, description, marketing } => {
+            cw20_base::contract::execute_update_marketing(
+                deps,
+                env,
+                info,
+                project,
+                description,
+                marketing,
+            )?
+        }
         ExecuteMsg::UploadLogo(logo) => {
             cw20_base::contract::execute_upload_logo(deps, env, info, logo)?
         }
@@ -260,13 +238,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::UserRedemptionRequests { user } => {
             to_json_binary(&crate::query::user_redemption_requests(&deps, &user)?)
         }
-        QueryMsg::PreviewRedeemMultiAsset { shares } => to_json_binary(
-            &crate::query::preview_redeem_multi_asset(deps, shares, &this)?,
-        ),
+        QueryMsg::PreviewRedeemMultiAsset { shares } => {
+            to_json_binary(&crate::query::preview_redeem_multi_asset(deps, shares, &this)?)
+        }
         QueryMsg::RedemptionStats => to_json_binary(&crate::query::redemption_stats(deps)?),
-        QueryMsg::AllRedemptionRequests { start_after, limit } => to_json_binary(
-            &crate::query::all_redemption_requests(&deps, start_after, limit)?,
-        ),
+        QueryMsg::AllRedemptionRequests { start_after, limit } => {
+            to_json_binary(&crate::query::all_redemption_requests(&deps, start_after, limit)?)
+        }
         //
         // CW4626
         //
@@ -296,32 +274,18 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&cw20_base::contract::query_balance(deps, address)?)
         }
         QueryMsg::TokenInfo {} => to_json_binary(&cw20_base::contract::query_token_info(deps)?),
-        QueryMsg::Allowance { owner, spender } => to_json_binary(
-            &cw20_base::allowances::query_allowance(deps, owner, spender)?,
+        QueryMsg::Allowance { owner, spender } => {
+            to_json_binary(&cw20_base::allowances::query_allowance(deps, owner, spender)?)
+        }
+        QueryMsg::AllAllowances { owner, start_after, limit } => to_json_binary(
+            &cw20_base::enumerable::query_owner_allowances(deps, owner, start_after, limit)?,
         ),
-        QueryMsg::AllAllowances {
-            owner,
-            start_after,
-            limit,
-        } => to_json_binary(&cw20_base::enumerable::query_owner_allowances(
-            deps,
-            owner,
-            start_after,
-            limit,
-        )?),
-        QueryMsg::AllSpenderAllowances {
-            spender,
-            start_after,
-            limit,
-        } => to_json_binary(&cw20_base::enumerable::query_spender_allowances(
-            deps,
-            spender,
-            start_after,
-            limit,
-        )?),
-        QueryMsg::AllAccounts { start_after, limit } => to_json_binary(
-            &cw20_base::enumerable::query_all_accounts(deps, start_after, limit)?,
+        QueryMsg::AllSpenderAllowances { spender, start_after, limit } => to_json_binary(
+            &cw20_base::enumerable::query_spender_allowances(deps, spender, start_after, limit)?,
         ),
+        QueryMsg::AllAccounts { start_after, limit } => {
+            to_json_binary(&cw20_base::enumerable::query_all_accounts(deps, start_after, limit)?)
+        }
         QueryMsg::MarketingInfo {} => {
             to_json_binary(&cw20_base::contract::query_marketing_info(deps)?)
         }
