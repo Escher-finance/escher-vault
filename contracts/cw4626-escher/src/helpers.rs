@@ -12,10 +12,10 @@ use cosmwasm_std::{
 };
 
 use crate::{
+    ContractError,
     asset::assert_send_asset_to_contract,
     state::{ENTRY_FEE_CONFIG, LOCKED_SHARES, UNDERLYING_ASSET},
     tower::calculate_total_assets,
-    ContractError,
 };
 
 #[derive(Debug)]
@@ -323,11 +323,11 @@ mod tests {
     use super::*;
     use crate::{
         responses::EVENT_DEPOSIT,
-        state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET},
+        state::{ENTRY_FEE_CONFIG, EntryFeeConfig, UNDERLYING_ASSET},
     };
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env},
         Decimal, MessageInfo,
+        testing::{mock_dependencies, mock_env},
     };
 
     #[test]
@@ -455,14 +455,16 @@ mod tests {
             .find(|e| e.ty == EVENT_DEPOSIT)
             .unwrap();
         // Verify attributes present
-        assert!(ev
-            .attributes
-            .iter()
-            .any(|a| a.key == "fee_shares_minted" && a.value == "90"));
-        assert!(ev
-            .attributes
-            .iter()
-            .any(|a| a.key == "user_shares_minted" && a.value == "820"));
+        assert!(
+            ev.attributes
+                .iter()
+                .any(|a| a.key == "fee_shares_minted" && a.value == "90")
+        );
+        assert!(
+            ev.attributes
+                .iter()
+                .any(|a| a.key == "user_shares_minted" && a.value == "820")
+        );
 
         // Check balances
         let user_balance = cw20_base::state::BALANCES

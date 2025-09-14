@@ -4,9 +4,6 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use astroport::asset::AssetInfo;
-use cosmwasm_std::assert_approx_eq;
-use cosmwasm_std::testing::MockApi;
-use cosmwasm_std::to_json_binary;
 use cosmwasm_std::Addr;
 use cosmwasm_std::Binary;
 use cosmwasm_std::Coin;
@@ -20,14 +17,17 @@ use cosmwasm_std::MessageInfo;
 use cosmwasm_std::Response;
 use cosmwasm_std::StdResult;
 use cosmwasm_std::Uint128;
+use cosmwasm_std::assert_approx_eq;
+use cosmwasm_std::testing::MockApi;
+use cosmwasm_std::to_json_binary;
+use cw_multi_test::{App, ContractWrapper, Executor};
 use cw20::Cw20ExecuteMsg;
 use cw20::MinterResponse;
-use cw_multi_test::{App, ContractWrapper, Executor};
 
+use cw_multi_test::AppResponse;
 use cw4626_escher::contract;
 use cw4626_escher::msg::*;
 use cw4626_escher::state::AccessControlRole;
-use cw_multi_test::AppResponse;
 
 fn make_valid_addr() -> Addr {
     Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd")
@@ -121,11 +121,11 @@ fn instantiate_cw20_asset(app: &mut App) -> AssetInfo {
 
 mod staking_mock {
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::{to_json_binary, Timestamp};
+    use cosmwasm_std::{Timestamp, to_json_binary};
+    use cw_storage_plus::Item;
     use cw4626_escher::staking::{
         EscherHubParameters, EscherHubQueryMsg, EscherHubStakingLiquidity,
     };
-    use cw_storage_plus::Item;
 
     use super::*;
 

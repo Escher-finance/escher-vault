@@ -10,18 +10,18 @@ use astroport::{
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, StdResult, Storage, Uint128,
-    WasmMsg,
+    Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, StdResult, Storage, Uint128, WasmMsg,
+    to_json_binary,
 };
 
 use crate::{
+    ContractError,
     asset::{
         asset_cw20_send_or_attach_funds, asset_generate_increase_allowance_or_funds,
         query_asset_info_balance,
     },
     error::ContractResult,
-    state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
-    ContractError,
+    state::{ORACLE_PRICES, PricesMap, TOWER_CONFIG, TowerConfig},
 };
 
 /// Makes all necessary checks that the pool can be integrated in the vault and if so stores it

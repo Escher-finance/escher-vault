@@ -2,16 +2,16 @@ use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
+    ContractError,
     asset::send_asset_from_contract,
     error::ContractResult,
     msg::PreviewRedeemMultiAssetResponse,
     responses::{generate_complete_redemption_response, generate_request_redemption_response},
     state::{
-        LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES, REDEMPTION_COUNTER,
-        REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
+        LOCKED_SHARES, LockedShares, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, RedemptionRequest,
+        RedemptionStatus, TOWER_CONFIG, USER_REDEMPTION_IDS,
     },
     tower::{calculate_assets_ownership, calculate_total_assets},
-    ContractError,
 };
 
 /// Calculate the user's proportional share of each asset type
@@ -330,13 +330,13 @@ pub fn preview_redeem_multi_asset(
 mod tests {
     use super::*;
     use crate::state::{
-        AccessControlRole, TowerConfig, ACCESS_CONTROL, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
-        TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        ACCESS_CONTROL, AccessControlRole, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG,
+        TowerConfig, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
     };
     use astroport::asset::AssetInfo;
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env},
         Addr, MessageInfo, Uint128,
+        testing::{mock_dependencies, mock_env},
     };
 
     fn setup_test_contract(deps: &mut DepsMut) {

@@ -1,9 +1,9 @@
 use cosmwasm_std::{Addr, Storage};
 
 use crate::{
-    error::ContractResult,
-    state::{AccessControlRole, PausedStatus, ACCESS_CONTROL, PAUSED_STATUS},
     ContractError,
+    error::ContractResult,
+    state::{ACCESS_CONTROL, AccessControlRole, PAUSED_STATUS, PausedStatus},
 };
 
 /// Validates that the `sender` has to have the specified `role`

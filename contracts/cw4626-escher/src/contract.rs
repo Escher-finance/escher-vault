@@ -1,19 +1,19 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 
 use crate::asset::query_asset_info_decimals;
 use crate::error::ContractResult;
+use crate::helpers::PreviewDepositKind;
 use crate::helpers::internal_update_minimum_deposit;
 use crate::helpers::validate_addrs;
-use crate::helpers::PreviewDepositKind;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::validate_and_store_staking_contract;
-use crate::state::PausedStatus;
 use crate::state::PAUSED_STATUS;
+use crate::state::PausedStatus;
 use crate::state::{
-    AccessControlRole, EntryFeeConfig, ACCESS_CONTROL, ENTRY_FEE_CONFIG, UNDERLYING_ASSET,
+    ACCESS_CONTROL, AccessControlRole, ENTRY_FEE_CONFIG, EntryFeeConfig, UNDERLYING_ASSET,
     UNDERLYING_DECIMALS,
 };
 use crate::tower::{init_oracle_prices, update_tower_config};

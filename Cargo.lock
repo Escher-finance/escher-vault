@@ -379,6 +379,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "astroport"
 version = "5.7.0"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -392,6 +393,7 @@ dependencies = [
 [[package]]
 name = "astroport-factory"
 version = "1.9.0"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "cosmwasm-schema",
@@ -406,6 +408,7 @@ dependencies = [
 [[package]]
 name = "astroport-pair"
 version = "2.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "cosmwasm-schema",
@@ -422,6 +425,7 @@ dependencies = [
 [[package]]
 name = "astroport-pair-concentrated"
 version = "4.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "astroport-pcl-common",
@@ -439,6 +443,7 @@ dependencies = [
 [[package]]
 name = "astroport-pcl-common"
 version = "2.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "astroport-factory",
@@ -620,6 +625,12 @@ dependencies = [
  "sha2",
  "tinyvec",
 ]
+
+[[package]]
+name = "bumpalo"
+version = "3.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
 
 [[package]]
 name = "byte-slice-cast"
@@ -1115,6 +1126,7 @@ dependencies = [
  "cw20",
  "cw20-base",
  "ed25519-zebra",
+ "getrandom 0.2.16",
  "ibc-union-spec",
  "schemars",
  "serde",
@@ -1664,8 +1676,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "335ff9f135e4384c8150d6f27c6daed433577f86b4750418338c01a1a2528592"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "wasi 0.11.1+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1983,6 +1997,16 @@ checksum = "9afb3de4395d6b3e67a780b6de64b51c978ecf11cb9a462c66be7d4ca9039d33"
 dependencies = [
  "getrandom 0.3.3",
  "libc",
+]
+
+[[package]]
+name = "js-sys"
+version = "0.3.78"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c0b063578492ceec17683ef2f8c5e89121fbd0b172cbc280635ab7567db2738"
+dependencies = [
+ "once_cell",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -3628,6 +3652,64 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03fa2761397e5bd52002cd7e73110c71af2109aca4e521a9f40473fe685b0a24"
 dependencies = [
  "wit-bindgen",
+]
+
+[[package]]
+name = "wasm-bindgen"
+version = "0.2.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e14915cadd45b529bb8d1f343c4ed0ac1de926144b746e2710f9cd05df6603b"
+dependencies = [
+ "cfg-if",
+ "once_cell",
+ "wasm-bindgen-macro",
+ "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-backend"
+version = "0.2.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e28d1ba982ca7923fd01448d5c30c6864d0a14109560296a162f80f305fb93bb"
+dependencies = [
+ "bumpalo",
+ "log",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+ "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-macro"
+version = "0.2.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c3d463ae3eff775b0c45df9da45d68837702ac35af998361e2c84e7c5ec1b0d"
+dependencies = [
+ "quote",
+ "wasm-bindgen-macro-support",
+]
+
+[[package]]
+name = "wasm-bindgen-macro-support"
+version = "0.2.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bb4ce89b08211f923caf51d527662b75bdc9c9c7aab40f86dcb9fb85ac552aa"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+ "wasm-bindgen-backend",
+ "wasm-bindgen-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-shared"
+version = "0.2.101"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f143854a3b13752c6950862c906306adb27c7e839f7414cec8fea35beab624c1"
+dependencies = [
+ "unicode-ident",
 ]
 
 [[package]]

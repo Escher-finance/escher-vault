@@ -46,7 +46,7 @@
 
 
 
-        # Rust toolchain with specific version
+        # Rust toolchain with latest nightly that supports Rust 2024 features
         rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
           extensions = [
            "rust-src"

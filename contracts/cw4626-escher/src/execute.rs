@@ -1,9 +1,10 @@
 use crate::{
+    ContractError,
     access_control::{validate_only_not_paused, validate_only_role},
     asset::query_asset_info_balance,
     error::ContractResult,
     helpers::{
-        internal_deposit, internal_update_minimum_deposit, validate_addrs, PreviewDepositKind,
+        PreviewDepositKind, internal_deposit, internal_update_minimum_deposit, validate_addrs,
     },
     msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
@@ -16,18 +17,17 @@ use crate::{
     },
     staking::{internal_bond, internal_unbond, validate_and_store_staking_contract},
     state::{
-        AccessControlRole, PausedStatus, PricesMap, TowerConfig, ACCESS_CONTROL, PAUSED_STATUS,
-        STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, PAUSED_STATUS, PausedStatus, PricesMap,
+        STAKING_CONTRACT, TOWER_CONFIG, TowerConfig, UNDERLYING_ASSET,
     },
     tower::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
         remove_tower_liquidity, tower_swap, update_and_validate_prices,
     },
-    ContractError,
 };
 use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
 use cosmwasm_std::{
-    from_json, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
+    Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError, Uint128, from_json,
 };
 
 /// # Errors
@@ -393,10 +393,11 @@ pub fn complete_redemption_with_distribution(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{TowerConfig, ACCESS_CONTROL, TOWER_CONFIG};
+    use crate::state::{ACCESS_CONTROL, TOWER_CONFIG, TowerConfig};
     use cosmwasm_std::{
+        Addr, Uint128,
         testing::{message_info, mock_dependencies, mock_env},
-        to_json_binary, Addr, Uint128,
+        to_json_binary,
     };
     use std::str::FromStr;
 
@@ -509,10 +510,11 @@ mod tests {
         // one message to tower incentives
         assert!(!res.messages.is_empty());
         // event present
-        assert!(res
-            .events
-            .iter()
-            .any(|e| e.ty.as_str() == crate::responses::EVENT_CLAIM_INCENTIVES));
+        assert!(
+            res.events
+                .iter()
+                .any(|e| e.ty.as_str() == crate::responses::EVENT_CLAIM_INCENTIVES)
+        );
         let _ = env; // silence unused
     }
 

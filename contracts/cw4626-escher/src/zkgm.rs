@@ -1,21 +1,21 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::instantiate2_address;
 use cosmwasm_std::Api;
+use cosmwasm_std::instantiate2_address;
 use sha3::Digest;
 use sha3::Keccak256;
 use ucs03_zkgm::com::{
-    Batch, Call, Instruction, SolverMetadata, TokenOrderV2, INSTR_VERSION_0, INSTR_VERSION_2,
-    OP_BATCH, OP_CALL, OP_TOKEN_ORDER, TOKEN_ORDER_KIND_SOLVE,
+    Batch, Call, INSTR_VERSION_0, INSTR_VERSION_2, Instruction, OP_BATCH, OP_CALL, OP_TOKEN_ORDER,
+    SolverMetadata, TOKEN_ORDER_KIND_SOLVE, TokenOrderV2,
 };
-use unionlabs_primitives::encoding::HexPrefixed;
 use unionlabs_primitives::FixedBytes;
+use unionlabs_primitives::encoding::HexPrefixed;
 
 use crate::error::{ContractError, ContractResult};
 use alloy::sol_types::SolValue;
 use alloy_primitives::Bytes as AlloyBytes;
 use alloy_primitives::Uint;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Coin, CosmosMsg, StdError, Uint128, Uint64, WasmMsg,
+    Addr, Binary, Coin, CosmosMsg, StdError, Uint64, Uint128, WasmMsg, to_json_binary,
 };
 use ibc_union_spec::{ChannelId, Duration, Timestamp};
 use std::str::FromStr;
@@ -118,7 +118,7 @@ pub fn call_lst_bond(
         Err(e) => {
             return Err(ContractError::Std(StdError::generic_err(format!(
                 "failed to parse salt: {salt}, reason: {e}"
-            ))))
+            ))));
         }
     };
 
@@ -363,6 +363,7 @@ pub fn generate_bond_calldata(
     Ok(msgs_bytes)
 }
 
+#[allow(dead_code)]
 fn proxy_account_salt(
     CallProxySalt {
         path,
@@ -391,6 +392,7 @@ pub struct CallProxySalt {
     pub sender: Bytes,
 }
 
+#[allow(dead_code)]
 fn predict_call_proxy_account(
     api: &dyn Api,
     call_proxy_salt: &CallProxySalt,
@@ -454,9 +456,9 @@ mod tests {
 
     use super::*;
     use crate::zkgm::generate_bond_calldata;
+    use cosmwasm_std::Uint128;
     use cosmwasm_std::testing::mock_dependencies;
     use cosmwasm_std::testing::mock_env;
-    use cosmwasm_std::Uint128;
     use cw_multi_test::AppBuilder;
     use cw_multi_test::BasicAppBuilder;
     use cw_multi_test::MockApiBech32;

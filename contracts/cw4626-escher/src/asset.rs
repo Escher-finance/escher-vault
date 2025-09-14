@@ -3,13 +3,13 @@ use astroport::{
     querier::{query_balance, query_token_balance},
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper,
-    StdResult, Uint128, WasmMsg,
+    Addr, BankMsg, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper, StdResult, Uint128,
+    WasmMsg, to_json_binary,
 };
-use cw20;
 use cw_utils::must_pay;
+use cw20;
 
-use crate::{error::ContractResult, ContractError};
+use crate::{ContractError, error::ContractResult};
 
 /// Validates that `token_address` is a CW20 contract
 ///

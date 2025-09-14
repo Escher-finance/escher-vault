@@ -1,5 +1,5 @@
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 use cw20_base::msg::InstantiateMarketingInfo;
 

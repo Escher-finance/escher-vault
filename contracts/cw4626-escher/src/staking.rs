@@ -1,15 +1,15 @@
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    to_json_binary, Addr, Decimal, DepsMut, MessageInfo, StdError, Timestamp, Uint128, WasmMsg,
+    Addr, Decimal, DepsMut, MessageInfo, StdError, Timestamp, Uint128, WasmMsg, to_json_binary,
 };
 
 use crate::{
+    ContractError,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     error::ContractResult,
     helpers::validate_salt,
     state::{STAKING_CONTRACT, UNDERLYING_ASSET},
-    ContractError,
 };
 
 #[cw_serde]

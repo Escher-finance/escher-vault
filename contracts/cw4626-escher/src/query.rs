@@ -3,8 +3,8 @@ use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 
 use crate::{
     helpers::{
-        get_tokens, internal_convert_to_assets, internal_convert_to_shares,
-        internal_preview_deposit, PreviewDepositKind, Rounding, Tokens,
+        PreviewDepositKind, Rounding, Tokens, get_tokens, internal_convert_to_assets,
+        internal_convert_to_shares, internal_preview_deposit,
     },
     msg::{
         AccessControlRoleResponse, AllRedemptionRequestsResponse, AssetResponse, ConfigResponse,
@@ -15,7 +15,7 @@ use crate::{
         RedemptionStatsResponse, TotalAssetsResponse, UserRedemptionRequestsResponse,
     },
     state::{
-        AccessControlRole, PausedStatus, ACCESS_CONTROL, ORACLE_PRICES, PAUSED_STATUS,
+        ACCESS_CONTROL, AccessControlRole, ORACLE_PRICES, PAUSED_STATUS, PausedStatus,
         REDEMPTION_COUNTER, REDEMPTION_REQUESTS, STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET,
         USER_REDEMPTION_IDS,
     },
@@ -333,12 +333,12 @@ pub fn paused(deps: &Deps) -> StdResult<PausedStatus> {
 mod tests {
     use super::*;
     use crate::state::{
-        AccessControlRole, RedemptionRequest, RedemptionStatus, TowerConfig, ACCESS_CONTROL,
-        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
+        RedemptionRequest, RedemptionStatus, TOWER_CONFIG, TowerConfig, UNDERLYING_ASSET,
         USER_REDEMPTION_IDS,
     };
     use astroport::asset::{Asset, AssetInfo};
-    use cosmwasm_std::{testing::mock_dependencies, Addr, DepsMut, Uint128};
+    use cosmwasm_std::{Addr, DepsMut, Uint128, testing::mock_dependencies};
 
     fn setup_test_contract(deps: &mut DepsMut) {
         // Set up a manager

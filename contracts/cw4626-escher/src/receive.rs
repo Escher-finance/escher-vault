@@ -1,12 +1,12 @@
 use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response};
 
 use crate::{
+    ContractError,
     error::ContractResult,
-    helpers::{internal_deposit, PreviewDepositKind},
+    helpers::{PreviewDepositKind, internal_deposit},
     msg::{MaxDepositResponse, PreviewDepositResponse},
     query,
     state::UNDERLYING_ASSET,
-    ContractError,
 };
 
 /// # Errors

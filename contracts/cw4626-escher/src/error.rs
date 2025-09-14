@@ -1,7 +1,7 @@
 use astroport::asset::AssetInfo;
 use cosmwasm_std::{Addr, Instantiate2AddressError, StdError, Uint128};
-use cw20_base::ContractError as Cw20ContractError;
 use cw_utils::PaymentError;
+use cw20_base::ContractError as Cw20ContractError;
 use thiserror::Error;
 
 use crate::state::{AccessControlRole, PausedStatus};
