@@ -4,8 +4,3 @@ astroport-factory = { path = "/nix/store/ii5nxdgq969939bai446rdq40zjbzj4f-source
 astroport-pair = { path = "/nix/store/ii5nxdgq969939bai446rdq40zjbzj4f-source/contracts/pair" }
 astroport-pair-concentrated = { path = "/nix/store/ii5nxdgq969939bai446rdq40zjbzj4f-source/contracts/pair_concentrated" }
 astroport-pcl-common = { path = "/nix/store/ii5nxdgq969939bai446rdq40zjbzj4f-source/packages/astroport_pcl_common" }
-
-[patch.'https://github.com/unionlabs/union']
-unionlabs-primitives = { path = "/nix/store/lmdrsj0h39yx9rlrwic7zcq7llxrcgcw-source/lib/unionlabs-primitives" }
-ucs03-zkgm = { path = "/nix/store/lmdrsj0h39yx9rlrwic7zcq7llxrcgcw-source/cosmwasm/ibc-union/app/ucs03-zkgm" }
-ibc-union-spec = { path = "/nix/store/lmdrsj0h39yx9rlrwic7zcq7llxrcgcw-source/lib/ibc-union-spec" }
