@@ -31,13 +31,14 @@ astroport = { git = "https://github.com/quasar-finance/babydex.git", version = "
 astroport-pair = { git = "https://github.com/quasar-finance/babydex.git", version = "2.1.1" }
 astroport-pair-concentrated = { git = "https://github.com/quasar-finance/babydex.git", version = "4.1.1" }
 
-# union
-unionlabs-primitives = { git = "https://github.com/unionlabs/union", default-features = false }
-ucs03-zkgm = { git = "https://github.com/unionlabs/union", default-features = false }
-ibc-union-spec = { git = "https://github.com/unionlabs/union", default-features = false }
+# union - use version dependencies, will be patched to local paths
+unionlabs-primitives = { version = "0.0.0", default-features = false }
+ucs03-zkgm = { version = "0.0.0", default-features = false }  
+ibc-union-spec = { version = "0.0.0", default-features = false }
 
-# Common dependencies to resolve conflicts
 static_assertions = "1.1.0"
+
+
 
 cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
 

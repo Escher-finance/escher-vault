@@ -30,12 +30,19 @@
           sha256 = "sha256-2MkxcBG9rd3B8aivY4bXdByd+fnuqJ8zuwVIk+RdHZU=";
         };
 
+        # Use the fixed Union branch that removes static_assertions conflicts
         unionSrc = pkgs.fetchFromGitHub {
-          owner = "unionlabs";
+          owner = "aso20455";
           repo = "union";
-          rev = "main";
-          sha256 = pkgs.lib.fakeHash;
+          rev = "fix/deleted";
+          sha256 = "sha256-2KV6nGl/ApSq/DL8ow+FX92fQfvMzqGjkisPs8Fbx3o=";
         };
+
+        # Create individual source packages for Union crates to avoid dependency conflicts
+        unionlabsPrimitivesSrc = unionSrc + "/lib/unionlabs-primitives";
+        ucs03ZkgmSrc = unionSrc + "/cosmwasm/ibc-union/app/ucs03-zkgm";
+        ibcUnionSpecSrc = unionSrc + "/lib/ibc-union-spec";
+
 
 
 
@@ -109,23 +116,22 @@
 
         # Build outputs
         packages = {
-          # Build the WASM contract
-          cw4626-escher = pkgs.rustPlatform.buildRustPackage {
+          # Build the WASM contract using stdenv.mkDerivation to avoid vendoring issues
+          cw4626-escher = pkgs.stdenv.mkDerivation {
             pname = "cw4626-escher";
             version = "0.1.0";
             src = ./.;
-
-            # Hash from CI build
-            cargoHash = "sha256-Kl6iHzYzm7mcNxqDdIhLkhz+CYwzVF5IbqUx52SEkTI=";
 
             # Use our custom toolchain
             rustc = rustToolchain;
             cargo = rustToolchain;
 
             nativeBuildInputs = [
+              rustToolchain
               pkgs.binaryen
               pkgs.pkg-config
               pkgs.lld_18
+              pkgs.cacert
             ];
 
             # Environment and build configuration
@@ -137,10 +143,6 @@
               export CARGO_HOME=$(pwd)/.cargo-home
               mkdir -p $CARGO_HOME
               
-              # Patch Union's Cargo.toml to remove static_assertions git dependency
-              echo "Patching Union repository to remove static_assertions git dependency..."
-              find ${unionSrc} -name "Cargo.toml" -exec sed -i 's/static_assertions = { git = "https:\/\/github.com\/nvzqz\/static-assertions" }/#static_assertions = { git = "https:\/\/github.com\/nvzqz\/static-assertions" }/g' {} \;
-              
               cat > $CARGO_HOME/config.toml <<'CFG'
               [patch.'https://github.com/quasar-finance/babydex.git']
               astroport = { path = "${astroportSrc}/packages/astroport" }
@@ -150,15 +152,33 @@
               astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
 
               [patch.'https://github.com/unionlabs/union']
-              unionlabs-primitives = { path = "${unionSrc}/lib/unionlabs-primitives" }
-              ucs03-zkgm = { path = "${unionSrc}/cosmwasm/ucs/ucs03-zkgm" }
-              ibc-union-spec = { path = "${unionSrc}/lib/ibc-union-spec" }
+              unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
+              ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
+              ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
               CFG
+              
+              # Also create a Cargo.toml patch in the workspace root
+              cat > Cargo.toml.patch <<'PATCH'
+              [patch.crates-io]
+              unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
+              ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
+              ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
+              PATCH
             '';
 
             # Build only the library for the specific package
             buildPhase = ''
               runHook preBuild
+              
+              # Apply patches to Cargo.toml
+              cat >> Cargo.toml <<'PATCH'
+              
+              [patch.crates-io]
+              unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
+              ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
+              ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
+              PATCH
+              
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
               runHook postBuild
             '';
