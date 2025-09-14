@@ -31,10 +31,10 @@ astroport = { git = "https://github.com/quasar-finance/babydex.git", version = "
 astroport-pair = { git = "https://github.com/quasar-finance/babydex.git", version = "2.1.1" }
 astroport-pair-concentrated = { git = "https://github.com/quasar-finance/babydex.git", version = "4.1.1" }
 
-# union - use local path dependencies for development
-unionlabs-primitives = { path = "/nix/store/lmdrsj0h39yx9rlrwic7zcq7llxrcgcw-source/lib/unionlabs-primitives", default-features = false }
-ucs03-zkgm = { path = "/nix/store/lmdrsj0h39yx9rlrwic7zcq7llxrcgcw-source/cosmwasm/ibc-union/app/ucs03-zkgm", default-features = false }  
-ibc-union-spec = { path = "/nix/store/lmdrsj0h39yx9rlrwic7zcq7llxrcgcw-source/lib/ibc-union-spec", default-features = false }
+# union - use git dependencies
+unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f", default-features = false }
+ucs03-zkgm = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f", default-features = false }  
+ibc-union-spec = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f", default-features = false }
 
 static_assertions = "1.1.0"
 

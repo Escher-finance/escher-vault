@@ -82,44 +82,39 @@
           ];
 
           # Environment variables
-          shellHook = ''
-            echo "🚀 CW4626 Vault Development Environment"
-            echo "======================================"
-            echo "✅ Rust: $(rustc --version)"
-            echo "✅ Cargo: $(cargo --version)"
-            echo "✅ wasm-opt: $(wasm-opt --version)"
-            echo "✅ Node.js: $(node --version)"
-            echo ""
-            echo "🔧 Available commands:"
-            echo "  - cargo build    # Build contracts"
-            echo "  - cargo wasm     # Build WebAssembly"
-            echo "  - cargo test     # Run tests"
-            echo "  - cargo schema   # Generate schemas"
-            echo ""
-            echo "📚 Next steps:"
-            echo "1. Build contracts: ./scripts/build-optimize.sh"
-            echo "2. Run tests: cargo test"
-            
-            # Set up Cargo configuration with patches
-            export CARGO_HOME=$(pwd)/.cargo-home
-            mkdir -p $CARGO_HOME
-            
-            cat > $CARGO_HOME/config.toml <<'CFG'
-            [patch.'https://github.com/quasar-finance/babydex.git']
-            astroport = { path = "${astroportSrc}/packages/astroport" }
-            astroport-factory = { path = "${astroportSrc}/contracts/factory" }
-            astroport-pair = { path = "${astroportSrc}/contracts/pair" }
-            astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
-            astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
+        shellHook = ''
+          echo "🚀 CW4626 Vault Development Environment"
+          echo "======================================"
+          echo "✅ Rust: $(rustc --version)"
+          echo "✅ Cargo: $(cargo --version)"
+          echo "✅ wasm-opt: $(wasm-opt --version)"
+          echo "✅ Node.js: $(node --version)"
+          echo ""
+          echo "🔧 Available commands:"
+          echo "  - cargo build    # Build contracts"
+          echo "  - cargo wasm     # Build WebAssembly"
+          echo "  - cargo test     # Run tests"
+          echo "  - cargo schema   # Generate schemas"
+          echo ""
+          echo "📚 Next steps:"
+          echo "1. Build contracts: ./scripts/build-optimize.sh"
+          echo "2. Run tests: cargo test"
 
-            [patch.'https://github.com/unionlabs/union']
-            unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
-            ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
-            ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
-            CFG
-            
-            echo "🔧 Cargo patches applied for development"
-          '';
+          # Set up Cargo configuration with patches
+          export CARGO_HOME=$(pwd)/.cargo-home
+          mkdir -p $CARGO_HOME
+
+          cat > $CARGO_HOME/config.toml <<'CFG'
+          [patch.'https://github.com/quasar-finance/babydex.git']
+          astroport = { path = "${astroportSrc}/packages/astroport" }
+          astroport-factory = { path = "${astroportSrc}/contracts/factory" }
+          astroport-pair = { path = "${astroportSrc}/contracts/pair" }
+          astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
+          astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
+          CFG
+
+          echo "🔧 Cargo patches applied for development"
+        '';
 
           # Rust environment
           RUST_BACKTRACE = "1";
@@ -171,19 +166,8 @@
               astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
               astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
 
-              [patch.'https://github.com/unionlabs/union']
-              unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
-              ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
-              ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
               CFG
               
-              # Also create a Cargo.toml patch in the workspace root
-              cat > Cargo.toml.patch <<'PATCH'
-              [patch.crates-io]
-              unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
-              ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
-              ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
-              PATCH
             '';
 
             # Build only the library for the specific package
