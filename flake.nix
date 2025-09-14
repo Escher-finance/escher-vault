@@ -107,7 +107,7 @@
             src = ./.;
 
             # This will be computed automatically by Nix when you first build
-            cargoHash = "sha256-ZDZvygMYuarHQZkfWN+olQ9+grGd5aXx56wOxEpN98Y=";
+            cargoHash = "sha256-Dhm5BbqYf8gq+itd2dfhHhT3JaB/85Y1H0hsMKPcRPc=";
 
             # Use our custom toolchain
             rustc = rustToolchain;
@@ -121,7 +121,7 @@
 
             # Environment and build configuration
             CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
-            RUSTFLAGS = "-C target-feature=-reference-types";
+            RUSTFLAGS = "-C target-feature=-reference-types,-bulk-memory";
 
             # Configure cargo patches before dependency resolution
             prePatch = ''
