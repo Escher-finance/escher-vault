@@ -21,6 +21,7 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        lib = pkgs.lib;
 
         astroportSrc = pkgs.fetchFromGitHub {
           owner = "quasar-finance";
@@ -106,7 +107,7 @@
             src = ./.;
 
             # This will be computed automatically by Nix when you first build
-            cargoHash = "";
+            cargoHash = lib.fakeHash;
 
             # Use our custom toolchain
             rustc = rustToolchain;
