@@ -11,7 +11,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2025-01-01
+          toolchain: nightly
           targets: wasm32-unknown-unknown
           components: rust-src, rustfmt, clippy
       - name: Set up Cargo patches for dependencies
@@ -41,7 +41,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly-2025-01-01
+          toolchain: nightly
           targets: wasm32-unknown-unknown
           components: rust-src, rustfmt, clippy
       - name: Set up Cargo patches for dependencies
