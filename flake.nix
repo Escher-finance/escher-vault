@@ -106,13 +106,8 @@
             version = "0.1.0";
             src = ./.;
 
-            # Use cargoLock for better git dependency handling
-            cargoLock = {
-                lockFile = ./Cargo.lock;
-                outputHashes = {
-                    "astroport-5.7.0" = "sha256-2MkxcBG9rd3B8aivY4bXdByd+fnuqJ8zuwVIk+RdHZU=";
-                };
-            };
+            # This will be computed automatically by Nix when you first build
+            cargoHash = "sha256-ZDZvygMYuarHQZkfWN+olQ9+grGd5aXx56wOxEpN98Y=";
 
             # Use our custom toolchain
             rustc = rustToolchain;
