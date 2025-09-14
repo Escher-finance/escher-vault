@@ -106,15 +106,8 @@
             version = "0.1.0";
             src = ./.;
 
-            # Use cargoLock for better git dependency handling
-            cargoLock = {
-              lockFile = ./Cargo.lock;
-              outputHashes = {
-                "astroport-5.7.0" = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-                "consensus-primitives-0.0.0" = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-                "static_assertions-1.1.0" = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-              };
-            };
+            # This will be computed automatically by Nix when you first build
+            cargoHash = "sha256-ZDZvygMYuarHQZkfWN+olQ9+grGd5aXx56wOxEpN98Y=";
 
             # Use our custom toolchain
             rustc = rustToolchain;
@@ -128,7 +121,7 @@
 
             # Environment and build configuration
             CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
-            RUSTFLAGS = "-C target-feature=-reference-types,-bulk-memory";
+            RUSTFLAGS = "-C target-feature=-reference-types";
 
             # Configure cargo patches before dependency resolution
             prePatch = ''
