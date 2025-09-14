@@ -14,16 +14,6 @@ jobs:
           toolchain: nightly
           targets: wasm32-unknown-unknown
           components: rust-src, rustfmt, clippy
-      - name: Set up Cargo patches for dependencies
-        run: |
-          mkdir -p .cargo
-          cat > .cargo/config.toml << 'EOF'
-
-          [patch.'https://github.com/unionlabs/union']
-          unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
-          ucs03-zkgm = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
-          ibc-union-spec = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
-          EOF
       # - name: Run tests
       #   run: cargo test --locked --package cw4626-escher
       #   env:
@@ -44,16 +34,6 @@ jobs:
           toolchain: nightly
           targets: wasm32-unknown-unknown
           components: rust-src, rustfmt, clippy
-      - name: Set up Cargo patches for dependencies
-        run: |
-          mkdir -p .cargo
-          cat > .cargo/config.toml << 'EOF'
-
-          [patch.'https://github.com/unionlabs/union']
-          unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
-          ucs03-zkgm = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
-          ibc-union-spec = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
-          EOF
       - name: Run cargo fmt
         run: cargo fmt --package cw4626-escher -- --check
       - name: Run cargo clippy
