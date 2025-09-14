@@ -379,6 +379,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "astroport"
 version = "5.7.0"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -392,6 +393,7 @@ dependencies = [
 [[package]]
 name = "astroport-factory"
 version = "1.9.0"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "cosmwasm-schema",
@@ -406,6 +408,7 @@ dependencies = [
 [[package]]
 name = "astroport-pair"
 version = "2.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "cosmwasm-schema",
@@ -422,6 +425,7 @@ dependencies = [
 [[package]]
 name = "astroport-pair-concentrated"
 version = "4.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "astroport-pcl-common",
@@ -439,6 +443,7 @@ dependencies = [
 [[package]]
 name = "astroport-pcl-common"
 version = "2.1.1"
+source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "astroport",
  "astroport-factory",
