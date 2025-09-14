@@ -111,6 +111,11 @@
           astroport-pair = { path = "${astroportSrc}/contracts/pair" }
           astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
           astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
+
+          [patch.'https://github.com/unionlabs/union']
+          unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
+          ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
+          ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
           CFG
 
           echo "🔧 Cargo patches applied for development"
@@ -166,6 +171,10 @@
               astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
               astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
 
+              [patch.'https://github.com/unionlabs/union']
+              unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
+              ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
+              ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
               CFG
               
             '';
