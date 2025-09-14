@@ -30,12 +30,12 @@
           sha256 = "sha256-2MkxcBG9rd3B8aivY4bXdByd+fnuqJ8zuwVIk+RdHZU=";
         };
 
-        # Use the fixed Union branch that removes static_assertions conflicts
+        # Use the main Union branch
         unionSrc = pkgs.fetchFromGitHub {
-          owner = "aso20455";
+          owner = "unionlabs";
           repo = "union";
-          rev = "fix/deleted";
-          sha256 = "sha256-2KV6nGl/ApSq/DL8ow+FX92fQfvMzqGjkisPs8Fbx3o=";
+          rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f";
+          sha256 = "sha256-kkVQlO4zqOhrWCtpbpqCe/SMu2EBqjfByd6uUm8DSrY=";
         };
 
         # Create individual source packages for Union crates to avoid dependency conflicts
@@ -99,6 +99,26 @@
             echo "📚 Next steps:"
             echo "1. Build contracts: ./scripts/build-optimize.sh"
             echo "2. Run tests: cargo test"
+            
+            # Set up Cargo configuration with patches
+            export CARGO_HOME=$(pwd)/.cargo-home
+            mkdir -p $CARGO_HOME
+            
+            cat > $CARGO_HOME/config.toml <<'CFG'
+            [patch.'https://github.com/quasar-finance/babydex.git']
+            astroport = { path = "${astroportSrc}/packages/astroport" }
+            astroport-factory = { path = "${astroportSrc}/contracts/factory" }
+            astroport-pair = { path = "${astroportSrc}/contracts/pair" }
+            astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
+            astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
+
+            [patch.'https://github.com/unionlabs/union']
+            unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
+            ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
+            ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
+            CFG
+            
+            echo "🔧 Cargo patches applied for development"
           '';
 
           # Rust environment
