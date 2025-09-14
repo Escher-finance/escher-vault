@@ -109,6 +109,9 @@
             # Use cargoVendorDir for better dependency handling
             cargoVendorDir = pkgs.buildPackages.rustPlatform.importCargoLock {
                 lockFile = ./Cargo.lock;
+                outputHashes = {
+                    "astroport-5.7.0" = "sha256-2MkxcBG9rd3B8aivY4bXdByd+fnuqJ8zuwVIk+RdHZU=";
+                };
             };
 
             # Use our custom toolchain
