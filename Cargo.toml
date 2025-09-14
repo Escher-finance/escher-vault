@@ -36,6 +36,9 @@ unionlabs-primitives = { git = "https://github.com/unionlabs/union", default-fea
 ucs03-zkgm = { git = "https://github.com/unionlabs/union", default-features = false }
 ibc-union-spec = { git = "https://github.com/unionlabs/union", default-features = false }
 
+# Common dependencies to resolve conflicts
+static_assertions = "1.1.0"
+
 cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
 
 [profile.release]
