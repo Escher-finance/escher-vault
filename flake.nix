@@ -34,7 +34,7 @@
           owner = "unionlabs";
           repo = "union";
           rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f";
-          sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+          sha256 = "";
         };
 
         # Rust toolchain with specific version
@@ -113,8 +113,8 @@
             version = "0.1.0";
             src = ./.;
 
-            # Placeholder hash - will be updated by CI
-            cargoHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+            # Hash from CI build
+            cargoHash = "sha256-Kl6iHzYzm7mcNxqDdIhLkhz+CYwzVF5IbqUx52SEkTI=";
 
             # Use our custom toolchain
             rustc = rustToolchain;
