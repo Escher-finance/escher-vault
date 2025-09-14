@@ -106,12 +106,9 @@
             version = "0.1.0";
             src = ./.;
 
-            # Use cargoVendorDir for better dependency handling
-            cargoVendorDir = pkgs.buildPackages.rustPlatform.importCargoLock {
+            # Use cargoLock for better git dependency handling
+            cargoLock = {
                 lockFile = ./Cargo.lock;
-                outputHashes = {
-                    "astroport-5.7.0" = "sha256-2MkxcBG9rd3B8aivY4bXdByd+fnuqJ8zuwVIk+RdHZU=";
-                };
             };
 
             # Use our custom toolchain
