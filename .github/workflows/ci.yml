@@ -14,16 +14,10 @@ jobs:
           toolchain: nightly-2025-01-01
           targets: wasm32-unknown-unknown
           components: rust-src, rustfmt, clippy
-      - name: Set up Cargo patches for Union dependencies
+      - name: Set up Cargo patches for dependencies
         run: |
           mkdir -p .cargo
           cat > .cargo/config.toml << 'EOF'
-          [patch.'https://github.com/quasar-finance/babydex.git']
-          astroport = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-factory = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-pair = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-pair-concentrated = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-pcl-common = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
 
           [patch.'https://github.com/unionlabs/union']
           unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
@@ -50,16 +44,10 @@ jobs:
           toolchain: nightly-2025-01-01
           targets: wasm32-unknown-unknown
           components: rust-src, rustfmt, clippy
-      - name: Set up Cargo patches for Union dependencies
+      - name: Set up Cargo patches for dependencies
         run: |
           mkdir -p .cargo
           cat > .cargo/config.toml << 'EOF'
-          [patch.'https://github.com/quasar-finance/babydex.git']
-          astroport = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-factory = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-pair = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-pair-concentrated = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
-          astroport-pcl-common = { git = "https://github.com/astroport-finance/astroport-core", rev = "v5.7.0" }
 
           [patch.'https://github.com/unionlabs/union']
           unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f" }
