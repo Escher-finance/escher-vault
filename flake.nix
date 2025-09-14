@@ -100,33 +100,42 @@
 
         # Build outputs
         packages = {
-          # Build the WASM contract
-          cw4626-escher = pkgs.rustPlatform.buildRustPackage {
+          # Build the WASM contract using stdenv.mkDerivation to avoid cargo vendoring issues
+          cw4626-escher = pkgs.stdenv.mkDerivation {
             pname = "cw4626-escher";
             version = "0.1.0";
             src = ./.;
 
-            # This will be computed automatically by Nix when you first build
-            cargoHash = "";
-
-            # Use our custom toolchain
-            rustc = rustToolchain;
-            cargo = rustToolchain;
-
             nativeBuildInputs = [
+              rustToolchain
               pkgs.binaryen
               pkgs.pkg-config
               pkgs.lld_18
+              pkgs.cacert
+              pkgs.git
             ];
 
             # Environment and build configuration
             CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
             RUSTFLAGS = "-C target-feature=-reference-types,-bulk-memory";
+            CARGO_HOME = "./.cargo";
+            CARGO_NET_OFFLINE = "false";
 
-            # Configure cargo patches before dependency resolution
-            prePatch = ''
-              export CARGO_HOME=$(pwd)/.cargo-home
+            # Allow network access for git dependencies
+            __noChroot = true;
+            
+            configurePhase = ''
+              runHook preConfigure
+              
+              # Set up Cargo home and config
+              export CARGO_HOME=$(pwd)/.cargo
               mkdir -p $CARGO_HOME
+              
+              # Configure git to use HTTPS instead of SSH
+              git config --global url."https://github.com/".insteadOf git@github.com:
+              git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+              
+              # Patch astroport dependencies
               cat > $CARGO_HOME/config.toml <<'CFG'
               [patch.'https://github.com/quasar-finance/babydex.git']
               astroport = { path = "${astroportSrc}/packages/astroport" }
@@ -135,20 +144,17 @@
               astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
               astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
               CFG
+              
+              runHook postConfigure
             '';
 
-            # Build only the library for the specific package
             buildPhase = ''
               runHook preBuild
+              
+              # Build the WASM contract
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
-              runHook postBuild
-            '';
-
-            # Skip tests
-            doCheck = false;
-
-            # Optimize the WASM output
-            postBuild = ''
+              
+              # Optimize the WASM output
               mkdir -p artifacts
               if [ -f target/wasm32-unknown-unknown/release/cw4626_escher.wasm ]; then
                 wasm-opt -Oz --signext-lowering --strip-debug --strip-producers \
@@ -157,18 +163,19 @@
               else
                 echo "Warning: WASM file not found, looking for alternatives..."
                 find target -name "*.wasm" -type f
+                exit 1
               fi
+              
+              runHook postBuild
             '';
 
             installPhase = ''
               mkdir -p $out
-              if [ -f artifacts/cw4626_escher.wasm ]; then
-                cp artifacts/cw4626_escher.wasm $out/
-              else
-                echo "Error: Optimized WASM file not found"
-                exit 1
-              fi
+              cp artifacts/cw4626_escher.wasm $out/
             '';
+
+            # Skip tests
+            doCheck = false;
           };
         };
 
