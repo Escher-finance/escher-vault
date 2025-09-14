@@ -106,8 +106,10 @@
             version = "0.1.0";
             src = ./.;
 
-            # This will be computed automatically by Nix when you first build
-            cargoHash = lib.fakeHash;
+            # Use cargoVendorDir for better dependency handling
+            cargoVendorDir = pkgs.buildPackages.rustPlatform.importCargoLock {
+                lockFile = ./Cargo.lock;
+            };
 
             # Use our custom toolchain
             rustc = rustToolchain;
