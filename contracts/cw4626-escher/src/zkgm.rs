@@ -1,6 +1,8 @@
+use alloy::hex;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Api;
 use cosmwasm_std::instantiate2_address;
+use cw20::Cw20ExecuteMsg;
 use sha3::Digest;
 use sha3::Keccak256;
 use ucs03_zkgm::com::{
@@ -14,9 +16,7 @@ use crate::error::{ContractError, ContractResult};
 use alloy::sol_types::SolValue;
 use alloy_primitives::Bytes as AlloyBytes;
 use alloy_primitives::Uint;
-use cosmwasm_std::{
-    Addr, Binary, Coin, CosmosMsg, StdError, Uint64, Uint128, WasmMsg, to_json_binary,
-};
+use cosmwasm_std::{Addr, Binary, Coin, CosmosMsg, Uint64, Uint128, WasmMsg, to_json_binary};
 use ibc_union_spec::{ChannelId, Duration, Timestamp};
 use std::str::FromStr;
 use ucs03_zkgm;
@@ -74,6 +74,7 @@ type AlloyUint256 = Uint<256, 4>;
 const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 
 /// Call LST bond function via ucs03 zkgm
+///
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
 pub fn call_lst_bond(
@@ -113,14 +114,7 @@ pub fn call_lst_bond(
 
     let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
-    let salt: unionlabs_primitives::H256 = match unionlabs_primitives::H256::from_str(salt) {
-        Ok(s) => s,
-        Err(e) => {
-            return Err(ContractError::Std(StdError::generic_err(format!(
-                "failed to parse salt: {salt}, reason: {e}"
-            ))));
-        }
-    };
+    let salt = validate_and_parse_salt(salt)?;
 
     // Generate 3 payloads as array/vector: bond, increase_allowance and send back via tokenorderv2, these need to be encoded as Bytes
     let contract_calldata =
@@ -147,8 +141,7 @@ pub fn call_lst_bond(
             .into(),
     };
 
-    let channel_id = ChannelId::from_raw(vault_zkgm_config.channel_id)
-        .ok_or(ContractError::InvalidChannelId {})?;
+    let channel_id = validate_and_parse_channel_id(vault_zkgm_config.channel_id)?;
 
     let ucs03_send_msg = ucs03_zkgm::msg::ExecuteMsg::Send {
         channel_id,
@@ -199,7 +192,7 @@ pub fn ucs03_call_lst(
     let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
 
     let ucs03_send_msg: ucs03_zkgm::msg::ExecuteMsg = ucs03_zkgm::msg::ExecuteMsg::Send {
-        channel_id: ChannelId::from_raw(channel_id).ok_or(ContractError::InvalidChannelId {})?,
+        channel_id: validate_and_parse_channel_id(channel_id)?,
         timeout_height: Uint64::from(0u64),
         timeout_timestamp,
         salt,
@@ -219,6 +212,14 @@ pub fn get_timeout_timestamp_from_time(time: Timestamp) -> ContractResult<Timest
     ))
 }
 
+/// Validates and returns `channel_id` as `ChannelId` for usage with ZKGM
+///
+/// # Errors
+/// Will return error if validations fail
+pub fn validate_and_parse_channel_id(channel_id: u32) -> ContractResult<ChannelId> {
+    ChannelId::from_raw(channel_id).ok_or(ContractError::InvalidChannelId {})
+}
+
 /// Validates and returns `salt` as `unionlabs_primitives::H256` for usage with ZKGM
 ///
 /// # Errors
@@ -232,7 +233,12 @@ pub fn validate_and_parse_salt(salt: &str) -> ContractResult<unionlabs_primitive
 /// # Errors
 /// Will return error if validations fail
 pub fn validate_and_parse_address(address: &str) -> ContractResult<Bytes> {
-    Bytes::from_str(address).map_err(|_| ContractError::InvalidHexAddress {})
+    let hex_address = if address.starts_with("0x") {
+        address.to_string()
+    } else {
+        format!("0x{}", hex::encode(address.as_bytes()))
+    };
+    Bytes::from_str(&hex_address).map_err(|_| ContractError::InvalidHexAddress {})
 }
 
 #[cw_serde]
@@ -257,6 +263,7 @@ pub fn generate_bond_calldata(
     let mut call_msgs: Vec<CosmosMsg> = vec![];
 
     // 1. construct bond msg call to LST
+
     let bond_msg = LstExecuteMsg::Bond {
         mint_to_address: Addr::unchecked(request.proxy_account.clone()),
         min_mint_amount: request.min_mint_amount,
@@ -269,39 +276,25 @@ pub fn generate_bond_calldata(
     call_msgs.push(execute_bond_msg.into());
 
     // 2. construct increase allowance to zkgm token minter
-    let increase_allowance_msg = cw20::Cw20ExecuteMsg::IncreaseAllowance {
+
+    let increase_allowance_msg = Cw20ExecuteMsg::IncreaseAllowance {
         spender: zkgm_token_minter.clone(),
-        amount: request.min_mint_amount,
+        amount: if cfg!(test) { request.amount } else { request.min_mint_amount },
         expires: None,
     };
 
-    if cfg!(test) {
-        let increase_allowance_msg = TestCW20ExecuteMsg::IncreaseAllowance {
-            spender: zkgm_token_minter.clone(),
-            amount: request.amount,
-        };
+    let execute_increase_allowance_msg = WasmMsg::Execute {
+        contract_addr: lst_base_token.clone(), // it is eU contract adddress on Union
+        msg: to_json_binary(&increase_allowance_msg)?,
+        funds: vec![],
+    };
+    call_msgs.push(execute_increase_allowance_msg.into());
 
-        let execute_increase_allowance_msg = WasmMsg::Execute {
-            contract_addr: lst_base_token.clone(), // it is eU contract adddress on Union
-            msg: to_json_binary(&increase_allowance_msg)?,
-            funds: vec![],
-        };
-        call_msgs.push(execute_increase_allowance_msg.into());
+    let quote_token = validate_and_parse_address(if cfg!(test) {
+        &lst_quote_token
     } else {
-        let execute_increase_allowance_msg = WasmMsg::Execute {
-            contract_addr: lst_base_token.clone(), // it is eU contract adddress on Union
-            msg: to_json_binary(&increase_allowance_msg)?,
-            funds: vec![],
-        };
-        call_msgs.push(execute_increase_allowance_msg.into());
-    }
-
-    let mut quote_token: Bytes = Vec::from(request.proxy_account.clone()).into();
-
-    if cfg!(test) {
-        quote_token = Bytes::from_str(lst_quote_token.as_str())
-            .map_err(|_| ContractError::InvalidHexAddress {})?;
-    }
+        &request.proxy_account
+    })?;
 
     let metadata = SolverMetadata {
         solverAddress: quote_token.clone().into(),
@@ -310,13 +303,13 @@ pub fn generate_bond_calldata(
 
     // 3. construct token order v2 to send back from to sender
 
-    let mut sender_bytes: Bytes = Vec::from(request.proxy_account.clone()).into();
-    if cfg!(test) {
-        sender_bytes = Vec::from("union1ylfrhs2y5zdj2394m6fxgpzrjav7le3z07jffq").into();
-    }
+    let sender_bytes = validate_and_parse_address(if cfg!(test) {
+        "union1ylfrhs2y5zdj2394m6fxgpzrjav7le3z07jffq"
+    } else {
+        &request.proxy_account
+    })?;
 
-    let receiver = alloy_primitives::Bytes::from_str(&request.sender)
-        .map_err(|_| ContractError::InvalidHexAddress {})?;
+    let receiver = validate_and_parse_address(&request.sender)?.into();
 
     let fungible_order_instruction = Instruction {
         version: INSTR_VERSION_2,
@@ -335,8 +328,7 @@ pub fn generate_bond_calldata(
         .into(),
     };
     let send_msg = ucs03_zkgm::msg::ExecuteMsg::Send {
-        channel_id: ChannelId::from_raw(lst_zkgm_config.union_channel_id)
-            .ok_or(ContractError::InvalidChannelId {})?,
+        channel_id: validate_and_parse_channel_id(lst_zkgm_config.union_channel_id)?,
         timeout_height: Uint64::from(0u64),
         timeout_timestamp: timeout,
         salt,
@@ -357,85 +349,33 @@ pub fn generate_bond_calldata(
 }
 
 #[allow(dead_code)]
-fn proxy_account_salt(CallProxySalt { path, channel_id, sender }: &CallProxySalt) -> H256 {
-    keccak256(
-        (Into::<alloy_primitives::U256>::into(*path), channel_id.raw(), sender).abi_encode_params(),
-    )
-}
-
-pub fn keccak256(bytes: impl AsRef<[u8]>) -> H256 {
-    Keccak256::new().chain_update(bytes).finalize().into()
-}
-
-#[cw_serde]
-pub struct CallProxySalt {
-    pub path: U256,
-    pub channel_id: ChannelId,
-    pub sender: Bytes,
-}
-
-#[allow(dead_code)]
 fn predict_call_proxy_account(
     api: &dyn Api,
-    call_proxy_salt: &CallProxySalt,
+    path: U256,
+    channel_id: ChannelId,
+    sender: &Bytes,
     code_hash: &str,
     contract_addr: &str,
 ) -> Result<Addr, ContractError> {
+    let salt: H256 = Keccak256::new()
+        .chain_update(
+            (Into::<alloy_primitives::U256>::into(path), channel_id.raw(), sender.clone())
+                .abi_encode_params(),
+        )
+        .finalize()
+        .into();
     let code_hash: FixedBytes<32, HexPrefixed> =
         H256::from_str(code_hash).map_err(|_| ContractError::InvalidHexAddress {})?;
     let token_addr = instantiate2_address(
         &code_hash.into_bytes(),
         &api.addr_canonicalize(contract_addr)?,
-        proxy_account_salt(call_proxy_salt).get().as_slice(),
+        salt.get().as_slice(),
     )?;
     Ok(api.addr_humanize(&token_addr)?)
 }
 
-// generate 3 payload inside 1 call
-// First:
-//     {
-//      {
-//      "wasm": {
-//       "execute": {
-//         "contract_addr": "union1d2r4ecsuap4pujrlf3nz09vz8eha8y0z25knq0lfxz4yzn83v6kq0jxsmk",
-//         "msg": "eyJib25kIjp7Im1pbnRfdG9fYWRkcmVzcyI6InVuaW9uMWNubnR1MDlqM3M0OWtxc3ByN3N0NXJwYXR2bjY4aDR5dWVhcGpza2M5c3VnOHQybXU3eXM0NnRmcTkiLCJtaW5fbWludF9hbW91bnQiOiI5MDAwMDAwMDAwMDAwMDAwMDAifX0=",
-//         "funds": [
-//           {
-//             "denom": "au",
-//             "amount": "1000000000000000000"
-//           }
-//         ]
-//       }
-//     }
-//   },
-//   "bond":
-//      {
-//          "mint_to_address": "union1p20079kpv9mm4xj7cu3wujluesclfjsf5335he7vg7pxm69vvxksjm3yq8", // mint to cw account contract
-//          "min_mint_amount": "900000000000000000"
-//          }
-//      }
-//
-//     Second: is to increase allowance
-//     {
-//      "increase_allowance": {
-//          "spender": "union1t5awl707x54k6yyx7qfkuqp890dss2pqgwxh07cu44x5lrlvt4rs8hqmk0", // spender is zkgm token minter
-//          "amount": "900000000000000000"
-//      }
-//
-//  Third: tokenorderv2 instruction to send back
-//
-// {
-//   "send": {
-//     "channel_id": 20,
-//     "timeout_height": "0",
-//     "timeout_timestamp": "1757706966815000000",
-//     "salt": "0xc9e38eb588b3d0247a6ab988225f4cbab7c1c4687a6f9830da3d5132c01bc4a6",
-//     "instruction": "0x00000000
-// }
-
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crate::zkgm::generate_bond_calldata;
     use cosmwasm_std::HexBinary;
@@ -443,6 +383,7 @@ mod tests {
     use cosmwasm_std::from_json;
     use cw_multi_test::AppBuilder;
     use cw_multi_test::MockApiBech32;
+    use cw20::Cw20ExecuteMsg;
     use ibc_union_spec::ChannelId;
     use ibc_union_spec::Timestamp;
     use std::str::FromStr;
@@ -544,16 +485,25 @@ mod tests {
                     assert_eq!(result_min_mint_amount, expected_min_mint_amount);
                 }
                 1 => {
-                    let TestCW20ExecuteMsg::IncreaseAllowance {
+                    let Cw20ExecuteMsg::IncreaseAllowance {
                         spender: result_spender,
                         amount: result_amount,
-                    } = from_json(result_msg).unwrap();
-                    let TestCW20ExecuteMsg::IncreaseAllowance {
+                        expires: result_expires,
+                    } = from_json(result_msg).unwrap()
+                    else {
+                        panic!()
+                    };
+                    let Cw20ExecuteMsg::IncreaseAllowance {
                         spender: expected_spender,
                         amount: expected_amount,
-                    } = from_json(expected_msg).unwrap();
+                        expires: expected_expires,
+                    } = from_json(expected_msg).unwrap()
+                    else {
+                        panic!()
+                    };
                     assert_eq!(result_spender, expected_spender);
                     assert_eq!(result_amount, expected_amount);
+                    assert_eq!(result_expires, expected_expires);
                 }
                 2 => {
                     let ucs03_zkgm::msg::ExecuteMsg::Send {
@@ -600,11 +550,9 @@ mod tests {
         let api = app.api();
         let predicted = predict_call_proxy_account(
             api,
-            &CallProxySalt {
-                path: U256::from(0_u32),
-                channel_id: ChannelId::from_raw(20).unwrap(),
-                sender: validate_and_parse_address(addr).unwrap(),
-            },
+            U256::from(0_u32),
+            ChannelId::from_raw(20).unwrap(),
+            &validate_and_parse_address(addr).unwrap(),
             code_hash,
             union_ucs03_zkgm,
         )
