@@ -43,13 +43,10 @@
         ucs03ZkgmSrc = unionSrc + "/cosmwasm/ibc-union/app/ucs03-zkgm";
         ibcUnionSpecSrc = unionSrc + "/lib/ibc-union-spec";
 
-
-
-
         # Rust toolchain with latest nightly that supports Rust 2024 features
         rustToolchain = pkgs.rust-bin.nightly.latest.default.override {
           extensions = [
-           "rust-src"
+            "rust-src"
             "rust-analyzer"
             "clippy"
             "llvm-tools-preview"
@@ -82,44 +79,44 @@
           ];
 
           # Environment variables
-        shellHook = ''
-          echo "🚀 CW4626 Vault Development Environment"
-          echo "======================================"
-          echo "✅ Rust: $(rustc --version)"
-          echo "✅ Cargo: $(cargo --version)"
-          echo "✅ wasm-opt: $(wasm-opt --version)"
-          echo "✅ Node.js: $(node --version)"
-          echo ""
-          echo "🔧 Available commands:"
-          echo "  - cargo build    # Build contracts"
-          echo "  - cargo wasm     # Build WebAssembly"
-          echo "  - cargo test     # Run tests"
-          echo "  - cargo schema   # Generate schemas"
-          echo ""
-          echo "📚 Next steps:"
-          echo "1. Build contracts: ./scripts/build-optimize.sh"
-          echo "2. Run tests: cargo test"
+          shellHook = ''
+            echo "🚀 CW4626 Vault Development Environment"
+            echo "======================================"
+            echo "✅ Rust: $(rustc --version)"
+            echo "✅ Cargo: $(cargo --version)"
+            echo "✅ wasm-opt: $(wasm-opt --version)"
+            echo "✅ Node.js: $(node --version)"
+            echo ""
+            echo "🔧 Available commands:"
+            echo "  - cargo build    # Build contracts"
+            echo "  - cargo wasm     # Build WebAssembly"
+            echo "  - cargo test     # Run tests"
+            echo "  - cargo schema   # Generate schemas"
+            echo ""
+            echo "📚 Next steps:"
+            echo "1. Build contracts: ./scripts/build-optimize.sh"
+            echo "2. Run tests: cargo test"
 
-          # Set up Cargo configuration with patches
-          export CARGO_HOME=$(pwd)/.cargo-home
-          mkdir -p $CARGO_HOME
+            # Set up Cargo configuration with patches
+            export CARGO_HOME=$(pwd)/.cargo-home
+            mkdir -p $CARGO_HOME
 
-          cat > $CARGO_HOME/config.toml <<'CFG'
-          [patch.'https://github.com/quasar-finance/babydex.git']
-          astroport = { path = "${astroportSrc}/packages/astroport" }
-          astroport-factory = { path = "${astroportSrc}/contracts/factory" }
-          astroport-pair = { path = "${astroportSrc}/contracts/pair" }
-          astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
-          astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
+            cat > $CARGO_HOME/config.toml <<'CFG'
+            [patch.'https://github.com/quasar-finance/babydex.git']
+            astroport = { path = "${astroportSrc}/packages/astroport" }
+            astroport-factory = { path = "${astroportSrc}/contracts/factory" }
+            astroport-pair = { path = "${astroportSrc}/contracts/pair" }
+            astroport-pair-concentrated = { path = "${astroportSrc}/contracts/pair_concentrated" }
+            astroport-pcl-common = { path = "${astroportSrc}/packages/astroport_pcl_common" }
 
-          [patch.'https://github.com/unionlabs/union']
-          unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
-          ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
-          ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
-          CFG
+            [patch.'https://github.com/unionlabs/union']
+            unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
+            ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
+            ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
+            CFG
 
-          echo "🔧 Cargo patches applied for development"
-        '';
+            echo "🔧 Cargo patches applied for development"
+          '';
 
           # Rust environment
           RUST_BACKTRACE = "1";
@@ -162,7 +159,7 @@
             prePatch = ''
               export CARGO_HOME=$(pwd)/.cargo-home
               mkdir -p $CARGO_HOME
-              
+
               cat > $CARGO_HOME/config.toml <<'CFG'
               [patch.'https://github.com/quasar-finance/babydex.git']
               astroport = { path = "${astroportSrc}/packages/astroport" }
@@ -176,22 +173,22 @@
               ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
               ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
               CFG
-              
+
             '';
 
             # Build only the library for the specific package
             buildPhase = ''
               runHook preBuild
-              
+
               # Apply patches to Cargo.toml
               cat >> Cargo.toml <<'PATCH'
-              
+
               [patch.crates-io]
               unionlabs-primitives = { path = "${unionlabsPrimitivesSrc}" }
               ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
               ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
               PATCH
-              
+
               cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
               runHook postBuild
             '';
@@ -229,3 +226,4 @@
       }
     );
 }
+
