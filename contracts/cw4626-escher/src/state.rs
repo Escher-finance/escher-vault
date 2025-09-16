@@ -74,18 +74,26 @@ pub struct LockedShares {
 
 #[cw_serde]
 pub struct PerformanceFeeConfig {
-    pub fee_rate: Decimal,             // e.g., 0.1 (10%)
-    pub fee_recipient: Addr,           // Manager address
-    pub initial_assets: Uint128,       // Assets at vault start (baseline)
-    pub last_fee_calculation: u64,     // Block height of last fee calculation
-    pub fee_calculation_interval: u64, // Blocks between fee calculations (e.g., 17280 for 24h)
-    pub last_assets_snapshot: Uint128, // Assets at last fee calculation
+    /// e.g., 0.1 (10%)
+    pub fee_rate: Decimal,
+    /// Manager address
+    pub fee_recipient: Addr,
+    /// Assets at vault start (baseline)
+    pub initial_assets: Uint128,
+    /// Block height of last fee calculation
+    pub last_fee_calculation: u64,
+    /// Blocks between fee calculations (e.g., 17280 for 24h)
+    pub fee_calculation_interval: u64,
+    /// Assets at last fee calculation
+    pub last_assets_snapshot: Uint128,
 }
 
 #[cw_serde]
 pub struct EntryFeeConfig {
-    pub fee_rate: Decimal,   // Entry fee rate (e.g., 0.1 for 10%)
-    pub fee_recipient: Addr, // Address to receive entry fee shares
+    /// Entry fee rate (e.g., 0.1 for 10%)
+    pub fee_rate: Decimal,
+    /// Address to receive entry fee shares
+    pub fee_recipient: Addr,
 }
 
 #[cw_serde]
@@ -98,10 +106,14 @@ pub struct FeeCalculationResult {
 
 #[cw_serde]
 pub struct FeeInfo {
-    pub amount: Uint128,     // Fee amount in underlying asset terms
-    pub percentage: Decimal, // Percentage of total assets
-    pub calculated_at: u64,  // Block when fee was calculated
-    pub distributed: bool,   // Whether fee has been distributed
+    /// Fee amount in underlying asset terms
+    pub amount: Uint128,
+    /// Percentage of total assets
+    pub percentage: Decimal,
+    /// Block when fee was calculated
+    pub calculated_at: u64,
+    /// Whether fee has been distributed
+    pub distributed: bool,
 }
 
 #[cw_serde]
@@ -109,6 +121,40 @@ pub enum PausedStatus {
     NotPaused {},
     PausedMaintenance {},
     PausedOngoingBonding {},
+}
+
+#[cw_serde]
+pub struct NonZkgmLstConfig {
+    pub lst_contract: Addr,
+}
+
+#[cw_serde]
+pub struct ZkgmLstConfig {
+    pub this_chain_ucs03_zkgm: String,
+    pub this_chain_channel_id: u32,
+    pub lst_chain_ucs03_zkgm: String,
+    pub lst_chain_channel_id: u32,
+    /// underlying on this network
+    pub underlying_base_token: String,
+    /// underlying on the lst network
+    pub underlying_quote_token: String,
+    /// lst on this network
+    pub lst_base_token: String,
+    /// lst on the lst network
+    pub lst_quote_token: String,
+    /// lst contract on the lst network
+    pub lst_contract: String,
+    pub underlying_solver: String,
+    /// this contract's derived proxy address
+    pub this_proxy: String,
+}
+
+#[cw_serde]
+pub enum LstConfig {
+    /// Non ZKGM - the LST contract is in the same network
+    NonZkgm(NonZkgmLstConfig),
+    /// Via ZKGM - the LST contract is on a different network
+    Zkgm(ZkgmLstConfig),
 }
 
 impl Display for PausedStatus {
