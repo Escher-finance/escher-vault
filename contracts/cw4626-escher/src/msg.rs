@@ -30,7 +30,7 @@ pub struct InstantiateMsg {
     /// Entry fee configuration (applied on deposit/mint)
     /// e.g., 0.1 (10%); None => 0
     pub entry_fee_rate: Option<Decimal>,
-    /// If None, defaults to fee_recipient
+    /// If None, defaults to `fee_recipient`
     pub entry_fee_recipient: Addr,
 }
 
@@ -45,8 +45,8 @@ pub enum ExecuteMsg {
     RemoveFromRole { role: AccessControlRole, address: Addr },
     /// Oracle update prices
     OracleUpdatePrices { prices: PricesMap },
-    /// Manager update staking contract
-    UpdateStakingContract { address: Addr },
+    /// Manager update lst config
+    UpdateLstConfig { config: LstConfig },
     /// Manager update minimum deposit
     UpdateMinimumDeposit { amount: Uint128 },
     /// Manager control paused status

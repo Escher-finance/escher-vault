@@ -16,7 +16,10 @@ use unionlabs_primitives::encoding::HexPrefixed;
 
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::query_contract_code_hash;
+use crate::state::LST_CONFIG;
+use crate::state::LstConfig;
 use crate::state::THIS_PROXY;
+use crate::state::TowerConfig;
 use crate::state::ZkgmLstConfig;
 use alloy::sol_types::SolValue;
 use alloy_primitives::Bytes as AlloyBytes;
@@ -26,6 +29,23 @@ use ibc_union_spec::{ChannelId, Duration, Timestamp};
 use std::str::FromStr;
 use ucs03_zkgm;
 use unionlabs_primitives::{Bytes, H256, U256};
+
+pub fn validate_and_store_zkgm_lst_config(
+    deps: &mut DepsMut,
+    config: &ZkgmLstConfig,
+    tower_config: &TowerConfig,
+) -> ContractResult<()> {
+    validate_and_parse_channel_id(config.this_chain_channel_id)?;
+    validate_and_parse_channel_id(config.lst_chain_channel_id)?;
+    if tower_config.lp_underlying_asset.to_string() != config.underlying_base_token {
+        return Err(ContractError::NonCompatibleZkgmLst {});
+    }
+    if tower_config.lp_other_asset.to_string() != config.lst_base_token {
+        return Err(ContractError::NonCompatibleZkgmLst {});
+    }
+    LST_CONFIG.save(deps.storage, &LstConfig::Zkgm(config.clone()))?;
+    Ok(())
+}
 
 #[cw_serde]
 pub enum LstExecuteMsg {
@@ -380,7 +400,7 @@ pub fn update_this_proxy(
     env: &Env,
     config: &ZkgmLstConfig,
 ) -> ContractResult<Addr> {
-    let this = validate_and_parse_hex(&env.contract.address.to_string())?;
+    let this = validate_and_parse_hex(env.contract.address.as_ref())?;
     let contract_addr = config.this_chain_ucs03_zkgm.clone();
     let code_hash =
         query_contract_code_hash(&deps.as_ref(), deps.api.addr_validate(&contract_addr)?)?;

@@ -67,6 +67,9 @@ pub enum ContractError {
     #[error("invalid staking contract provided")]
     InvalidStakingContract {},
 
+    #[error("non compatible zkgm lst config")]
+    NonCompatibleZkgmLst {},
+
     #[error("insufficient {asset_info} for swap funds")]
     InsufficientSwapFunds { asset_info: AssetInfo },
 

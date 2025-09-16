@@ -8,7 +8,7 @@ use crate::{
 };
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
-    Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Querier, Response, StdError, StdResult, Uint128,
+    Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
 };
 
 use crate::{

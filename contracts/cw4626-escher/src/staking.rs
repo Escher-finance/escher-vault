@@ -10,6 +10,7 @@ use crate::{
     error::ContractResult,
     helpers::validate_salt,
     state::{LST_CONFIG, LstConfig, NonZkgmLstConfig, TowerConfig, UNDERLYING_ASSET},
+    zkgm::validate_and_store_zkgm_lst_config,
 };
 
 pub fn validate_and_store_staking_config(
@@ -18,12 +19,14 @@ pub fn validate_and_store_staking_config(
     tower_config: &TowerConfig,
 ) -> ContractResult<()> {
     match lst_config {
-        LstConfig::NonZkgm(non_zkgm_lst_config) => validate_and_store_non_zkgm_staking_contract(
+        LstConfig::NonZkgm(non_zkgm_lst_config) => validate_and_store_non_zkgm_lst_config(
             deps,
             non_zkgm_lst_config,
             &tower_config.lp_other_asset,
         ),
-        LstConfig::Zkgm(zkgm_lst_config) => todo!(),
+        LstConfig::Zkgm(zkgm_lst_config) => {
+            validate_and_store_zkgm_lst_config(deps, zkgm_lst_config, tower_config)
+        }
     }
 }
 
@@ -100,7 +103,7 @@ pub enum EscherHubExecuteMsg {
 ///
 /// # Errors
 /// Will return error if queries or validation fails
-pub fn validate_and_store_non_zkgm_staking_contract(
+pub fn validate_and_store_non_zkgm_lst_config(
     deps: &mut DepsMut,
     config: &NonZkgmLstConfig,
     other_lp_token: &AssetInfo,
