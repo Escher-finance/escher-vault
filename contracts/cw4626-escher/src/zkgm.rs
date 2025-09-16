@@ -1,6 +1,8 @@
 use alloy::hex;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Api;
+use cosmwasm_std::DepsMut;
+use cosmwasm_std::Env;
 use cosmwasm_std::instantiate2_address;
 use cw20::Cw20ExecuteMsg;
 use sha3::Digest;
@@ -13,6 +15,9 @@ use unionlabs_primitives::FixedBytes;
 use unionlabs_primitives::encoding::HexPrefixed;
 
 use crate::error::{ContractError, ContractResult};
+use crate::helpers::query_contract_code_hash;
+use crate::state::THIS_PROXY;
+use crate::state::ZkgmLstConfig;
 use alloy::sol_types::SolValue;
 use alloy_primitives::Bytes as AlloyBytes;
 use alloy_primitives::Uint;
@@ -84,8 +89,8 @@ pub fn call_lst_bond(
     time: Timestamp,
     salt: &str,
 ) -> ContractResult<CosmosMsg> {
-    let proxy_account_address = validate_and_parse_address(bond_request.proxy_account.as_ref())?;
-    let quote_token = validate_and_parse_address(vault_zkgm_config.quote_token.as_ref())?;
+    let proxy_account_address = validate_and_parse_hex(bond_request.proxy_account.as_ref())?;
+    let quote_token = validate_and_parse_hex(vault_zkgm_config.quote_token.as_ref())?;
 
     let sender_bytes: AlloyBytes = bond_request.sender.as_bytes().to_vec().into();
 
@@ -174,7 +179,7 @@ pub fn ucs03_call_lst(
     contract_calldata: Bytes,
     salt: H256,
 ) -> ContractResult<Binary> {
-    let contract_address = validate_and_parse_address(contract_address)?;
+    let contract_address = validate_and_parse_hex(contract_address)?;
 
     let call_instruction = Instruction {
         version: INSTR_VERSION_0,
@@ -232,13 +237,13 @@ pub fn validate_and_parse_salt(salt: &str) -> ContractResult<unionlabs_primitive
 ///
 /// # Errors
 /// Will return error if validations fail
-pub fn validate_and_parse_address(address: &str) -> ContractResult<Bytes> {
+pub fn validate_and_parse_hex(address: &str) -> ContractResult<Bytes> {
     let hex_address = if address.starts_with("0x") {
         address.to_string()
     } else {
         format!("0x{}", hex::encode(address.as_bytes()))
     };
-    Bytes::from_str(&hex_address).map_err(|_| ContractError::InvalidHexAddress {})
+    Bytes::from_str(&hex_address).map_err(|_| ContractError::InvalidHex {})
 }
 
 #[cw_serde]
@@ -290,11 +295,8 @@ pub fn generate_bond_calldata(
     };
     call_msgs.push(execute_increase_allowance_msg.into());
 
-    let quote_token = validate_and_parse_address(if cfg!(test) {
-        &lst_quote_token
-    } else {
-        &request.proxy_account
-    })?;
+    let quote_token =
+        validate_and_parse_hex(if cfg!(test) { &lst_quote_token } else { &request.proxy_account })?;
 
     let metadata = SolverMetadata {
         solverAddress: quote_token.clone().into(),
@@ -303,13 +305,13 @@ pub fn generate_bond_calldata(
 
     // 3. construct token order v2 to send back from to sender
 
-    let sender_bytes = validate_and_parse_address(if cfg!(test) {
+    let sender_bytes = validate_and_parse_hex(if cfg!(test) {
         "union1ylfrhs2y5zdj2394m6fxgpzrjav7le3z07jffq"
     } else {
         &request.proxy_account
     })?;
 
-    let receiver = validate_and_parse_address(&request.sender)?.into();
+    let receiver = validate_and_parse_hex(&request.sender)?.into();
 
     let fungible_order_instruction = Instruction {
         version: INSTR_VERSION_2,
@@ -348,30 +350,58 @@ pub fn generate_bond_calldata(
     Ok(msgs_bytes)
 }
 
-#[allow(dead_code)]
-fn predict_call_proxy_account(
+pub fn predict_proxy_account(
     api: &dyn Api,
     path: U256,
     channel_id: ChannelId,
-    sender: &Bytes,
+    user: &Bytes,
     code_hash: &str,
-    contract_addr: &str,
+    creator_addr: &str,
 ) -> Result<Addr, ContractError> {
     let salt: H256 = Keccak256::new()
         .chain_update(
-            (Into::<alloy_primitives::U256>::into(path), channel_id.raw(), sender.clone())
+            (Into::<alloy_primitives::U256>::into(path), channel_id.raw(), user.clone())
                 .abi_encode_params(),
         )
         .finalize()
         .into();
     let code_hash: FixedBytes<32, HexPrefixed> =
-        H256::from_str(code_hash).map_err(|_| ContractError::InvalidHexAddress {})?;
+        H256::from_str(code_hash).map_err(|_| ContractError::InvalidHex {})?;
     let token_addr = instantiate2_address(
         &code_hash.into_bytes(),
-        &api.addr_canonicalize(contract_addr)?,
+        &api.addr_canonicalize(creator_addr)?,
         salt.get().as_slice(),
     )?;
     Ok(api.addr_humanize(&token_addr)?)
+}
+
+pub fn update_this_proxy(
+    deps: &mut DepsMut,
+    env: &Env,
+    config: &ZkgmLstConfig,
+) -> ContractResult<Addr> {
+    let this = validate_and_parse_hex(&env.contract.address.to_string())?;
+    let contract_addr = config.this_chain_ucs03_zkgm.clone();
+    let code_hash =
+        query_contract_code_hash(&deps.as_ref(), deps.api.addr_validate(&contract_addr)?)?;
+    let proxy = predict_proxy_account(
+        deps.api,
+        U256::from(0_u32),
+        validate_and_parse_channel_id(config.this_chain_channel_id)?,
+        &this,
+        &code_hash,
+        &contract_addr,
+    )?;
+    THIS_PROXY.save(deps.storage, &proxy)?;
+    Ok(proxy)
+}
+
+pub fn get_or_update_this_proxy(
+    deps: &mut DepsMut,
+    env: &Env,
+    config: &ZkgmLstConfig,
+) -> ContractResult<Addr> {
+    Ok(THIS_PROXY.may_load(deps.storage)?.unwrap_or(update_this_proxy(deps, env, config)?))
 }
 
 #[cfg(test)]
@@ -548,11 +578,11 @@ mod tests {
 
         let app = AppBuilder::default().with_api(MockApiBech32::new("union")).build(|_, _, _| {});
         let api = app.api();
-        let predicted = predict_call_proxy_account(
+        let predicted = predict_proxy_account(
             api,
             U256::from(0_u32),
             ChannelId::from_raw(20).unwrap(),
-            &validate_and_parse_address(addr).unwrap(),
+            &validate_and_parse_hex(addr).unwrap(),
             code_hash,
             union_ucs03_zkgm,
         )

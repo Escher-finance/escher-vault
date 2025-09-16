@@ -8,7 +8,7 @@ use crate::{
 };
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{
-    Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+    Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Querier, Response, StdError, StdResult, Uint128,
 };
 
 use crate::{
@@ -284,6 +284,12 @@ pub fn validate_salt(salt: &str) -> ContractResult<()> {
         return Err(ContractError::InvalidSalt {});
     }
     Ok(())
+}
+
+pub fn query_contract_code_hash(deps: &Deps, address: Addr) -> ContractResult<String> {
+    let contract_info = deps.querier.query_wasm_contract_info(address)?;
+    let code_info = deps.querier.query_wasm_code_info(contract_info.code_id)?;
+    Ok(code_info.checksum.to_hex())
 }
 
 #[cfg(test)]

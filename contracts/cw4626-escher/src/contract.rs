@@ -9,7 +9,7 @@ use crate::helpers::internal_update_minimum_deposit;
 use crate::helpers::validate_addrs;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::staking::validate_and_store_staking_contract;
+use crate::staking::validate_and_store_staking_config;
 use crate::state::PAUSED_STATUS;
 use crate::state::PausedStatus;
 use crate::state::{
@@ -74,12 +74,8 @@ pub fn instantiate(
     )?;
 
     // Save staking contract address if provided
-    if let Some(staking_contract) = msg.staking_contract {
-        validate_and_store_staking_contract(
-            &mut deps,
-            &staking_contract,
-            &tower_config.lp_other_asset,
-        )?;
+    if let Some(lst_config) = msg.lst_config {
+        validate_and_store_staking_config(&mut deps, &lst_config, &tower_config)?;
     }
 
     init_oracle_prices(&mut deps.branch(), &tower_config)?;

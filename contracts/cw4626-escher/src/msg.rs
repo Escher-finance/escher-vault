@@ -3,7 +3,9 @@ use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 use cw20_base::msg::InstantiateMarketingInfo;
 
-use crate::state::{AccessControlRole, PausedStatus, PricesMap, RedemptionRequest, TowerConfig};
+use crate::state::{
+    AccessControlRole, LstConfig, PausedStatus, PricesMap, RedemptionRequest, TowerConfig,
+};
 
 #[cw_serde]
 pub enum ReceiveMsg {
@@ -23,11 +25,13 @@ pub struct InstantiateMsg {
     pub lp: Addr,
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
-    pub staking_contract: Option<Addr>,
+    pub lst_config: Option<LstConfig>,
     pub minimum_deposit: Option<Uint128>,
-    // Entry fee configuration (applied on deposit/mint)
-    pub entry_fee_rate: Option<Decimal>, // e.g., 0.1 (10%); None => 0
-    pub entry_fee_recipient: Addr,       // If None, defaults to fee_recipient
+    /// Entry fee configuration (applied on deposit/mint)
+    /// e.g., 0.1 (10%); None => 0
+    pub entry_fee_rate: Option<Decimal>,
+    /// If None, defaults to fee_recipient
+    pub entry_fee_recipient: Addr,
 }
 
 #[cw_serde]

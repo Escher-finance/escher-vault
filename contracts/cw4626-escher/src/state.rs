@@ -145,8 +145,6 @@ pub struct ZkgmLstConfig {
     /// lst contract on the lst network
     pub lst_contract: String,
     pub underlying_solver: String,
-    /// this contract's derived proxy address
-    pub this_proxy: String,
 }
 
 #[cw_serde]
@@ -178,8 +176,10 @@ pub const TOWER_CONFIG: Item<TowerConfig> = Item::new("tower-config");
 /// Prices map in terms of the underlying asset
 /// NOTE: It's an Item of a `HashMap` and not a Map because it needs to be read & updated completely every time
 pub const ORACLE_PRICES: Item<PricesMap> = Item::new("oracle-prices");
-/// Staking contract configuration
+/// Staking configuration
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
+pub const LST_CONFIG: Item<LstConfig> = Item::new("lst-config");
+pub const THIS_PROXY: Item<Addr> = Item::new("this-proxy");
 // Redemption system
 pub const REDEMPTION_COUNTER: Item<u64> = Item::new("redemption_counter");
 pub const REDEMPTION_REQUESTS: Map<u64, RedemptionRequest> = Map::new("redemption_requests");

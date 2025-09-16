@@ -108,8 +108,8 @@ pub enum ContractError {
     #[error("deposit amount must be greater than or equal to {minimum_deposit}")]
     DepositTooSmall { minimum_deposit: Uint128 },
 
-    #[error("invalid hex address")]
-    InvalidHexAddress {},
+    #[error("invalid hex")]
+    InvalidHex {},
 
     #[error("timestamp value overflow")]
     TimestampOverflow {},

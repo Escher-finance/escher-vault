@@ -9,8 +9,23 @@ use crate::{
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     error::ContractResult,
     helpers::validate_salt,
-    state::{STAKING_CONTRACT, UNDERLYING_ASSET},
+    state::{LST_CONFIG, LstConfig, NonZkgmLstConfig, TowerConfig, UNDERLYING_ASSET},
 };
+
+pub fn validate_and_store_staking_config(
+    deps: &mut DepsMut,
+    lst_config: &LstConfig,
+    tower_config: &TowerConfig,
+) -> ContractResult<()> {
+    match lst_config {
+        LstConfig::NonZkgm(non_zkgm_lst_config) => validate_and_store_non_zkgm_staking_contract(
+            deps,
+            non_zkgm_lst_config,
+            &tower_config.lp_other_asset,
+        ),
+        LstConfig::Zkgm(zkgm_lst_config) => todo!(),
+    }
+}
 
 #[cw_serde]
 pub struct EscherHubParameters {
@@ -85,22 +100,22 @@ pub enum EscherHubExecuteMsg {
 ///
 /// # Errors
 /// Will return error if queries or validation fails
-pub fn validate_and_store_staking_contract(
+pub fn validate_and_store_non_zkgm_staking_contract(
     deps: &mut DepsMut,
-    staking_contract: &Addr,
+    config: &NonZkgmLstConfig,
     other_lp_token: &AssetInfo,
 ) -> ContractResult<()> {
     let _ = deps
         .querier
         .query_wasm_smart::<EscherHubStakingLiquidity>(
-            staking_contract.clone(),
+            config.lst_contract.clone(),
             &EscherHubQueryMsg::StakingLiquidity {},
         )
         .map_err(|_| ContractError::InvalidStakingContract {})?;
     let EscherHubParameters { cw20_address, .. } = deps
         .querier
         .query_wasm_smart::<EscherHubParameters>(
-            staking_contract.clone(),
+            config.lst_contract.clone(),
             &EscherHubQueryMsg::Parameters {},
         )
         .map_err(|_| ContractError::InvalidStakingContract {})?;
@@ -108,7 +123,7 @@ pub fn validate_and_store_staking_contract(
     if cw20_info != *other_lp_token {
         return Err(ContractError::InvalidStakingContract {});
     }
-    STAKING_CONTRACT.save(deps.storage, staking_contract)?;
+    LST_CONFIG.save(deps.storage, &LstConfig::NonZkgm(config.clone()))?;
     Ok(())
 }
 
