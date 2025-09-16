@@ -5,6 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs =
@@ -13,6 +14,7 @@
       nixpkgs,
       rust-overlay,
       flake-utils,
+      crane,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -22,6 +24,9 @@
           inherit system overlays;
         };
         lib = pkgs.lib;
+
+        # Crane library for offline Rust builds with vendoring
+        craneLib = (crane.mkLib pkgs);
 
         astroportSrc = pkgs.fetchFromGitHub {
           owner = "quasar-finance";
@@ -133,16 +138,44 @@
 
         # Build outputs
         packages = {
-          # Build the WASM contract using stdenv.mkDerivation to avoid vendoring issues
-          cw4626-escher = pkgs.stdenv.mkDerivation {
+          # Build the WASM contract using crane with vendored dependencies (offline)
+          cw4626-escher = let
+            # Clean source for reproducibility
+            src = craneLib.cleanCargoSource ./.;
+            # Vendor all Cargo dependencies; set a fake hash first, build once to get the correct hash
+            cargoVendorDir = craneLib.vendorCargoDeps {
+              inherit src;
+              cargoLock = ./Cargo.lock;
+              cargoVendorHash = "sha256-65ouUH7OfQF2r2XOFugM9KxLHTitrSxnt57ghS8qruk=";
+            };
+
+            commonArgs = {
+              pname = "cw4626-escher";
+              version = "0.1.0";
+              inherit src cargoVendorDir;
+              nativeBuildInputs = [
+                rustToolchain
+                pkgs.binaryen
+                pkgs.pkg-config
+                pkgs.lld_18
+                pkgs.cacert
+              ];
+              CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
+              RUSTFLAGS = "-C target-feature=-reference-types,-bulk-memory";
+            };
+
+            # Build dependencies only (avoids re-building them on every change)
+            deps = craneLib.buildDepsOnly (commonArgs // {
+              cargoExtraArgs = "-p cw4626-escher --lib --target wasm32-unknown-unknown --offline";
+              doCheck = false;
+            });
+          in craneLib.buildPackage (commonArgs // {
             pname = "cw4626-escher";
             version = "0.1.0";
-            src = ./.;
+            inherit src cargoVendorDir;
+            cargoArtifacts = deps;
 
             # Use our custom toolchain
-            rustc = rustToolchain;
-            cargo = rustToolchain;
-
             nativeBuildInputs = [
               rustToolchain
               pkgs.binaryen
@@ -151,16 +184,18 @@
               pkgs.cacert
             ];
 
-            # Environment and build configuration
+            # Ensure we build the desired crate for wasm target
             CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
             RUSTFLAGS = "-C target-feature=-reference-types,-bulk-memory";
+            cargoExtraArgs = "-p cw4626-escher --lib --target wasm32-unknown-unknown --offline";
 
             # Patch git dependencies before building
-            prePatch = ''
+            preBuild = ''
               export CARGO_HOME=$(pwd)/.cargo-home
               mkdir -p $CARGO_HOME
 
-              cat > $CARGO_HOME/config.toml <<'CFG'
+              # Append our patches without overwriting vendored source config
+              cat >> $CARGO_HOME/config.toml <<'CFG'
               [patch.'https://github.com/quasar-finance/babydex.git']
               astroport = { path = "${astroportSrc}/packages/astroport" }
               astroport-factory = { path = "${astroportSrc}/contracts/factory" }
@@ -174,13 +209,7 @@
               ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
               CFG
 
-            '';
-
-            # Build only the library for the specific package
-            buildPhase = ''
-              runHook preBuild
-
-              # Apply patches to Cargo.toml
+              # Also apply crates-io patches for workspace resolution
               cat >> Cargo.toml <<'PATCH'
 
               [patch.crates-io]
@@ -188,37 +217,28 @@
               ucs03-zkgm = { path = "${ucs03ZkgmSrc}" }
               ibc-union-spec = { path = "${ibcUnionSpecSrc}" }
               PATCH
-
-              cargo build --release --lib --target wasm32-unknown-unknown -p cw4626-escher
-              runHook postBuild
             '';
 
-            # Skip tests
             doCheck = false;
 
-            # Optimize the WASM output
-            postBuild = ''
-              mkdir -p artifacts
-              if [ -f target/wasm32-unknown-unknown/release/cw4626_escher.wasm ]; then
-                wasm-opt -Oz --signext-lowering --strip-debug --strip-producers \
-                  target/wasm32-unknown-unknown/release/cw4626_escher.wasm \
-                  -o artifacts/cw4626_escher.wasm
-              else
-                echo "Warning: WASM file not found, looking for alternatives..."
-                find target -name "*.wasm" -type f
-              fi
-            '';
-
             installPhase = ''
-              mkdir -p $out
-              if [ -f artifacts/cw4626_escher.wasm ]; then
-                cp artifacts/cw4626_escher.wasm $out/
+              set -euo pipefail
+              mkdir -p "$out"
+              # Prefer the direct build artifact
+              in_wasm="target/wasm32-unknown-unknown/release/cw4626_escher.wasm"
+              if [ ! -f "''${in_wasm}" ]; then
+                # Fallback: search for any wasm in target tree
+                in_wasm=$(find target -type f -name "*.wasm" | head -n1 || true)
+              fi
+              if [ -n "''${in_wasm}" ] && [ -f "''${in_wasm}" ]; then
+                wasm-opt -Oz --signext-lowering --strip-debug --strip-producers \
+                  "''${in_wasm}" -o "$out/cw4626_escher.wasm"
               else
-                echo "Error: Optimized WASM file not found"
+                echo "Error: WASM artifact not found under target" >&2
                 exit 1
               fi
             '';
-          };
+          });
         };
 
         # Default package
