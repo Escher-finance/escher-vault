@@ -868,6 +868,10 @@ fn events_deposit_with_fee_and_bond_and_oracle_and_request() {
     assert!(attrs.iter().any(|(k, _)| k == "amount"));
     assert!(attrs.iter().any(|(k, _)| k == "expected"));
 
+    // Unpause
+    app.execute_contract(admin.clone(), vault.clone(), &ExecuteMsg::TogglePausedStatus {}, &[])
+        .unwrap();
+
     // Request redemption and check event
     let res = app
         .execute_contract(

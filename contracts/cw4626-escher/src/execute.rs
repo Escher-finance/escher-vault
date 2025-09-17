@@ -16,8 +16,8 @@ use crate::{
     },
     staking::{internal_bond, validate_and_store_staking_config},
     state::{
-        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PricesMap, TOWER_CONFIG,
-        UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PAUSED_STATUS, PausedStatus,
+        PricesMap, TOWER_CONFIG, UNDERLYING_ASSET,
     },
     tower::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
@@ -122,7 +122,9 @@ pub fn bond(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     validate_only_not_paused(deps.storage, &info.sender)?;
-    internal_toggle_paused_status(deps.storage)?;
+
+    // NOTE: Paused due to bonding; must be unpaused manually for now
+    PAUSED_STATUS.save(deps.storage, &PausedStatus::PausedOngoingBonding {})?;
 
     let lst_config = LST_CONFIG.load(deps.storage)?;
     let this = env.contract.address.clone();
