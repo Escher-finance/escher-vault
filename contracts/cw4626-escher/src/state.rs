@@ -145,6 +145,7 @@ pub struct ZkgmLstConfig {
     /// lst contract on the lst network
     pub lst_hub_contract: String,
     pub underlying_solver: String,
+    /// lst minter
     pub lst_minter: String,
 }
 

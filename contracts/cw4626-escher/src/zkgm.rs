@@ -425,14 +425,18 @@ mod tests {
 
         let result = generate_bond_calldata(
             &BondRequest { sender, proxy_account, amount, min_mint_amount, denom },
-            LstZkgmConfig {
-                union_ucs03_zkgm,
-                zkgm_token_minter,
+            &ZkgmLstConfig {
+                lst_chain_channel_id: 20,
                 lst_base_token,
                 lst_quote_token,
-                lst_contract_address,
-                union_channel_id: 20,
-                u_solver_address,
+                lst_chain_ucs03_zkgm: union_ucs03_zkgm,
+                lst_minter: zkgm_token_minter,
+                underlying_solver: u_solver_address,
+                lst_hub_contract: lst_contract_address,
+                this_chain_channel_id: u32::default(),
+                this_chain_ucs03_zkgm: String::default(),
+                underlying_quote_token: String::default(),
+                underlying_base_token: String::default(),
             },
             timeout,
             salt,
