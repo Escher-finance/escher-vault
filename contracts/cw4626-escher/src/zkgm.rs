@@ -16,15 +16,11 @@ use unionlabs_primitives::encoding::HexPrefixed;
 
 use crate::error::{ContractError, ContractResult};
 use crate::helpers::query_contract_code_hash;
-use crate::state::LST_CONFIG;
-use crate::state::LstConfig;
-use crate::state::THIS_PROXY;
-use crate::state::TowerConfig;
-use crate::state::ZkgmLstConfig;
+use crate::state::{LST_CONFIG, LstConfig, THIS_PROXY, TowerConfig, ZkgmLstConfig};
 use alloy::sol_types::SolValue;
 use alloy_primitives::Bytes as AlloyBytes;
 use alloy_primitives::Uint;
-use cosmwasm_std::{Addr, Binary, Coin, CosmosMsg, Uint64, Uint128, WasmMsg, to_json_binary};
+use cosmwasm_std::{Addr, Coin, CosmosMsg, Uint64, Uint128, WasmMsg, to_json_binary};
 use ibc_union_spec::{ChannelId, Duration, Timestamp};
 use std::str::FromStr;
 use ucs03_zkgm;
@@ -186,47 +182,6 @@ pub fn call_lst_bond(
     .into();
 
     Ok(execute_increase_allowance_msg)
-}
-
-/// Sends call instruction to ucs03 and return cosmos msg execute call to ucs03
-///
-/// # Errors
-/// Will return error if validation or message serialization fails
-pub fn ucs03_call_lst(
-    sender: &str,
-    channel_id: u32,
-    time: Timestamp,
-    contract_address: &str,
-    contract_calldata: Bytes,
-    salt: H256,
-) -> ContractResult<Binary> {
-    let contract_address = validate_and_parse_hex(contract_address)?;
-
-    let call_instruction = Instruction {
-        version: INSTR_VERSION_0,
-        opcode: OP_CALL,
-        operand: Call {
-            sender: sender.as_bytes().to_vec().into(),
-            eureka: false,
-            contract_address: contract_address.into(),
-            contract_calldata: contract_calldata.into(),
-        }
-        .abi_encode_params()
-        .into(),
-    };
-
-    let timeout_timestamp = get_timeout_timestamp_from_time(time)?;
-
-    let ucs03_send_msg: ucs03_zkgm::msg::ExecuteMsg = ucs03_zkgm::msg::ExecuteMsg::Send {
-        channel_id: validate_and_parse_channel_id(channel_id)?,
-        timeout_height: Uint64::from(0u64),
-        timeout_timestamp,
-        salt,
-        instruction: call_instruction.abi_encode_params().into(),
-    };
-
-    let ucc03_msg_bin = to_json_binary(&ucs03_send_msg)?;
-    Ok(ucc03_msg_bin)
 }
 
 /// # Errors

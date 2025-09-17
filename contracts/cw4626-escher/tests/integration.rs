@@ -23,6 +23,8 @@ use cosmwasm_std::to_json_binary;
 use cw_multi_test::{App, ContractWrapper, Executor};
 use cw20::Cw20ExecuteMsg;
 use cw20::MinterResponse;
+use cw4626_escher::state::LstConfig;
+use cw4626_escher::state::NonZkgmLstConfig;
 
 use cw_multi_test::AppResponse;
 use cw4626_escher::contract;
@@ -340,7 +342,7 @@ fn instantiate_vault(
             AssetInfo::NativeToken { denom: "incentive2".to_string() },
         ]),
         slippage_tolerance: Decimal::from_ratio(1_u32, 100_u32),
-        staking_contract: Some(staking_address),
+        lst_config: Some(LstConfig::NonZkgm(NonZkgmLstConfig { lst_contract: staking_address })),
         lp: lp_address,
         tower_incentives: incentives_address,
         entry_fee_rate: fee,
@@ -955,7 +957,7 @@ fn instantiate_rejects_invalid_staking_contract() {
             AssetInfo::NativeToken { denom: "incentive2".to_string() },
         ]),
         slippage_tolerance: Decimal::from_str("0.01").unwrap(),
-        staking_contract: Some(invalid_staking),
+        lst_config: Some(LstConfig::NonZkgm(NonZkgmLstConfig { lst_contract: invalid_staking })),
         lp,
         tower_incentives,
         entry_fee_rate: None,
