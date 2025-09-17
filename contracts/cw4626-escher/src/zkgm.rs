@@ -67,11 +67,11 @@ type AlloyUint256 = Uint<256, 4>;
 
 const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 
-/// Call LST bond function via ucs03 zkgm
+/// Generate LST bond msg via ucs03 zkgm
 ///
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
-pub fn call_lst_bond(
+pub fn generate_lst_bond_msg(
     // bond_request: &BondRequest,
     this: &Addr,
     this_proxy: &Addr,
