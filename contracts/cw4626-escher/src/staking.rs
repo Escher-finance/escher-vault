@@ -13,7 +13,11 @@ use crate::{
     zkgm::validate_and_store_zkgm_lst_config,
 };
 
-pub fn validate_and_store_staking_config(
+/// Validates and stores a new LST config
+///
+/// # Errors
+/// Will return error if validation or state update fails
+pub fn validate_and_store_lst_config(
     deps: &mut DepsMut,
     lst_config: &LstConfig,
     tower_config: &TowerConfig,
@@ -99,7 +103,7 @@ pub enum EscherHubExecuteMsg {
     },
 }
 
-/// Validates that `staking_contract` is an Escher staking hub and saves it
+/// Validates and stores a NON-ZKGM LST config
 ///
 /// # Errors
 /// Will return error if queries or validation fails

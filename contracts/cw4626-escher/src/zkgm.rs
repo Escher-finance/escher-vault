@@ -26,6 +26,10 @@ use std::str::FromStr;
 use ucs03_zkgm;
 use unionlabs_primitives::{Bytes, H256, U256};
 
+/// Validates and stores a ZKGM LST config
+///
+/// # Errors
+/// Will return error if validation or state update fails
 pub fn validate_and_store_zkgm_lst_config(
     deps: &mut DepsMut,
     config: &ZkgmLstConfig,
@@ -307,7 +311,11 @@ pub fn generate_bond_calldata(
     Ok(msgs_bytes)
 }
 
-pub fn predict_proxy_account(
+/// Predicts a ZKGM proxy account for an arbitrary `user`
+///
+/// # Errors
+/// Will return error if fails to `instantiate2_address`
+pub fn predict_zkgm_proxy_account(
     api: &dyn Api,
     path: U256,
     channel_id: ChannelId,
@@ -332,6 +340,10 @@ pub fn predict_proxy_account(
     Ok(api.addr_humanize(&token_addr)?)
 }
 
+/// Stores the ZKGM proxy of this contract with up to date params
+///
+/// # Errors
+/// Will return error if queries or internal helper fails
 pub fn update_this_proxy(
     deps: &mut DepsMut,
     env: &Env,
@@ -341,7 +353,7 @@ pub fn update_this_proxy(
     let contract_addr = config.this_chain_ucs03_zkgm.clone();
     let code_hash =
         query_contract_code_hash(&deps.as_ref(), deps.api.addr_validate(&contract_addr)?)?;
-    let proxy = predict_proxy_account(
+    let proxy = predict_zkgm_proxy_account(
         deps.api,
         U256::from(0_u32),
         validate_and_parse_channel_id(config.this_chain_channel_id)?,
@@ -353,6 +365,10 @@ pub fn update_this_proxy(
     Ok(proxy)
 }
 
+/// Gets the ZKGM proxy if it exists, else it generates and stores it
+///
+/// # Errors
+/// Will return error if state query or update fails
 pub fn get_or_update_this_proxy(
     deps: &mut DepsMut,
     env: &Env,
@@ -542,7 +558,7 @@ mod tests {
 
         let app = AppBuilder::default().with_api(MockApiBech32::new("union")).build(|_, _, _| {});
         let api = app.api();
-        let predicted = predict_proxy_account(
+        let predicted = predict_zkgm_proxy_account(
             api,
             U256::from(0_u32),
             ChannelId::from_raw(20).unwrap(),

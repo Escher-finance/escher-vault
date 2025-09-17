@@ -286,6 +286,10 @@ pub fn validate_salt(salt: &str) -> ContractResult<()> {
     Ok(())
 }
 
+/// Queries a contract's checksum
+///
+/// # Errors
+/// Will return error if queries fail
 pub fn query_contract_code_hash(deps: &Deps, address: Addr) -> ContractResult<String> {
     let contract_info = deps.querier.query_wasm_contract_info(address)?;
     let code_info = deps.querier.query_wasm_code_info(contract_info.code_id)?;

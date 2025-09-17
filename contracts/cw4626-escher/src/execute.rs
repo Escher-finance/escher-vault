@@ -14,7 +14,7 @@ use crate::{
         generate_bond_response, generate_oracle_update_prices_response,
         generate_remove_role_response, remove_liquidity_event, swap_event,
     },
-    staking::{internal_bond, validate_and_store_staking_config},
+    staking::{internal_bond, validate_and_store_lst_config},
     state::{
         ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PAUSED_STATUS, PausedStatus,
         PricesMap, TOWER_CONFIG, UNDERLYING_ASSET,
@@ -85,7 +85,7 @@ pub fn update_lst_config(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
-    let lst_config = validate_and_store_staking_config(deps, config, &tower_config)?;
+    let lst_config = validate_and_store_lst_config(deps, config, &tower_config)?;
     if let LstConfig::Zkgm(zkgm_lst_config) = lst_config {
         update_this_proxy(deps, env, &zkgm_lst_config)?;
     }

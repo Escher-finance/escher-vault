@@ -43,6 +43,8 @@ pub fn validate_only_not_paused(storage: &dyn Storage, sender: &Addr) -> Contrac
     Err(ContractError::Paused(paused_status))
 }
 
+/// # Errors
+/// Will return error if state fails to update
 pub fn internal_toggle_paused_status(storage: &mut dyn Storage) -> ContractResult<()> {
     PAUSED_STATUS.update::<_, ContractError>(storage, |status| match status {
         PausedStatus::NotPaused {} => Ok(PausedStatus::PausedMaintenance {}),
