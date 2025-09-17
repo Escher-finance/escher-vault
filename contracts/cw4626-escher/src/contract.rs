@@ -118,7 +118,7 @@ pub fn execute(
             crate::execute::oracle_update_prices(&mut deps, &sender, &prices)?
         }
         ExecuteMsg::UpdateLstConfig { config } => {
-            crate::execute::update_lst_config(&mut deps, &info, &config)?
+            crate::execute::update_lst_config(&mut deps, &env, &info, &config)?
         }
         ExecuteMsg::UpdateMinimumDeposit { amount } => {
             crate::execute::update_minimum_deposit(&mut deps, &info, amount)?

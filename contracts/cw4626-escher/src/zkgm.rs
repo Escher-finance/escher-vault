@@ -34,7 +34,7 @@ pub fn validate_and_store_zkgm_lst_config(
     deps: &mut DepsMut,
     config: &ZkgmLstConfig,
     tower_config: &TowerConfig,
-) -> ContractResult<()> {
+) -> ContractResult<LstConfig> {
     validate_and_parse_channel_id(config.this_chain_channel_id)?;
     validate_and_parse_channel_id(config.lst_chain_channel_id)?;
     if tower_config.lp_underlying_asset.to_string() != config.underlying_base_token {
@@ -43,8 +43,9 @@ pub fn validate_and_store_zkgm_lst_config(
     if tower_config.lp_other_asset.to_string() != config.lst_base_token {
         return Err(ContractError::NonCompatibleZkgmLst {});
     }
-    LST_CONFIG.save(deps.storage, &LstConfig::Zkgm(config.clone()))?;
-    Ok(())
+    let lst_config = LstConfig::Zkgm(config.clone());
+    LST_CONFIG.save(deps.storage, &lst_config)?;
+    Ok(lst_config)
 }
 
 #[cw_serde]

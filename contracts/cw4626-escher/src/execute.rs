@@ -24,6 +24,7 @@ use crate::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
         remove_tower_liquidity, tower_swap, update_and_validate_prices,
     },
+    zkgm::update_this_proxy,
 };
 use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
 use cosmwasm_std::{
@@ -79,12 +80,16 @@ pub fn oracle_update_prices(
 /// Will return error if internal helper fails
 pub fn update_lst_config(
     deps: &mut DepsMut,
+    env: &Env,
     info: &MessageInfo,
     config: &LstConfig,
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
-    validate_and_store_staking_config(deps, config, &tower_config)?;
+    let lst_config = validate_and_store_staking_config(deps, config, &tower_config)?;
+    if let LstConfig::Zkgm(zkgm_lst_config) = lst_config {
+        update_this_proxy(deps, env, &zkgm_lst_config)?;
+    }
     Ok(Response::new())
 }
 

@@ -17,7 +17,7 @@ pub fn validate_and_store_staking_config(
     deps: &mut DepsMut,
     lst_config: &LstConfig,
     tower_config: &TowerConfig,
-) -> ContractResult<()> {
+) -> ContractResult<LstConfig> {
     match lst_config {
         LstConfig::NonZkgm(non_zkgm_lst_config) => validate_and_store_non_zkgm_lst_config(
             deps,
@@ -107,7 +107,7 @@ pub fn validate_and_store_non_zkgm_lst_config(
     deps: &mut DepsMut,
     config: &NonZkgmLstConfig,
     other_lp_token: &AssetInfo,
-) -> ContractResult<()> {
+) -> ContractResult<LstConfig> {
     let _ = deps
         .querier
         .query_wasm_smart::<EscherHubStakingLiquidity>(
@@ -126,8 +126,9 @@ pub fn validate_and_store_non_zkgm_lst_config(
     if cw20_info != *other_lp_token {
         return Err(ContractError::InvalidStakingContract {});
     }
-    LST_CONFIG.save(deps.storage, &LstConfig::NonZkgm(config.clone()))?;
-    Ok(())
+    let lst_config = LstConfig::NonZkgm(config.clone());
+    LST_CONFIG.save(deps.storage, &lst_config)?;
+    Ok(lst_config)
 }
 
 /// Returns (`bond_msg`, `expected`)
