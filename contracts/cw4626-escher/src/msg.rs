@@ -45,6 +45,7 @@ pub enum ExecuteBondPayload {
 
 impl ExecuteBondPayload {
     /// Validates that the bond payload matches the current lst config
+    #[must_use]
     pub fn matches_lst_config(&self, lst_config: &LstConfig) -> bool {
         match self {
             Self::Zkgm { .. } => matches!(lst_config, LstConfig::Zkgm(..)),
@@ -69,8 +70,6 @@ pub enum ExecuteMsg {
     TogglePausedStatus {},
     /// Manager bond
     Bond(ExecuteBondPayload),
-    /// Manager unbond
-    Unbond { amount: Uint128 },
     /// Manager add liquidity
     AddLiquidity { underlying_token_amount: Uint128 },
     /// Manager remove liquidity

@@ -12,13 +12,12 @@ use crate::{
     responses::{
         add_liquidity_event, claim_incentives_event, generate_add_role_response,
         generate_bond_response, generate_oracle_update_prices_response,
-        generate_remove_role_response, generate_unbond_response, remove_liquidity_event,
-        swap_event,
+        generate_remove_role_response, remove_liquidity_event, swap_event,
     },
-    staking::{internal_bond, internal_unbond, validate_and_store_staking_config},
+    staking::{internal_bond, validate_and_store_staking_config},
     state::{
-        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PricesMap, STAKING_CONTRACT,
-        TOWER_CONFIG, TowerConfig, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PricesMap, TOWER_CONFIG,
+        UNDERLYING_ASSET,
     },
     tower::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
@@ -169,27 +168,6 @@ pub fn bond(
                 .add_message(bond_msg))
         }
     }
-}
-
-/// # Errors
-/// Will return error if internal helper fails
-pub fn unbond(
-    deps: &mut DepsMut,
-    env: &Env,
-    info: &MessageInfo,
-    amount: Uint128,
-) -> ContractResult<Response> {
-    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    validate_only_not_paused(deps.storage, &info.sender)?;
-
-    let TowerConfig { lp_other_asset, .. } = TOWER_CONFIG.load(deps.storage)?;
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    let this = &env.contract.address;
-
-    let (unbond_msg, expected) =
-        internal_unbond(deps, info, lp_other_asset, &staking_contract, amount)?;
-
-    Ok(generate_unbond_response(this, expected, &staking_contract).add_message(unbond_msg))
 }
 
 /// # Errors

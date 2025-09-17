@@ -81,10 +81,10 @@ pub fn generate_lst_bond_msg(
     time: Timestamp,
     salt: &str,
 ) -> ContractResult<CosmosMsg> {
-    let proxy_account_address = validate_and_parse_hex(&this_proxy.to_string())?;
+    let proxy_account_address = validate_and_parse_hex(this_proxy.as_ref())?;
     let quote_token = validate_and_parse_hex(zkgm_lst_config.underlying_quote_token.as_ref())?;
 
-    let sender_bytes: AlloyBytes = validate_and_parse_hex(&this.to_string())?.into();
+    let sender_bytes: AlloyBytes = validate_and_parse_hex(this.as_ref())?.into();
 
     let metadata = SolverMetadata {
         solverAddress: Vec::from(zkgm_lst_config.underlying_solver.clone()).into(),

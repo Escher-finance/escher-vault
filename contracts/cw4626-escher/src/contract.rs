@@ -129,7 +129,6 @@ pub fn execute(
         ExecuteMsg::Bond(bond_payload) => {
             crate::execute::bond(&mut deps, &env, &info, &bond_payload)?
         }
-        ExecuteMsg::Unbond { amount } => crate::execute::unbond(&mut deps, &env, &info, amount)?,
         ExecuteMsg::AddLiquidity { underlying_token_amount } => {
             crate::execute::add_liquidity(&mut deps, &env, &info, underlying_token_amount)?
         }
