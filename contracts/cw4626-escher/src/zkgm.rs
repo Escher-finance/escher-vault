@@ -101,18 +101,17 @@ const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 /// Will return error if messages fail to serialize or validation fails
 pub fn call_lst_bond(
     bond_request: &BondRequest,
-    vault_zkgm_config: VaultZkgmConfig,
-    lst_zkgm_config: LstZkgmConfig,
+    zkgm_lst_config: &ZkgmLstConfig,
     time: Timestamp,
     salt: &str,
 ) -> ContractResult<CosmosMsg> {
     let proxy_account_address = validate_and_parse_hex(bond_request.proxy_account.as_ref())?;
-    let quote_token = validate_and_parse_hex(vault_zkgm_config.quote_token.as_ref())?;
+    let quote_token = validate_and_parse_hex(zkgm_lst_config.underlying_quote_token.as_ref())?;
 
     let sender_bytes: AlloyBytes = bond_request.sender.as_bytes().to_vec().into();
 
     let metadata = SolverMetadata {
-        solverAddress: Vec::from(lst_zkgm_config.u_solver_address.clone()).into(),
+        solverAddress: Vec::from(zkgm_lst_config.underlying_solver.clone()).into(),
         metadata: AlloyBytes::default(),
     };
 
@@ -123,7 +122,7 @@ pub fn call_lst_bond(
         operand: TokenOrderV2 {
             sender: sender_bytes.clone(), // vault is the sender
             receiver: Vec::from(proxy_account_address.clone()).into(),
-            base_token: vault_zkgm_config.base_token.as_bytes().to_vec().into(),
+            base_token: validate_and_parse_hex(&zkgm_lst_config.underlying_base_token)?.into(),
             base_amount: AlloyUint256::from(bond_request.amount.u128()),
             quote_token: Vec::from(quote_token).into(),
             quote_amount: AlloyUint256::from(bond_request.amount.u128()),
@@ -140,7 +139,7 @@ pub fn call_lst_bond(
 
     // Generate 3 payloads as array/vector: bond, increase_allowance and send back via tokenorderv2, these need to be encoded as Bytes
     let contract_calldata =
-        generate_bond_calldata(bond_request, lst_zkgm_config, timeout_timestamp, salt)?;
+        generate_bond_calldata(bond_request, zkgm_lst_config, timeout_timestamp, salt)?;
 
     let call_instruction: Instruction = Instruction {
         version: INSTR_VERSION_0,
@@ -163,7 +162,7 @@ pub fn call_lst_bond(
             .into(),
     };
 
-    let channel_id = validate_and_parse_channel_id(vault_zkgm_config.channel_id)?;
+    let channel_id = validate_and_parse_channel_id(zkgm_lst_config.this_chain_channel_id)?;
 
     let ucs03_send_msg = ucs03_zkgm::msg::ExecuteMsg::Send {
         channel_id,
@@ -175,7 +174,7 @@ pub fn call_lst_bond(
 
     let send_msg = to_json_binary(&ucs03_send_msg)?;
     let execute_increase_allowance_msg: CosmosMsg = WasmMsg::Execute {
-        contract_addr: vault_zkgm_config.ucs03_zkgm,
+        contract_addr: zkgm_lst_config.this_chain_ucs03_zkgm.clone(),
         msg: send_msg,
         funds: vec![],
     }
@@ -231,15 +230,15 @@ pub enum TestCW20ExecuteMsg {
 /// Will return error if validations fail
 pub fn generate_bond_calldata(
     request: &BondRequest,
-    lst_zkgm_config: LstZkgmConfig,
+    zkgm_lst_config: &ZkgmLstConfig,
     timeout: Timestamp,
     salt: unionlabs_primitives::H256,
 ) -> ContractResult<Bytes> {
-    let lst_contract_address = lst_zkgm_config.lst_contract_address; // liquid staking contract address
-    let lst_base_token = lst_zkgm_config.lst_base_token; // eU contract address on union
-    let lst_quote_token = lst_zkgm_config.lst_quote_token; // eU contract address on babylon
-    let union_ucs03_zkgm = lst_zkgm_config.union_ucs03_zkgm;
-    let zkgm_token_minter = lst_zkgm_config.zkgm_token_minter;
+    let lst_contract_address = zkgm_lst_config.lst_hub_contract.clone(); // liquid staking contract address
+    let lst_base_token = zkgm_lst_config.lst_base_token.clone(); // eU contract address on union
+    let lst_quote_token = zkgm_lst_config.lst_quote_token.clone(); // eU contract address on babylon
+    let union_ucs03_zkgm = zkgm_lst_config.lst_chain_ucs03_zkgm.clone();
+    let zkgm_token_minter = zkgm_lst_config.lst_minter.clone();
 
     let mut call_msgs: Vec<CosmosMsg> = vec![];
 
@@ -306,7 +305,7 @@ pub fn generate_bond_calldata(
         .into(),
     };
     let send_msg = ucs03_zkgm::msg::ExecuteMsg::Send {
-        channel_id: validate_and_parse_channel_id(lst_zkgm_config.union_channel_id)?,
+        channel_id: validate_and_parse_channel_id(zkgm_lst_config.lst_chain_channel_id)?,
         timeout_height: Uint64::from(0u64),
         timeout_timestamp: timeout,
         salt,

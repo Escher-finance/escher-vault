@@ -143,8 +143,9 @@ pub struct ZkgmLstConfig {
     /// lst on the lst network
     pub lst_quote_token: String,
     /// lst contract on the lst network
-    pub lst_contract: String,
+    pub lst_hub_contract: String,
     pub underlying_solver: String,
+    pub lst_minter: String,
 }
 
 #[cw_serde]
