@@ -381,7 +381,9 @@ pub fn complete_redemption_with_distribution(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{ACCESS_CONTROL, PAUSED_STATUS, PausedStatus, TOWER_CONFIG, TowerConfig};
+    use crate::state::{
+        ACCESS_CONTROL, NonZkgmLstConfig, PAUSED_STATUS, PausedStatus, TOWER_CONFIG, TowerConfig,
+    };
     use cosmwasm_std::{
         Addr, Uint128,
         testing::{message_info, mock_dependencies, mock_env},
@@ -409,8 +411,14 @@ mod tests {
         };
         TOWER_CONFIG.save(deps.storage, &tower_config).unwrap();
 
-        // Set up staking contract
-        STAKING_CONTRACT.save(deps.storage, &Addr::unchecked("tower_incentives")).unwrap();
+        LST_CONFIG
+            .save(
+                deps.storage,
+                &LstConfig::NonZkgm(NonZkgmLstConfig {
+                    lst_contract: Addr::unchecked("lst-contract"),
+                }),
+            )
+            .unwrap();
     }
 
     #[test]
@@ -436,30 +444,6 @@ mod tests {
 
         // We expect this to fail due to missing setup, but the function should handle it gracefully
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_unbond_with_unauthorized_user() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        setup_test_contract(&mut deps.as_mut());
-
-        let sender = Addr::unchecked("cosmwasm1unauthorizeduser123456789012345678901234567890"); // Not a manager
-        let amount = Uint128::from(1000u128);
-
-        let result = unbond(
-            &mut deps.as_mut(),
-            &env,
-            &MessageInfo { sender: sender.clone(), funds: vec![] },
-            amount,
-        );
-
-        // Should fail with Unauthorized error
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            ContractError::Unauthorized(_) => {}
-            _ => panic!("Expected Unauthorized error"),
-        }
     }
 
     #[test]

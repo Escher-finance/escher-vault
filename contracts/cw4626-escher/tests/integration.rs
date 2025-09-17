@@ -854,12 +854,12 @@ fn events_deposit_with_fee_and_bond_and_oracle_and_request() {
         .execute_contract(
             admin.clone(),
             vault.clone(),
-            &ExecuteMsg::Bond {
+            &ExecuteMsg::Bond(ExecuteBondPayload::NonZkgm {
                 amount: Uint128::new(100),
                 salt: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                     .to_string(),
                 slippage: Some(Decimal::from_str("0.01").unwrap()),
-            },
+            }),
             &[],
         )
         .unwrap();
