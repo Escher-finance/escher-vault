@@ -63,34 +63,6 @@ pub enum LstExecuteMsg {
     },
 }
 
-// Bond request data
-pub struct BondRequest {
-    pub sender: String,        // this will be vault contract address
-    pub proxy_account: String, // this will be proxy account contract address
-    pub amount: Uint128,
-    pub min_mint_amount: Uint128,
-    pub denom: String,
-}
-
-// Config of zkgm and token for Vault on Babylon
-pub struct VaultZkgmConfig {
-    pub ucs03_zkgm: String,
-    pub channel_id: u32,
-    pub base_token: String,  // u contract address on babylon
-    pub quote_token: String, // U contract address on union
-}
-
-// Config of zkgm and token related for LST Contract on Union
-pub struct LstZkgmConfig {
-    pub union_channel_id: u32,
-    pub union_ucs03_zkgm: String,  // ucs03 zkgm contract address
-    pub zkgm_token_minter: String, // zkgm token minter is the contract that handle minting and burn of eU
-    pub lst_base_token: String,    // eU contract address on union
-    pub lst_quote_token: String,   // eU contract address on babylon
-    pub lst_contract_address: String,
-    pub u_solver_address: String, // U solver address
-}
-
 type AlloyUint256 = Uint<256, 4>;
 
 const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
