@@ -1,34 +1,33 @@
-use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
-use cosmwasm_std::{
-    from_json, Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
-};
-
 use crate::{
-    access_control::{validate_only_not_paused, validate_only_role},
+    ContractError,
+    access_control::{internal_toggle_paused_status, validate_only_not_paused, validate_only_role},
     asset::query_asset_info_balance,
     error::ContractResult,
     helpers::{
-        internal_deposit, internal_update_minimum_deposit, validate_addrs, PreviewDepositKind,
+        PreviewDepositKind, internal_deposit, internal_update_minimum_deposit, validate_addrs,
     },
-    msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
+    msg::{ExecuteBondPayload, MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
     receive::receive_deposit,
     responses::{
         add_liquidity_event, claim_incentives_event, generate_add_role_response,
         generate_bond_response, generate_oracle_update_prices_response,
-        generate_remove_role_response, generate_unbond_response, remove_liquidity_event,
-        swap_event,
+        generate_remove_role_response, remove_liquidity_event, swap_event,
     },
-    staking::{internal_bond, internal_unbond, validate_and_store_staking_contract},
+    staking::{internal_bond, validate_and_store_lst_config},
     state::{
-        AccessControlRole, PausedStatus, PricesMap, TowerConfig, ACCESS_CONTROL, PAUSED_STATUS,
-        STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PAUSED_STATUS, PausedStatus,
+        PricesMap, TOWER_CONFIG, UNDERLYING_ASSET,
     },
     tower::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
         remove_tower_liquidity, tower_swap, update_and_validate_prices,
     },
-    ContractError,
+    zkgm::{generate_lst_bond_msg, get_or_update_this_proxy, update_this_proxy},
+};
+use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
+use cosmwasm_std::{
+    Addr, Decimal, Decimal256, DepsMut, Env, MessageInfo, Response, StdError, Uint128, from_json,
 };
 
 /// # Errors
@@ -45,11 +44,7 @@ pub fn add_to_role(
         addrs.push(address.clone());
         validate_addrs(addrs.into_iter())
     })?;
-    Ok(generate_add_role_response(
-        sender.as_ref(),
-        &role.to_string(),
-        address.as_ref(),
-    ))
+    Ok(generate_add_role_response(sender.as_ref(), &role.to_string(), address.as_ref()))
 }
 
 /// # Errors
@@ -62,19 +57,10 @@ pub fn remove_from_role(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, sender, AccessControlRole::Manager {})?;
     ACCESS_CONTROL.update::<_, ContractError>(deps.storage, role.key(), |addrs| {
-        let addrs = validate_addrs(
-            addrs
-                .unwrap_or_default()
-                .into_iter()
-                .filter(|a| a != address),
-        )?;
+        let addrs = validate_addrs(addrs.unwrap_or_default().into_iter().filter(|a| a != address))?;
         Ok(addrs)
     })?;
-    Ok(generate_remove_role_response(
-        sender.as_ref(),
-        &role.to_string(),
-        address.as_ref(),
-    ))
+    Ok(generate_remove_role_response(sender.as_ref(), &role.to_string(), address.as_ref()))
 }
 
 /// # Errors
@@ -86,22 +72,23 @@ pub fn oracle_update_prices(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, sender, AccessControlRole::Oracle {})?;
     update_and_validate_prices(deps, prices.clone())?;
-    Ok(generate_oracle_update_prices_response(
-        sender.as_ref(),
-        prices,
-    ))
+    Ok(generate_oracle_update_prices_response(sender.as_ref(), prices))
 }
 
 /// # Errors
 /// Will return error if internal helper fails
-pub fn update_staking_contract(
+pub fn update_lst_config(
     deps: &mut DepsMut,
+    env: &Env,
     info: &MessageInfo,
-    address: &Addr,
+    config: &LstConfig,
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    let TowerConfig { lp_other_asset, .. } = TOWER_CONFIG.load(deps.storage)?;
-    validate_and_store_staking_contract(deps, address, &lp_other_asset)?;
+    let tower_config = TOWER_CONFIG.load(deps.storage)?;
+    let lst_config = validate_and_store_lst_config(deps, config, &tower_config)?;
+    if let LstConfig::Zkgm(zkgm_lst_config) = lst_config {
+        update_this_proxy(deps, env, &zkgm_lst_config)?;
+    }
     Ok(Response::new())
 }
 
@@ -119,57 +106,70 @@ pub fn update_minimum_deposit(
 
 /// # Errors
 /// Will return error if internal helper fails
-pub fn update_paused_status(
-    deps: &mut DepsMut,
-    info: &MessageInfo,
-    status: &PausedStatus,
-) -> ContractResult<Response> {
+pub fn toggle_paused_status(deps: &mut DepsMut, info: &MessageInfo) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    PAUSED_STATUS.save(deps.storage, status)?;
+    internal_toggle_paused_status(deps.storage)?;
     Ok(Response::new())
 }
 
 /// # Errors
-/// Will return error if internal helper fails
+/// Will return error if validation or internal helper fails
 pub fn bond(
     deps: &mut DepsMut,
     env: &Env,
     info: &MessageInfo,
-    amount: Uint128,
-    salt: String,
-    slippage: Option<Decimal>,
+    bond_payload: &ExecuteBondPayload,
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     validate_only_not_paused(deps.storage, &info.sender)?;
 
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    let this = &env.contract.address;
+    // NOTE: Paused due to bonding; must be unpaused manually for now
+    PAUSED_STATUS.save(deps.storage, &PausedStatus::PausedOngoingBonding {})?;
 
-    let (bond_msg, expected) =
-        internal_bond(deps, this, &staking_contract, amount, salt, slippage)?;
+    let lst_config = LST_CONFIG.load(deps.storage)?;
+    let this = env.contract.address.clone();
 
-    Ok(generate_bond_response(this, amount, expected, &staking_contract).add_message(bond_msg))
-}
+    if !bond_payload.matches_lst_config(&lst_config) {
+        return Err(ContractError::PayloadNotMatchingLstConfig {});
+    }
 
-/// # Errors
-/// Will return error if internal helper fails
-pub fn unbond(
-    deps: &mut DepsMut,
-    env: &Env,
-    info: &MessageInfo,
-    amount: Uint128,
-) -> ContractResult<Response> {
-    validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    validate_only_not_paused(deps.storage, &info.sender)?;
+    match lst_config {
+        LstConfig::Zkgm(zkgm_lst_config) => {
+            let ExecuteBondPayload::Zkgm { amount, salt, min_mint_amount } = bond_payload else {
+                return Err(ContractError::PayloadNotMatchingLstConfig {});
+            };
+            let this_proxy = get_or_update_this_proxy(deps, env, &zkgm_lst_config)?;
+            let time = ibc_union_spec::Timestamp::from_nanos(env.block.time.nanos());
+            let bond_msg = generate_lst_bond_msg(
+                &this,
+                &this_proxy,
+                *amount,
+                *min_mint_amount,
+                &zkgm_lst_config,
+                time,
+                salt,
+            )?;
 
-    let TowerConfig { lp_other_asset, .. } = TOWER_CONFIG.load(deps.storage)?;
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    let this = &env.contract.address;
+            Ok(generate_bond_response(
+                &this,
+                *amount,
+                *min_mint_amount,
+                &zkgm_lst_config.lst_hub_contract,
+            )
+            .add_message(bond_msg))
+        }
+        LstConfig::NonZkgm(non_zkgm_lst_config) => {
+            let ExecuteBondPayload::NonZkgm { amount, salt, slippage } = bond_payload else {
+                return Err(ContractError::PayloadNotMatchingLstConfig {});
+            };
+            let staking_contract = non_zkgm_lst_config.lst_contract;
+            let (bond_msg, expected) =
+                internal_bond(deps, &this, &staking_contract, *amount, salt.clone(), *slippage)?;
 
-    let (unbond_msg, expected) =
-        internal_unbond(deps, info, lp_other_asset, &staking_contract, amount)?;
-
-    Ok(generate_unbond_response(this, expected, &staking_contract).add_message(unbond_msg))
+            Ok(generate_bond_response(&this, *amount, expected, staking_contract.as_str())
+                .add_message(bond_msg))
+        }
+    }
 }
 
 /// # Errors
@@ -230,11 +230,8 @@ pub fn add_liquidity(
     .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
 
     let this = &env.contract.address;
-    let underlying_balance = query_asset_info_balance(
-        &deps.querier,
-        tower_config.lp_underlying_asset.clone(),
-        this,
-    )?;
+    let underlying_balance =
+        query_asset_info_balance(&deps.querier, tower_config.lp_underlying_asset.clone(), this)?;
     let other_lp_balance =
         query_asset_info_balance(&deps.querier, tower_config.lp_other_asset.clone(), this)?;
 
@@ -246,11 +243,7 @@ pub fn add_liquidity(
         return Err(ContractError::InsufficientFunds {});
     }
 
-    let msgs = add_tower_liquidity(
-        &tower_config,
-        underlying_token_amount,
-        other_lp_token_amount,
-    )?;
+    let msgs = add_tower_liquidity(&tower_config, underlying_token_amount, other_lp_token_amount)?;
 
     let event = add_liquidity_event(
         &info.sender,
@@ -348,10 +341,8 @@ pub fn receive(
 
     validate_only_not_paused(deps.storage, &sender)?;
 
-    let received_balance = cw20::Cw20CoinVerified {
-        address: cw20_contract,
-        amount: cw20_receive_msg.amount,
-    };
+    let received_balance =
+        cw20::Cw20CoinVerified { address: cw20_contract, amount: cw20_receive_msg.amount };
 
     match msg {
         ReceiveMsg::Deposit { receiver } => {
@@ -392,10 +383,13 @@ pub fn complete_redemption_with_distribution(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{TowerConfig, ACCESS_CONTROL, TOWER_CONFIG};
+    use crate::state::{
+        ACCESS_CONTROL, NonZkgmLstConfig, PAUSED_STATUS, PausedStatus, TOWER_CONFIG, TowerConfig,
+    };
     use cosmwasm_std::{
+        Addr, Uint128,
         testing::{message_info, mock_dependencies, mock_env},
-        to_json_binary, Addr, Uint128,
+        to_json_binary,
     };
     use std::str::FromStr;
 
@@ -404,19 +398,13 @@ mod tests {
         let manager =
             Addr::unchecked("cosmwasm1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqlrtkzd"); // Valid bech32 address
         let managers = vec![manager];
-        ACCESS_CONTROL
-            .save(deps.storage, AccessControlRole::Manager {}.key(), &managers)
-            .unwrap();
+        ACCESS_CONTROL.save(deps.storage, AccessControlRole::Manager {}.key(), &managers).unwrap();
 
         // Set up tower config with LP assets
         let tower_config = TowerConfig {
             lp: Addr::unchecked("lp_contract"),
-            lp_underlying_asset: AssetInfo::NativeToken {
-                denom: "ubbn".to_string(),
-            },
-            lp_other_asset: AssetInfo::Token {
-                contract_addr: Addr::unchecked("cw20_token"),
-            },
+            lp_underlying_asset: AssetInfo::NativeToken { denom: "ubbn".to_string() },
+            lp_other_asset: AssetInfo::Token { contract_addr: Addr::unchecked("cw20_token") },
             lp_token: Addr::unchecked("lp_token"),
             lp_incentives: vec![],
             is_underlying_first_lp_asset: true,
@@ -425,9 +413,13 @@ mod tests {
         };
         TOWER_CONFIG.save(deps.storage, &tower_config).unwrap();
 
-        // Set up staking contract
-        STAKING_CONTRACT
-            .save(deps.storage, &Addr::unchecked("tower_incentives"))
+        LST_CONFIG
+            .save(
+                deps.storage,
+                &LstConfig::NonZkgm(NonZkgmLstConfig {
+                    lst_contract: Addr::unchecked("lst-contract"),
+                }),
+            )
             .unwrap();
     }
 
@@ -450,43 +442,10 @@ mod tests {
         };
 
         // This might fail due to missing underlying asset setup, but should not panic
-        let result = receive(
-            &mut deps.as_mut(),
-            &env,
-            &info,
-            cw20_contract,
-            &cw20_receive_msg,
-        );
+        let result = receive(&mut deps.as_mut(), &env, &info, cw20_contract, &cw20_receive_msg);
 
         // We expect this to fail due to missing setup, but the function should handle it gracefully
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_unbond_with_unauthorized_user() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        setup_test_contract(&mut deps.as_mut());
-
-        let sender = Addr::unchecked("cosmwasm1unauthorizeduser123456789012345678901234567890"); // Not a manager
-        let amount = Uint128::from(1000u128);
-
-        let result = unbond(
-            &mut deps.as_mut(),
-            &env,
-            &MessageInfo {
-                sender: sender.clone(),
-                funds: vec![],
-            },
-            amount,
-        );
-
-        // Should fail with Unauthorized error
-        assert!(result.is_err());
-        match result.unwrap_err() {
-            ContractError::Unauthorized(_) => {}
-            _ => panic!("Expected Unauthorized error"),
-        }
     }
 
     #[test]
@@ -495,9 +454,7 @@ mod tests {
         let env = mock_env();
         setup_test_contract(&mut deps.as_mut());
 
-        PAUSED_STATUS
-            .save(&mut deps.storage, &PausedStatus::NotPaused {})
-            .unwrap();
+        PAUSED_STATUS.save(&mut deps.storage, &PausedStatus::NotPaused {}).unwrap();
 
         let manager = ACCESS_CONTROL
             .load(deps.as_ref().storage, AccessControlRole::Manager {}.key())
@@ -508,10 +465,9 @@ mod tests {
         // one message to tower incentives
         assert!(!res.messages.is_empty());
         // event present
-        assert!(res
-            .events
-            .iter()
-            .any(|e| e.ty.as_str() == crate::responses::EVENT_CLAIM_INCENTIVES));
+        assert!(
+            res.events.iter().any(|e| e.ty.as_str() == crate::responses::EVENT_CLAIM_INCENTIVES)
+        );
         let _ = env; // silence unused
     }
 

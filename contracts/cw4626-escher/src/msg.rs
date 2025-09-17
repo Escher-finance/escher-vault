@@ -1,9 +1,11 @@
 use astroport::asset::{Asset, AssetInfo};
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Addr, Binary, Decimal, Uint128};
 use cw20_base::msg::InstantiateMarketingInfo;
 
-use crate::state::{AccessControlRole, PausedStatus, PricesMap, RedemptionRequest, TowerConfig};
+use crate::state::{
+    AccessControlRole, LstConfig, PausedStatus, PricesMap, RedemptionRequest, TowerConfig,
+};
 
 #[cw_serde]
 pub enum ReceiveMsg {
@@ -23,44 +25,51 @@ pub struct InstantiateMsg {
     pub lp: Addr,
     pub slippage_tolerance: Decimal,
     pub incentives: Vec<AssetInfo>,
-    pub staking_contract: Option<Addr>,
+    pub lst_config: Option<LstConfig>,
     pub minimum_deposit: Option<Uint128>,
-    // Entry fee configuration (applied on deposit/mint)
-    pub entry_fee_rate: Option<Decimal>, // e.g., 0.1 (10%); None => 0
-    pub entry_fee_recipient: Addr,       // If None, defaults to fee_recipient
+    /// Entry fee configuration (applied on deposit/mint)
+    /// e.g., 0.1 (10%); None => 0
+    pub entry_fee_rate: Option<Decimal>,
+    /// If None, defaults to `fee_recipient`
+    pub entry_fee_recipient: Addr,
 }
 
 #[cw_serde]
 pub struct MigrateMsg {}
 
 #[cw_serde]
+pub enum ExecuteBondPayload {
+    NonZkgm { amount: Uint128, salt: String, slippage: Option<Decimal> },
+    Zkgm { amount: Uint128, salt: String, min_mint_amount: Uint128 },
+}
+
+impl ExecuteBondPayload {
+    /// Validates that the bond payload matches the current lst config
+    #[must_use]
+    pub fn matches_lst_config(&self, lst_config: &LstConfig) -> bool {
+        match self {
+            Self::Zkgm { .. } => matches!(lst_config, LstConfig::Zkgm(..)),
+            Self::NonZkgm { .. } => matches!(lst_config, LstConfig::NonZkgm(..)),
+        }
+    }
+}
+
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Access control - add user to role
-    AddToRole {
-        role: AccessControlRole,
-        address: Addr,
-    },
+    AddToRole { role: AccessControlRole, address: Addr },
     /// Access control - remove user from role
-    RemoveFromRole {
-        role: AccessControlRole,
-        address: Addr,
-    },
+    RemoveFromRole { role: AccessControlRole, address: Addr },
     /// Oracle update prices
     OracleUpdatePrices { prices: PricesMap },
-    /// Manager update staking contract
-    UpdateStakingContract { address: Addr },
+    /// Manager update lst config
+    UpdateLstConfig { config: LstConfig },
     /// Manager update minimum deposit
     UpdateMinimumDeposit { amount: Uint128 },
     /// Manager control paused status
-    UpdatePausedStatus { status: PausedStatus },
+    TogglePausedStatus {},
     /// Manager bond
-    Bond {
-        amount: Uint128,
-        salt: String,
-        slippage: Option<Decimal>,
-    },
-    /// Manager unbond
-    Unbond { amount: Uint128 },
+    Bond(ExecuteBondPayload),
     /// Manager add liquidity
     AddLiquidity { underlying_token_amount: Uint128 },
     /// Manager remove liquidity
@@ -68,10 +77,7 @@ pub enum ExecuteMsg {
     /// Manager claim incentives
     ClaimIncentives {},
     /// Manager swap
-    Swap {
-        amount: Uint128,
-        asset_info: AssetInfo,
-    },
+    Swap { amount: Uint128, asset_info: AssetInfo },
 
     //
     // CW4626
@@ -79,11 +85,7 @@ pub enum ExecuteMsg {
     /// Mints shares to receiver by depositing exact amount of underlying tokens
     Deposit { assets: Uint128, receiver: Addr },
     /// Create a request for redemption with proper multi-asset distribution
-    RequestRedeem {
-        shares: Uint128,
-        receiver: Addr,
-        owner: Addr,
-    },
+    RequestRedeem { shares: Uint128, receiver: Addr, owner: Addr },
     /// Manager complete redemption by burning shares AND distributing assets in one transaction
     CompleteRedemption { redemption_id: u64, tx_hash: String },
     /// CW20 receive
@@ -98,42 +100,21 @@ pub enum ExecuteMsg {
     Burn { amount: Uint128 },
     /// Send is a base message to transfer tokens to a contract and trigger an action
     /// on the receiving contract.
-    Send {
-        contract: String,
-        amount: Uint128,
-        msg: Binary,
-    },
+    Send { contract: String, amount: Uint128, msg: Binary },
     /// Allows spender to access an additional amount tokens
     /// from the owner's (env.sender) account. If expires is `Some()`, overwrites current allowance
     /// expiration with this one.
-    IncreaseAllowance {
-        spender: String,
-        amount: Uint128,
-        expires: Option<cw20::Expiration>,
-    },
+    IncreaseAllowance { spender: String, amount: Uint128, expires: Option<cw20::Expiration> },
     /// Lowers the spender's access of tokens
     /// from the owner's (env.sender) account by amount. If expires is `Some()`, overwrites current
     /// allowance expiration with this one.
-    DecreaseAllowance {
-        spender: String,
-        amount: Uint128,
-        expires: Option<cw20::Expiration>,
-    },
+    DecreaseAllowance { spender: String, amount: Uint128, expires: Option<cw20::Expiration> },
     /// Transfers amount tokens from owner -> recipient
     /// if `env.sender` has sufficient pre-approval.
-    TransferFrom {
-        owner: String,
-        recipient: String,
-        amount: Uint128,
-    },
+    TransferFrom { owner: String, recipient: String, amount: Uint128 },
     /// Sends amount tokens from owner -> contract
     /// if `env.sender` has sufficient pre-approval.
-    SendFrom {
-        owner: String,
-        contract: String,
-        amount: Uint128,
-        msg: Binary,
-    },
+    SendFrom { owner: String, contract: String, amount: Uint128, msg: Binary },
     /// Destroys tokens forever
     BurnFrom { owner: String, amount: Uint128 },
     /// If authorized, updates marketing metadata.
@@ -163,7 +144,7 @@ pub struct OracleTokensListResponse {
 
 #[cw_serde]
 pub struct ConfigResponse {
-    pub staking_contract: Addr,
+    pub lst_config: LstConfig,
     pub tower_config: TowerConfig,
 }
 
@@ -270,10 +251,7 @@ pub enum QueryMsg {
     RedemptionStats,
     /// List all redemption requests with pagination
     #[returns(AllRedemptionRequestsResponse)]
-    AllRedemptionRequests {
-        start_after: Option<u64>,
-        limit: Option<u32>,
-    },
+    AllRedemptionRequests { start_after: Option<u64>, limit: Option<u32> },
 
     //
     // CW4626
@@ -323,24 +301,13 @@ pub enum QueryMsg {
     Allowance { owner: String, spender: String },
     /// Returns all allowances this owner has approved. Supports pagination.
     #[returns(cw20::AllAllowancesResponse)]
-    AllAllowances {
-        owner: String,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
+    AllAllowances { owner: String, start_after: Option<String>, limit: Option<u32> },
     /// Returns all allowances this spender has been granted. Supports pagination.
     #[returns(cw20::AllSpenderAllowancesResponse)]
-    AllSpenderAllowances {
-        spender: String,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
+    AllSpenderAllowances { spender: String, start_after: Option<String>, limit: Option<u32> },
     /// Returns all accounts that have balances. Supports pagination.
     #[returns(cw20::AllAccountsResponse)]
-    AllAccounts {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
+    AllAccounts { start_after: Option<String>, limit: Option<u32> },
     /// Returns more metadata on the contract to display in the client:
     /// - description, logo, project url, etc.
     #[returns(cw20::MarketingInfoResponse)]

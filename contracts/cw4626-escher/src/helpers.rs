@@ -12,10 +12,10 @@ use cosmwasm_std::{
 };
 
 use crate::{
+    ContractError,
     asset::assert_send_asset_to_contract,
     state::{ENTRY_FEE_CONFIG, LOCKED_SHARES, UNDERLYING_ASSET},
     tower::calculate_total_assets,
-    ContractError,
 };
 
 #[derive(Debug)]
@@ -31,33 +31,22 @@ pub struct Tokens {
 /// # Errors
 /// Will return error if queries fail
 pub fn get_tokens(this: &Addr, deps: &Deps) -> StdResult<Tokens> {
-    let share = AssetInfo::Token {
-        contract_addr: this.clone(),
-    };
+    let share = AssetInfo::Token { contract_addr: this.clone() };
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
-    let total_supply = cw20_base::state::TOKEN_INFO
-        .load(deps.storage)?
-        .total_supply;
+    let total_supply = cw20_base::state::TOKEN_INFO.load(deps.storage)?.total_supply;
 
     // Subtract locked shares from total supply for exchange rate calculation
     let locked_shares =
-        LOCKED_SHARES
-            .may_load(deps.storage)?
-            .unwrap_or(crate::state::LockedShares {
-                total_locked: Uint128::zero(),
-                redemption_ids: vec![],
-            });
+        LOCKED_SHARES.may_load(deps.storage)?.unwrap_or(crate::state::LockedShares {
+            total_locked: Uint128::zero(),
+            redemption_ids: vec![],
+        });
 
     let total_shares = total_supply.saturating_sub(locked_shares.total_locked);
 
     let total_assets = calculate_total_assets(&deps.querier, deps.storage, this)
         .map_err(|err| StdError::generic_err(err.to_string()))?;
-    Ok(Tokens {
-        share,
-        asset,
-        total_shares,
-        total_assets,
-    })
+    Ok(Tokens { share, asset, total_shares, total_assets })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -163,11 +152,7 @@ pub fn internal_preview_deposit(
         ));
     }
 
-    let Tokens {
-        total_shares,
-        mut total_assets,
-        ..
-    } = get_tokens(this, deps)?;
+    let Tokens { total_shares, mut total_assets, .. } = get_tokens(this, deps)?;
 
     if preview_deposit_kind.needs_correction() {
         total_assets = total_assets.saturating_sub(assets);
@@ -182,9 +167,7 @@ pub fn internal_preview_deposit(
         let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
         user_shares = calculate_entry_fee_share_amounts(&entry_fee_cfg, assets, shares).0;
     }
-    Ok(PreviewDepositResponse {
-        shares: user_shares,
-    })
+    Ok(PreviewDepositResponse { shares: user_shares })
 }
 
 /// Internal unchecked `mint`
@@ -230,15 +213,9 @@ pub fn internal_deposit(
     via_receive: bool,
 ) -> ContractResult<Response> {
     let asset_info = UNDERLYING_ASSET.load(deps.storage)?;
-    let asset = Asset {
-        amount: assets,
-        info: asset_info,
-    };
-    let transfer_msg = if via_receive {
-        None
-    } else {
-        assert_send_asset_to_contract(info, env, asset.clone())?
-    };
+    let asset = Asset { amount: assets, info: asset_info };
+    let transfer_msg =
+        if via_receive { None } else { assert_send_asset_to_contract(info, env, asset.clone())? };
 
     // Mint shares to receiver minus fee, and fee shares to fee recipient if configured
     let entry_fee_cfg = ENTRY_FEE_CONFIG.load(deps.storage)?;
@@ -254,11 +231,7 @@ pub fn internal_deposit(
         let (user_shares, fee_shares) =
             calculate_entry_fee_share_amounts(&entry_fee_cfg, assets, shares);
         internal_mint(&mut deps.branch(), receiver.as_str(), user_shares)?;
-        internal_mint(
-            &mut deps.branch(),
-            entry_fee_cfg.fee_recipient.as_str(),
-            fee_shares,
-        )?;
+        internal_mint(&mut deps.branch(), entry_fee_cfg.fee_recipient.as_str(), fee_shares)?;
         let mut res = generate_deposit_with_fee_response(
             sender,
             receiver,
@@ -291,10 +264,7 @@ pub fn internal_update_minimum_deposit(
 /// # Errors
 /// Will return error if validations fail
 pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> ContractResult<Vec<Addr>> {
-    let addrs = addrs
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
+    let addrs = addrs.collect::<HashSet<_>>().into_iter().collect::<Vec<_>>();
     if addrs.is_empty() {
         return Err(ContractError::EmptyAddrsList {});
     }
@@ -309,13 +279,21 @@ pub fn validate_addrs(addrs: impl Iterator<Item = Addr>) -> ContractResult<Vec<A
 /// # Errors
 /// Will return error if validations fail
 pub fn validate_salt(salt: &str) -> ContractResult<()> {
-    let hex = salt
-        .strip_prefix("0x")
-        .ok_or(ContractError::InvalidSalt {})?;
+    let hex = salt.strip_prefix("0x").ok_or(ContractError::InvalidSalt {})?;
     if hex.len() != 64 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(ContractError::InvalidSalt {});
     }
     Ok(())
+}
+
+/// Queries a contract's checksum
+///
+/// # Errors
+/// Will return error if queries fail
+pub fn query_contract_code_hash(deps: &Deps, address: Addr) -> ContractResult<String> {
+    let contract_info = deps.querier.query_wasm_contract_info(address)?;
+    let code_info = deps.querier.query_wasm_code_info(contract_info.code_id)?;
+    Ok(code_info.checksum.to_hex())
 }
 
 #[cfg(test)]
@@ -323,11 +301,11 @@ mod tests {
     use super::*;
     use crate::{
         responses::EVENT_DEPOSIT,
-        state::{EntryFeeConfig, ENTRY_FEE_CONFIG, UNDERLYING_ASSET},
+        state::{ENTRY_FEE_CONFIG, EntryFeeConfig, UNDERLYING_ASSET},
     };
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env},
         Decimal, MessageInfo,
+        testing::{mock_dependencies, mock_env},
     };
 
     #[test]
@@ -393,12 +371,7 @@ mod tests {
         // Configure underlying as CW20 to avoid native funds check
         let token_addr = deps.api.addr_make("token");
         UNDERLYING_ASSET
-            .save(
-                deps.as_mut().storage,
-                &AssetInfo::Token {
-                    contract_addr: token_addr,
-                },
-            )
+            .save(deps.as_mut().storage, &AssetInfo::Token { contract_addr: token_addr })
             .unwrap();
 
         // Set entry fee: 10%, fee recipient
@@ -406,10 +379,7 @@ mod tests {
         ENTRY_FEE_CONFIG
             .save(
                 deps.as_mut().storage,
-                &EntryFeeConfig {
-                    fee_rate: Decimal::percent(10),
-                    fee_recipient: fee_addr.clone(),
-                },
+                &EntryFeeConfig { fee_rate: Decimal::percent(10), fee_recipient: fee_addr.clone() },
             )
             .unwrap();
 
@@ -429,10 +399,7 @@ mod tests {
 
         let depositor = deps.api.addr_make("depositor");
         let receiver = deps.api.addr_make("receiver");
-        let info = MessageInfo {
-            sender: depositor.clone(),
-            funds: vec![],
-        };
+        let info = MessageInfo { sender: depositor.clone(), funds: vec![] };
         let assets = Uint128::new(1000);
 
         // Assume preview produced 910 shares (net_assets with 10% fee_on_total is 910)
@@ -449,32 +416,18 @@ mod tests {
             false,
         )
         .unwrap();
-        let ev = res
-            .events
-            .into_iter()
-            .find(|e| e.ty == EVENT_DEPOSIT)
-            .unwrap();
+        let ev = res.events.into_iter().find(|e| e.ty == EVENT_DEPOSIT).unwrap();
         // Verify attributes present
-        assert!(ev
-            .attributes
-            .iter()
-            .any(|a| a.key == "fee_shares_minted" && a.value == "90"));
-        assert!(ev
-            .attributes
-            .iter()
-            .any(|a| a.key == "user_shares_minted" && a.value == "820"));
+        assert!(ev.attributes.iter().any(|a| a.key == "fee_shares_minted" && a.value == "90"));
+        assert!(ev.attributes.iter().any(|a| a.key == "user_shares_minted" && a.value == "820"));
 
         // Check balances
-        let user_balance = cw20_base::state::BALANCES
-            .load(deps.as_ref().storage, &receiver)
-            .unwrap();
-        let fee_balance = cw20_base::state::BALANCES
-            .load(deps.as_ref().storage, &fee_addr)
-            .unwrap();
-        let total_supply = cw20_base::state::TOKEN_INFO
-            .load(deps.as_ref().storage)
-            .unwrap()
-            .total_supply;
+        let user_balance =
+            cw20_base::state::BALANCES.load(deps.as_ref().storage, &receiver).unwrap();
+        let fee_balance =
+            cw20_base::state::BALANCES.load(deps.as_ref().storage, &fee_addr).unwrap();
+        let total_supply =
+            cw20_base::state::TOKEN_INFO.load(deps.as_ref().storage).unwrap().total_supply;
         assert_eq!(user_balance, Uint128::new(820));
         assert_eq!(fee_balance, Uint128::new(90));
         assert_eq!(total_supply, Uint128::new(910));
@@ -487,21 +440,13 @@ mod tests {
 
         let token_addr = deps.api.addr_make("token");
         UNDERLYING_ASSET
-            .save(
-                deps.as_mut().storage,
-                &AssetInfo::Token {
-                    contract_addr: token_addr,
-                },
-            )
+            .save(deps.as_mut().storage, &AssetInfo::Token { contract_addr: token_addr })
             .unwrap();
 
         ENTRY_FEE_CONFIG
             .save(
                 deps.as_mut().storage,
-                &EntryFeeConfig {
-                    fee_rate: Decimal::zero(),
-                    fee_recipient: Addr::unchecked("0"),
-                },
+                &EntryFeeConfig { fee_rate: Decimal::zero(), fee_recipient: Addr::unchecked("0") },
             )
             .unwrap();
         // Init token info
@@ -520,10 +465,7 @@ mod tests {
 
         let depositor = deps.api.addr_make("depositor");
         let receiver = deps.api.addr_make("receiver");
-        let info = MessageInfo {
-            sender: depositor.clone(),
-            funds: vec![],
-        };
+        let info = MessageInfo { sender: depositor.clone(), funds: vec![] };
         let assets = Uint128::new(1000);
         let shares = Uint128::new(1000);
 
@@ -541,13 +483,10 @@ mod tests {
         // No fee attributes present
         assert!(!res.attributes.iter().any(|a| a.key == "fee_shares"));
 
-        let user_balance = cw20_base::state::BALANCES
-            .load(deps.as_ref().storage, &receiver)
-            .unwrap();
-        let total_supply = cw20_base::state::TOKEN_INFO
-            .load(deps.as_ref().storage)
-            .unwrap()
-            .total_supply;
+        let user_balance =
+            cw20_base::state::BALANCES.load(deps.as_ref().storage, &receiver).unwrap();
+        let total_supply =
+            cw20_base::state::TOKEN_INFO.load(deps.as_ref().storage).unwrap().total_supply;
         assert_eq!(user_balance, Uint128::new(1000));
         assert_eq!(total_supply, Uint128::new(1000));
     }

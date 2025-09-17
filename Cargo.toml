@@ -9,13 +9,7 @@ version = "0.1.0"
 
 [workspace.dependencies]
 cosmwasm-schema = "2.2.0"
-cosmwasm-std = { version = "2.2.0", features = [
-  "cosmwasm_1_4",
-  # Enable this if you only deploy to chains that have CosmWasm 2.0 or higher
-  # "cosmwasm_2_0",
-  # Or this if you only deploy to chains that have CosmWasm 2.1 or higher
-  # "cosmwasm_2_1",
-] }
+cosmwasm-std = { version = "2.2.0", features = ["cosmwasm_1_4"] }
 cw-storage-plus = "2.0.0"
 cw2 = "2.0.0"
 cw20 = "2.0.0"
@@ -28,9 +22,22 @@ cw-ownable = "2.1.0"
 cw-utils = "2.0.0"
 vergen-git2 = "1.0.7"
 anyhow = "1.0.99"
+sha3 = "0.10.8"
+alloy = { version = "1.0.9", default-features = false }
+alloy-primitives = { version = "1.1.2", default-features = false }
+
+# astroport
 astroport = { git = "https://github.com/quasar-finance/babydex.git", version = "5.7.0" }
 astroport-pair = { git = "https://github.com/quasar-finance/babydex.git", version = "2.1.1" }
 astroport-pair-concentrated = { git = "https://github.com/quasar-finance/babydex.git", version = "4.1.1" }
+
+# union - use git dependencies
+unionlabs-primitives = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f", default-features = false }
+ucs03-zkgm = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f", default-features = false }  
+ibc-union-spec = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f", default-features = false }
+
+static_assertions = "1.1.0"
+
 
 cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
 

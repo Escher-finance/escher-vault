@@ -1,9 +1,9 @@
 use cosmwasm_std::{Addr, Storage};
 
 use crate::{
-    error::ContractResult,
-    state::{AccessControlRole, PausedStatus, ACCESS_CONTROL, PAUSED_STATUS},
     ContractError,
+    error::ContractResult,
+    state::{ACCESS_CONTROL, AccessControlRole, PAUSED_STATUS, PausedStatus},
 };
 
 /// Validates that the `sender` has to have the specified `role`
@@ -41,4 +41,16 @@ pub fn validate_only_not_paused(storage: &dyn Storage, sender: &Addr) -> Contrac
         PausedStatus::PausedOngoingBonding {} => {}
     }
     Err(ContractError::Paused(paused_status))
+}
+
+/// # Errors
+/// Will return error if state fails to update
+pub fn internal_toggle_paused_status(storage: &mut dyn Storage) -> ContractResult<()> {
+    PAUSED_STATUS.update::<_, ContractError>(storage, |status| match status {
+        PausedStatus::NotPaused {} => Ok(PausedStatus::PausedMaintenance {}),
+        PausedStatus::PausedMaintenance {} | PausedStatus::PausedOngoingBonding {} => {
+            Ok(PausedStatus::NotPaused {})
+        }
+    })?;
+    Ok(())
 }

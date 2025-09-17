@@ -3,13 +3,13 @@ use astroport::{
     querier::{query_balance, query_token_balance},
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper,
-    StdResult, Uint128, WasmMsg,
+    Addr, BankMsg, Binary, Coin, CosmosMsg, Env, MessageInfo, QuerierWrapper, StdResult, Uint128,
+    WasmMsg, to_json_binary,
 };
-use cw20;
 use cw_utils::must_pay;
+use cw20;
 
-use crate::{error::ContractResult, ContractError};
+use crate::{ContractError, error::ContractResult};
 
 /// Validates that `token_address` is a CW20 contract
 ///
@@ -24,9 +24,7 @@ pub fn validate_cw20(
             token_address,
             &cw20::Cw20QueryMsg::TokenInfo {},
         )
-        .map_err(|_| ContractError::InvalidCw20 {
-            addr: token_address.clone(),
-        })
+        .map_err(|_| ContractError::InvalidCw20 { addr: token_address.clone() })
 }
 
 /// Getter for the balance of an `AssetInfo`
@@ -99,10 +97,7 @@ pub fn send_asset_from_contract(asset: Asset, receiver: &Addr) -> ContractResult
     let cosmos_msg = match asset.info {
         AssetInfo::NativeToken { denom } => CosmosMsg::Bank(BankMsg::Send {
             to_address: receiver.to_string(),
-            amount: vec![cosmwasm_std::Coin {
-                denom: denom.clone(),
-                amount: asset.amount,
-            }],
+            amount: vec![cosmwasm_std::Coin { denom: denom.clone(), amount: asset.amount }],
         }),
         AssetInfo::Token { contract_addr } => CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_addr.to_string(),

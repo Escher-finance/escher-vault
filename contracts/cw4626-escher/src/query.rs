@@ -3,8 +3,8 @@ use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128};
 
 use crate::{
     helpers::{
-        get_tokens, internal_convert_to_assets, internal_convert_to_shares,
-        internal_preview_deposit, PreviewDepositKind, Rounding, Tokens,
+        PreviewDepositKind, Rounding, Tokens, get_tokens, internal_convert_to_assets,
+        internal_convert_to_shares, internal_preview_deposit,
     },
     msg::{
         AccessControlRoleResponse, AllRedemptionRequestsResponse, AssetResponse, ConfigResponse,
@@ -15,8 +15,8 @@ use crate::{
         RedemptionStatsResponse, TotalAssetsResponse, UserRedemptionRequestsResponse,
     },
     state::{
-        AccessControlRole, PausedStatus, ACCESS_CONTROL, ORACLE_PRICES, PAUSED_STATUS,
-        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, ORACLE_PRICES, PAUSED_STATUS, PausedStatus,
+        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
         USER_REDEMPTION_IDS,
     },
     tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
@@ -39,10 +39,7 @@ pub fn role(deps: &Deps, kind: AccessControlRole) -> StdResult<AccessControlRole
 /// # Errors
 /// Will return error if queries fail
 pub fn oracle_tokens_list(deps: &Deps) -> StdResult<OracleTokensListResponse> {
-    let tokens = ORACLE_PRICES
-        .load(deps.storage)?
-        .into_keys()
-        .collect::<Vec<_>>();
+    let tokens = ORACLE_PRICES.load(deps.storage)?.into_keys().collect::<Vec<_>>();
     Ok(OracleTokensListResponse { tokens })
 }
 
@@ -56,21 +53,16 @@ pub fn oracle_prices(deps: &Deps) -> StdResult<OraclePricesResponse> {
 /// # Errors
 /// Will return error if queries fail
 pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+    let lst_config = LST_CONFIG.load(deps.storage)?;
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse {
-        staking_contract,
-        tower_config,
-    })
+    Ok(ConfigResponse { lst_config, tower_config })
 }
 
 /// # Errors
 /// Will return error if queries fail
 pub fn asset(deps: &Deps) -> StdResult<AssetResponse> {
     let asset = UNDERLYING_ASSET.load(deps.storage)?;
-    Ok(AssetResponse {
-        asset_token_address: asset.to_string(),
-    })
+    Ok(AssetResponse { asset_token_address: asset.to_string() })
 }
 
 /// # Errors
@@ -78,9 +70,7 @@ pub fn asset(deps: &Deps) -> StdResult<AssetResponse> {
 pub fn total_assets(deps: &Deps, this: &Addr) -> StdResult<TotalAssetsResponse> {
     let total_managed_assets = calculate_total_assets(&deps.querier, deps.storage, this)
         .map_err(|err| StdError::generic_err(err.to_string()))?;
-    Ok(TotalAssetsResponse {
-        total_managed_assets,
-    })
+    Ok(TotalAssetsResponse { total_managed_assets })
 }
 
 /// # Errors
@@ -90,11 +80,7 @@ pub fn convert_to_shares(
     deps: &Deps,
     assets: Uint128,
 ) -> StdResult<ConvertToSharesResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
+    let Tokens { total_shares, total_assets, .. } = get_tokens(this, deps)?;
     let shares = internal_convert_to_shares(total_shares, total_assets, assets, Rounding::Floor)?;
     Ok(ConvertToSharesResponse { shares })
 }
@@ -106,11 +92,7 @@ pub fn convert_to_assets(
     deps: &Deps,
     shares: Uint128,
 ) -> StdResult<ConvertToAssetsResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
+    let Tokens { total_shares, total_assets, .. } = get_tokens(this, deps)?;
     let assets = internal_convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(ConvertToAssetsResponse { assets })
 }
@@ -119,11 +101,7 @@ pub fn convert_to_assets(
 /// Will return error if queries fail
 pub fn max_deposit(_receiver: Addr) -> StdResult<MaxDepositResponse> {
     Ok(MaxDepositResponse {
-        max_assets: if cfg!(not(test)) {
-            Uint128::MAX
-        } else {
-            Uint128::new(100_000_000)
-        },
+        max_assets: if cfg!(not(test)) { Uint128::MAX } else { Uint128::new(100_000_000) },
     })
 }
 
@@ -141,11 +119,7 @@ pub fn preview_deposit(
 /// # Errors
 /// Will return error if queries fail
 pub fn exchange_rate(this: &Addr, deps: &Deps) -> StdResult<ExchangeRateResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
+    let Tokens { total_shares, total_assets, .. } = get_tokens(this, deps)?;
 
     let assets_dec = Decimal::from_ratio(total_assets + Uint128::one(), Uint128::one());
     let shares_dec = Decimal::from_ratio(total_shares + Uint128::one(), Uint128::one());
@@ -184,9 +158,8 @@ pub fn user_redemption_requests(
     deps: &Deps,
     user: &Addr,
 ) -> StdResult<UserRedemptionRequestsResponse> {
-    let redemption_ids = USER_REDEMPTION_IDS
-        .may_load(deps.storage, user.clone())?
-        .unwrap_or_default();
+    let redemption_ids =
+        USER_REDEMPTION_IDS.may_load(deps.storage, user.clone())?.unwrap_or_default();
     let mut requests = Vec::new();
 
     for id in redemption_ids {
@@ -236,9 +209,8 @@ pub fn redemption_stats(deps: Deps) -> StdResult<RedemptionStatsResponse> {
 
                     // Aggregate completed redemptions' assets
                     for asset in request.expected_assets {
-                        *asset_totals
-                            .entry(asset.info.clone())
-                            .or_insert(Uint128::zero()) += asset.amount;
+                        *asset_totals.entry(asset.info.clone()).or_insert(Uint128::zero()) +=
+                            asset.amount;
                     }
                 }
             }
@@ -286,24 +258,15 @@ pub fn all_redemption_requests(
         }
         next_id += 1;
     }
-    let next_start_after = if next_id <= total {
-        Some(next_id - 1)
-    } else {
-        None
-    };
-    Ok(AllRedemptionRequestsResponse {
-        requests: out,
-        next_start_after,
-    })
+    let next_start_after = if next_id <= total { Some(next_id - 1) } else { None };
+    Ok(AllRedemptionRequestsResponse { requests: out, next_start_after })
 }
 
 /// # Errors
 /// Will return error if queries fail
 pub fn max_redeem(deps: &Deps, owner: &Addr) -> StdResult<MaxRedeemResponse> {
     let owner_balance = cw20_base::contract::query_balance(*deps, owner.to_string())?.balance;
-    Ok(MaxRedeemResponse {
-        max_shares: owner_balance,
-    })
+    Ok(MaxRedeemResponse { max_shares: owner_balance })
 }
 
 /// # Errors
@@ -313,11 +276,7 @@ pub fn preview_redeem(
     deps: &Deps,
     shares: Uint128,
 ) -> StdResult<PreviewRedeemResponse> {
-    let Tokens {
-        total_shares,
-        total_assets,
-        ..
-    } = get_tokens(this, deps)?;
+    let Tokens { total_shares, total_assets, .. } = get_tokens(this, deps)?;
     let assets = internal_convert_to_assets(total_shares, total_assets, shares, Rounding::Floor)?;
     Ok(PreviewRedeemResponse { assets })
 }
@@ -333,39 +292,29 @@ pub fn paused(deps: &Deps) -> StdResult<PausedStatus> {
 mod tests {
     use super::*;
     use crate::state::{
-        AccessControlRole, RedemptionRequest, RedemptionStatus, TowerConfig, ACCESS_CONTROL,
-        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
+        RedemptionRequest, RedemptionStatus, TOWER_CONFIG, TowerConfig, UNDERLYING_ASSET,
         USER_REDEMPTION_IDS,
     };
     use astroport::asset::{Asset, AssetInfo};
-    use cosmwasm_std::{testing::mock_dependencies, Addr, DepsMut, Uint128};
+    use cosmwasm_std::{Addr, DepsMut, Uint128, testing::mock_dependencies};
 
     fn setup_test_contract(deps: &mut DepsMut) {
         // Set up a manager
         let manager = Addr::unchecked("cosmos1manager1234567890123456789012345678901234567890");
         let managers = vec![manager];
-        ACCESS_CONTROL
-            .save(deps.storage, AccessControlRole::Manager {}.key(), &managers)
-            .unwrap();
+        ACCESS_CONTROL.save(deps.storage, AccessControlRole::Manager {}.key(), &managers).unwrap();
 
         // Set up underlying asset
-        let underlying_asset = AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        };
-        UNDERLYING_ASSET
-            .save(deps.storage, &underlying_asset)
-            .unwrap();
+        let underlying_asset = AssetInfo::NativeToken { denom: "uusd".to_string() };
+        UNDERLYING_ASSET.save(deps.storage, &underlying_asset).unwrap();
 
         // Set up tower config
         let tower_config = TowerConfig {
             tower_incentives: Addr::unchecked("tower_incentives"),
             lp: Addr::unchecked("lp_contract"),
-            lp_underlying_asset: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            lp_other_asset: AssetInfo::Token {
-                contract_addr: Addr::unchecked("cw20_token"),
-            },
+            lp_underlying_asset: AssetInfo::NativeToken { denom: "uusd".to_string() },
+            lp_other_asset: AssetInfo::Token { contract_addr: Addr::unchecked("cw20_token") },
             lp_token: Addr::unchecked("lp_token"),
             lp_incentives: vec![],
             is_underlying_first_lp_asset: true,
@@ -400,9 +349,7 @@ mod tests {
             receiver: Addr::unchecked("cosmos1receiver1234567890123456789012345678901234567890"),
             shares_locked: Uint128::new(100),
             expected_assets: vec![Asset {
-                info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
+                info: AssetInfo::NativeToken { denom: "uusd".to_string() },
                 amount: Uint128::new(1000),
             }],
             status: RedemptionStatus::Pending,
@@ -411,9 +358,7 @@ mod tests {
             completion_tx_hash: None,
         };
 
-        REDEMPTION_REQUESTS
-            .save(deps.as_mut().storage, 1, &request)
-            .unwrap();
+        REDEMPTION_REQUESTS.save(deps.as_mut().storage, 1, &request).unwrap();
 
         let result = redemption_request(&deps.as_ref(), 1);
         assert!(result.is_ok());
@@ -476,17 +421,11 @@ mod tests {
             completion_tx_hash: Some("ABC123".to_string()),
         };
 
-        REDEMPTION_REQUESTS
-            .save(deps.as_mut().storage, 1, &request1)
-            .unwrap();
-        REDEMPTION_REQUESTS
-            .save(deps.as_mut().storage, 2, &request2)
-            .unwrap();
+        REDEMPTION_REQUESTS.save(deps.as_mut().storage, 1, &request1).unwrap();
+        REDEMPTION_REQUESTS.save(deps.as_mut().storage, 2, &request2).unwrap();
 
         // Set up user's redemption IDs
-        USER_REDEMPTION_IDS
-            .save(deps.as_mut().storage, user.clone(), &vec![1, 2])
-            .unwrap();
+        USER_REDEMPTION_IDS.save(deps.as_mut().storage, user.clone(), &vec![1, 2]).unwrap();
 
         let result = user_redemption_requests(&deps.as_ref(), &user);
         assert!(result.is_ok());
@@ -519,13 +458,9 @@ mod tests {
                 completed_at: None,
                 completion_tx_hash: None,
             };
-            REDEMPTION_REQUESTS
-                .save(deps.as_mut().storage, i, &req)
-                .unwrap();
+            REDEMPTION_REQUESTS.save(deps.as_mut().storage, i, &req).unwrap();
         }
-        REDEMPTION_COUNTER
-            .save(deps.as_mut().storage, &3u64)
-            .unwrap();
+        REDEMPTION_COUNTER.save(deps.as_mut().storage, &3u64).unwrap();
 
         // page 1
         let page1 = all_redemption_requests(&deps.as_ref(), None, Some(2)).unwrap();

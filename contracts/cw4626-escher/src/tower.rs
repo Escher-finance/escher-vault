@@ -10,18 +10,18 @@ use astroport::{
     pair_concentrated::QueryMsg as PairConcentratedQueryMsg,
 };
 use cosmwasm_std::{
-    to_json_binary, Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, StdResult, Storage, Uint128,
-    WasmMsg,
+    Addr, CosmosMsg, Decimal, DepsMut, QuerierWrapper, StdResult, Storage, Uint128, WasmMsg,
+    to_json_binary,
 };
 
 use crate::{
+    ContractError,
     asset::{
         asset_cw20_send_or_attach_funds, asset_generate_increase_allowance_or_funds,
         query_asset_info_balance,
     },
     error::ContractResult,
-    state::{PricesMap, TowerConfig, ORACLE_PRICES, TOWER_CONFIG},
-    ContractError,
+    state::{ORACLE_PRICES, PricesMap, TOWER_CONFIG, TowerConfig},
 };
 
 /// Makes all necessary checks that the pool can be integrated in the vault and if so stores it
@@ -47,31 +47,22 @@ pub fn update_tower_config(
     if slippage_tolerance.is_zero() {
         return invalid_tower_config_err;
     }
-    let pair_info: PairInfo = deps
-        .querier
-        .query_wasm_smart(lp.clone(), &PairConcentratedQueryMsg::Pair {})?;
+    let pair_info: PairInfo =
+        deps.querier.query_wasm_smart(lp.clone(), &PairConcentratedQueryMsg::Pair {})?;
     if pair_info.asset_infos.len() != 2 {
         return invalid_tower_config_err;
     }
-    let Some(underlying_asset_position) = pair_info
-        .asset_infos
-        .iter()
-        .position(|a| *a == underlying_asset_info)
+    let Some(underlying_asset_position) =
+        pair_info.asset_infos.iter().position(|a| *a == underlying_asset_info)
     else {
         return invalid_tower_config_err;
     };
-    let Some(lp_other_asset) = pair_info
-        .asset_infos
-        .iter()
-        .find(|info| **info != underlying_asset_info)
+    let Some(lp_other_asset) =
+        pair_info.asset_infos.iter().find(|info| **info != underlying_asset_info)
     else {
         return invalid_tower_config_err;
     };
-    if lp_incentives.is_empty()
-        || lp_incentives
-            .iter()
-            .any(|i| pair_info.asset_infos.contains(i))
-    {
+    if lp_incentives.is_empty() || lp_incentives.iter().any(|i| pair_info.asset_infos.contains(i)) {
         return invalid_tower_config_err;
     }
     let config = TowerConfig {
@@ -152,14 +143,10 @@ pub fn add_tower_liquidity(
     underlying_asset_amount: Uint128,
     other_lp_asset_amount: Uint128,
 ) -> ContractResult<Vec<CosmosMsg>> {
-    let underlying_asset = Asset {
-        info: tower_config.lp_underlying_asset.clone(),
-        amount: underlying_asset_amount,
-    };
-    let other_lp_asset = Asset {
-        info: tower_config.lp_other_asset.clone(),
-        amount: other_lp_asset_amount,
-    };
+    let underlying_asset =
+        Asset { info: tower_config.lp_underlying_asset.clone(), amount: underlying_asset_amount };
+    let other_lp_asset =
+        Asset { info: tower_config.lp_other_asset.clone(), amount: other_lp_asset_amount };
 
     let mut msgs = Vec::new();
     let mut funds = Vec::new();
@@ -211,9 +198,7 @@ pub fn remove_tower_liquidity(
     let lp_token_execute_msg = cw20::Cw20ExecuteMsg::Send {
         contract: tower_config.lp.to_string(),
         amount: lp_token_amount,
-        msg: to_json_binary(&Cw20HookMsg::WithdrawLiquidity {
-            min_assets_to_receive: None,
-        })?,
+        msg: to_json_binary(&Cw20HookMsg::WithdrawLiquidity { min_assets_to_receive: None })?,
     };
     Ok(Vec::from([
         CosmosMsg::Wasm(WasmMsg::Execute {
@@ -273,13 +258,8 @@ pub fn calculate_assets_ownership(
     asset_infos.push(tower_config.lp_other_asset.clone());
     for asset_info in asset_infos {
         let asset_balance = query_asset_info_balance(querier, asset_info.clone(), this)?;
-        assets.insert(
-            asset_info.clone(),
-            Asset {
-                info: asset_info.clone(),
-                amount: asset_balance,
-            },
-        );
+        assets
+            .insert(asset_info.clone(), Asset { info: asset_info.clone(), amount: asset_balance });
     }
 
     let lp_amount = get_tower_lp_token_deposit(querier, tower_config, this)?;
@@ -299,17 +279,11 @@ pub fn calculate_assets_ownership(
                 .and_modify(|a| {
                     a.amount += asset.amount;
                 })
-                .or_insert(Asset {
-                    info: asset.info,
-                    amount: asset.amount,
-                });
+                .or_insert(Asset { info: asset.info, amount: asset.amount });
         }
     }
 
-    Ok(assets
-        .into_values()
-        .filter(|a| !a.amount.is_zero())
-        .collect())
+    Ok(assets.into_values().filter(|a| !a.amount.is_zero()).collect())
 }
 
 /// Calculates total assets in terms of the underlying asset price
@@ -346,10 +320,7 @@ pub fn tower_swap(
     amount: Uint128,
     asset_info: &AssetInfo,
 ) -> ContractResult<Vec<CosmosMsg>> {
-    let offer_asset = Asset {
-        info: asset_info.clone(),
-        amount,
-    };
+    let offer_asset = Asset { info: asset_info.clone(), amount };
     let (allowance_msg, fund) =
         asset_generate_increase_allowance_or_funds(offer_asset.clone(), &tower_config.lp)?;
 
@@ -381,19 +352,13 @@ pub fn tower_swap(
                 max_spread,
                 to,
             }),
-            AssetInfo::Token { .. } => to_json_binary(&Cw20HookMsg::Swap {
-                ask_asset_info,
-                belief_price,
-                max_spread,
-                to,
-            }),
+            AssetInfo::Token { .. } => {
+                to_json_binary(&Cw20HookMsg::Swap { ask_asset_info, belief_price, max_spread, to })
+            }
         }?
     };
     msgs.push(CosmosMsg::Wasm(asset_cw20_send_or_attach_funds(
-        Asset {
-            info: asset_info.clone(),
-            amount,
-        },
+        Asset { info: asset_info.clone(), amount },
         &tower_config.lp,
         msg,
     )?));

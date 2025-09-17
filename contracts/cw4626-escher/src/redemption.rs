@@ -2,16 +2,16 @@ use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{Addr, Deps, DepsMut, Env, MessageInfo, Response, Uint128};
 
 use crate::{
+    ContractError,
     asset::send_asset_from_contract,
     error::ContractResult,
     msg::PreviewRedeemMultiAssetResponse,
     responses::{generate_complete_redemption_response, generate_request_redemption_response},
     state::{
-        LockedShares, RedemptionRequest, RedemptionStatus, LOCKED_SHARES, REDEMPTION_COUNTER,
-        REDEMPTION_REQUESTS, TOWER_CONFIG, USER_REDEMPTION_IDS,
+        LOCKED_SHARES, LockedShares, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, RedemptionRequest,
+        RedemptionStatus, TOWER_CONFIG, USER_REDEMPTION_IDS,
     },
     tower::{calculate_assets_ownership, calculate_total_assets},
-    ContractError,
 };
 
 /// Calculate the user's proportional share of each asset type
@@ -47,10 +47,9 @@ pub fn internal_lock_shares(
     contract_addr: &Addr,
 ) -> ContractResult<()> {
     // Update locked shares tracking
-    let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
-        total_locked: Uint128::zero(),
-        redemption_ids: vec![],
-    });
+    let mut locked_shares = LOCKED_SHARES
+        .may_load(storage)?
+        .unwrap_or(LockedShares { total_locked: Uint128::zero(), redemption_ids: vec![] });
 
     locked_shares.total_locked += shares;
     locked_shares.redemption_ids.push(redemption_id);
@@ -95,16 +94,13 @@ pub fn internal_burn_locked_shares(
     contract_addr: &Addr,
 ) -> ContractResult<()> {
     // Update locked shares tracking
-    let mut locked_shares = LOCKED_SHARES.may_load(storage)?.unwrap_or(LockedShares {
-        total_locked: Uint128::zero(),
-        redemption_ids: vec![],
-    });
+    let mut locked_shares = LOCKED_SHARES
+        .may_load(storage)?
+        .unwrap_or(LockedShares { total_locked: Uint128::zero(), redemption_ids: vec![] });
 
     // Remove this redemption from locked shares
     locked_shares.total_locked = locked_shares.total_locked.saturating_sub(shares);
-    locked_shares
-        .redemption_ids
-        .retain(|&id| id != redemption_id);
+    locked_shares.redemption_ids.retain(|&id| id != redemption_id);
 
     LOCKED_SHARES.save(storage, &locked_shares)?;
 
@@ -153,9 +149,8 @@ pub fn request_redemption(
     }
 
     // Check if owner has enough shares
-    let owner_balance = cw20_base::state::BALANCES
-        .may_load(deps.storage, owner)?
-        .unwrap_or_default();
+    let owner_balance =
+        cw20_base::state::BALANCES.may_load(deps.storage, owner)?.unwrap_or_default();
     if owner_balance < shares {
         return Err(ContractError::InsufficientShares {
             requested: shares,
@@ -175,17 +170,10 @@ pub fn request_redemption(
     }
 
     // Calculate expected assets before locking
-    let total_shares = cw20_base::state::TOKEN_INFO
-        .load(deps.storage)?
-        .total_supply;
+    let total_shares = cw20_base::state::TOKEN_INFO.load(deps.storage)?.total_supply;
     let expected_assets = if cfg!(test) {
         // Mock expected assets for testing
-        vec![Asset {
-            info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            amount: shares,
-        }]
+        vec![Asset { info: AssetInfo::NativeToken { denom: "uusd".to_string() }, amount: shares }]
     } else {
         calculate_user_asset_share(deps.as_ref(), shares, total_shares, &env.contract.address)?
     };
@@ -195,13 +183,7 @@ pub fn request_redemption(
     REDEMPTION_COUNTER.save(deps.storage, &redemption_id)?;
 
     // Lock the shares instead of burning them
-    internal_lock_shares(
-        deps.storage,
-        shares,
-        redemption_id,
-        owner,
-        &env.contract.address,
-    )?;
+    internal_lock_shares(deps.storage, shares, redemption_id, owner, &env.contract.address)?;
 
     // Create redemption request
     let request = RedemptionRequest {
@@ -220,9 +202,8 @@ pub fn request_redemption(
     REDEMPTION_REQUESTS.save(deps.storage, redemption_id, &request)?;
 
     // Update user's redemption IDs
-    let mut user_redemption_ids = USER_REDEMPTION_IDS
-        .may_load(deps.storage, owner.clone())?
-        .unwrap_or_default();
+    let mut user_redemption_ids =
+        USER_REDEMPTION_IDS.may_load(deps.storage, owner.clone())?.unwrap_or_default();
     user_redemption_ids.push(redemption_id);
     USER_REDEMPTION_IDS.save(deps.storage, owner.clone(), &user_redemption_ids)?;
 
@@ -307,9 +288,7 @@ pub fn preview_redeem_multi_asset(
         });
     }
 
-    let total_shares = cw20_base::state::TOKEN_INFO
-        .load(deps.storage)?
-        .total_supply;
+    let total_shares = cw20_base::state::TOKEN_INFO.load(deps.storage)?.total_supply;
     let expected_assets = calculate_user_asset_share(deps, shares, total_shares, contract_addr)?;
 
     // Calculate total value in underlying asset terms
@@ -320,51 +299,38 @@ pub fn preview_redeem_multi_asset(
     };
     let total_value_in_underlying = shares.multiply_ratio(total_value, total_shares);
 
-    Ok(PreviewRedeemMultiAssetResponse {
-        expected_assets,
-        total_value_in_underlying,
-    })
+    Ok(PreviewRedeemMultiAssetResponse { expected_assets, total_value_in_underlying })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::state::{
-        AccessControlRole, TowerConfig, ACCESS_CONTROL, REDEMPTION_COUNTER, REDEMPTION_REQUESTS,
-        TOWER_CONFIG, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
+        ACCESS_CONTROL, AccessControlRole, REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG,
+        TowerConfig, UNDERLYING_ASSET, USER_REDEMPTION_IDS,
     };
     use astroport::asset::AssetInfo;
     use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env},
         Addr, MessageInfo, Uint128,
+        testing::{mock_dependencies, mock_env},
     };
 
     fn setup_test_contract(deps: &mut DepsMut) {
         // Set up a manager
         let manager = Addr::unchecked("cosmos1manager1234567890123456789012345678901234567890");
         let managers = vec![manager];
-        ACCESS_CONTROL
-            .save(deps.storage, AccessControlRole::Manager {}.key(), &managers)
-            .unwrap();
+        ACCESS_CONTROL.save(deps.storage, AccessControlRole::Manager {}.key(), &managers).unwrap();
 
         // Set up underlying asset
-        let underlying_asset = AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        };
-        UNDERLYING_ASSET
-            .save(deps.storage, &underlying_asset)
-            .unwrap();
+        let underlying_asset = AssetInfo::NativeToken { denom: "uusd".to_string() };
+        UNDERLYING_ASSET.save(deps.storage, &underlying_asset).unwrap();
 
         // Set up tower config
         let tower_config = TowerConfig {
             tower_incentives: Addr::unchecked("tower_incentives"),
             lp: Addr::unchecked("lp_contract"),
-            lp_underlying_asset: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            lp_other_asset: AssetInfo::Token {
-                contract_addr: Addr::unchecked("cw20_token"),
-            },
+            lp_underlying_asset: AssetInfo::NativeToken { denom: "uusd".to_string() },
+            lp_other_asset: AssetInfo::Token { contract_addr: Addr::unchecked("cw20_token") },
             lp_token: Addr::unchecked("lp_token"),
             lp_incentives: vec![],
             is_underlying_first_lp_asset: true,
@@ -427,9 +393,7 @@ mod tests {
 
         // Check that redemption request was created
         let redemption_id = 1;
-        let request = REDEMPTION_REQUESTS
-            .load(deps.as_ref().storage, redemption_id)
-            .unwrap();
+        let request = REDEMPTION_REQUESTS.load(deps.as_ref().storage, redemption_id).unwrap();
 
         assert_eq!(request.id, redemption_id);
         assert_eq!(request.owner, owner);
@@ -439,15 +403,12 @@ mod tests {
         assert!(request.completion_tx_hash.is_none());
 
         // Check that user's redemption IDs were updated
-        let user_redemption_ids = USER_REDEMPTION_IDS
-            .load(deps.as_ref().storage, owner.clone())
-            .unwrap();
+        let user_redemption_ids =
+            USER_REDEMPTION_IDS.load(deps.as_ref().storage, owner.clone()).unwrap();
         assert_eq!(user_redemption_ids, vec![redemption_id]);
 
         // Check that shares were burned
-        let user_balance = cw20_base::state::BALANCES
-            .load(deps.as_ref().storage, &owner)
-            .unwrap();
+        let user_balance = cw20_base::state::BALANCES.load(deps.as_ref().storage, &owner).unwrap();
         assert_eq!(user_balance, Uint128::new(900)); // 1000 - 100
     }
 
@@ -470,10 +431,7 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            ContractError::InsufficientShares {
-                requested,
-                available,
-            } => {
+            ContractError::InsufficientShares { requested, available } => {
                 assert_eq!(requested, Uint128::new(2000));
                 assert_eq!(available, Uint128::new(1000));
             }
@@ -524,10 +482,7 @@ mod tests {
 
         // This test might fail due to mock setup, but we can test the structure
         match result {
-            Ok(PreviewRedeemMultiAssetResponse {
-                expected_assets,
-                total_value_in_underlying,
-            }) => {
+            Ok(PreviewRedeemMultiAssetResponse { expected_assets, total_value_in_underlying }) => {
                 // In a real test, we'd verify the expected_assets and total_value
                 // For now, just ensure the function doesn't panic
                 assert!(!expected_assets.is_empty() || expected_assets.is_empty());
@@ -555,10 +510,8 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        let PreviewRedeemMultiAssetResponse {
-            expected_assets,
-            total_value_in_underlying,
-        } = result.unwrap();
+        let PreviewRedeemMultiAssetResponse { expected_assets, total_value_in_underlying } =
+            result.unwrap();
         assert!(expected_assets.is_empty());
         assert_eq!(total_value_in_underlying, Uint128::zero());
     }
