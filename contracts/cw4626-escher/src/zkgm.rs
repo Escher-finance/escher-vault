@@ -434,7 +434,10 @@ mod tests {
             "union1uuuuuuuuu9un2qpksam7rlttpxc8dc76mcphhsmp39pxjnsvrtcqvyv57r".to_string();
 
         let result = generate_bond_calldata(
-            &BondRequest { sender, proxy_account, amount, min_mint_amount, denom },
+            &Addr::unchecked(sender),
+            &Addr::unchecked(proxy_account),
+            amount,
+            min_mint_amount,
             &ZkgmLstConfig {
                 lst_chain_channel_id: 20,
                 lst_base_token,
@@ -443,9 +446,9 @@ mod tests {
                 lst_minter: zkgm_token_minter,
                 underlying_solver: u_solver_address,
                 lst_hub_contract: lst_contract_address,
+                underlying_quote_token: denom,
                 this_chain_channel_id: u32::default(),
                 this_chain_ucs03_zkgm: String::default(),
-                underlying_quote_token: String::default(),
                 underlying_base_token: String::default(),
             },
             timeout,
