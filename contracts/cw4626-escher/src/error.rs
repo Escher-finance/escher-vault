@@ -70,6 +70,9 @@ pub enum ContractError {
     #[error("non compatible zkgm lst config")]
     NonCompatibleZkgmLst {},
 
+    #[error("payload kind doesn't match the lst config")]
+    PayloadNotMatchingLstConfig {},
+
     #[error("insufficient {asset_info} for swap funds")]
     InsufficientSwapFunds { asset_info: AssetInfo },
 

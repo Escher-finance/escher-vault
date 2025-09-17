@@ -1,12 +1,12 @@
 use crate::{
     ContractError,
-    access_control::{validate_only_not_paused, validate_only_role},
+    access_control::{internal_toggle_paused_status, validate_only_not_paused, validate_only_role},
     asset::query_asset_info_balance,
     error::ContractResult,
     helpers::{
         PreviewDepositKind, internal_deposit, internal_update_minimum_deposit, validate_addrs,
     },
-    msg::{MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
+    msg::{ExecuteBondPayload, MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
     receive::receive_deposit,
     responses::{
@@ -17,14 +17,14 @@ use crate::{
     },
     staking::{internal_bond, internal_unbond, validate_and_store_staking_config},
     state::{
-        ACCESS_CONTROL, AccessControlRole, LstConfig, PAUSED_STATUS, PausedStatus, PricesMap,
-        STAKING_CONTRACT, TOWER_CONFIG, TowerConfig, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PricesMap, STAKING_CONTRACT,
+        TOWER_CONFIG, TowerConfig, UNDERLYING_ASSET,
     },
     tower::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
         remove_tower_liquidity, tower_swap, update_and_validate_prices,
     },
-    zkgm::update_this_proxy,
+    zkgm::{generate_lst_bond_msg, get_or_update_this_proxy, update_this_proxy},
 };
 use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
 use cosmwasm_std::{
@@ -109,36 +109,66 @@ pub fn update_minimum_deposit(
 /// Will return error if internal helper fails
 pub fn toggle_paused_status(deps: &mut DepsMut, info: &MessageInfo) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    PAUSED_STATUS.update::<_, ContractError>(deps.storage, |status| match status {
-        PausedStatus::NotPaused {} => Ok(PausedStatus::PausedMaintenance {}),
-        PausedStatus::PausedMaintenance {} => Ok(PausedStatus::NotPaused {}),
-        // Not even managers should be able to resume if it's paused due to ongoing bonding since
-        // the exchange rate won't be correct during that period
-        PausedStatus::PausedOngoingBonding {} => Err(ContractError::Paused(status)),
-    })?;
+    internal_toggle_paused_status(deps.storage)?;
     Ok(Response::new())
 }
 
 /// # Errors
-/// Will return error if internal helper fails
+/// Will return error if validation or internal helper fails
 pub fn bond(
     deps: &mut DepsMut,
     env: &Env,
     info: &MessageInfo,
-    amount: Uint128,
-    salt: String,
-    slippage: Option<Decimal>,
+    bond_payload: &ExecuteBondPayload,
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     validate_only_not_paused(deps.storage, &info.sender)?;
+    internal_toggle_paused_status(deps.storage)?;
 
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    let this = &env.contract.address;
+    let lst_config = LST_CONFIG.load(deps.storage)?;
+    let this = env.contract.address.clone();
 
-    let (bond_msg, expected) =
-        internal_bond(deps, this, &staking_contract, amount, salt, slippage)?;
+    if !bond_payload.matches_lst_config(&lst_config) {
+        return Err(ContractError::PayloadNotMatchingLstConfig {});
+    }
 
-    Ok(generate_bond_response(this, amount, expected, &staking_contract).add_message(bond_msg))
+    match lst_config {
+        LstConfig::Zkgm(zkgm_lst_config) => {
+            let ExecuteBondPayload::Zkgm { amount, salt, min_mint_amount } = bond_payload else {
+                return Err(ContractError::PayloadNotMatchingLstConfig {});
+            };
+            let this_proxy = get_or_update_this_proxy(deps, env, &zkgm_lst_config)?;
+            let time = ibc_union_spec::Timestamp::from_nanos(env.block.time.nanos());
+            let bond_msg = generate_lst_bond_msg(
+                &this,
+                &this_proxy,
+                *amount,
+                *min_mint_amount,
+                &zkgm_lst_config,
+                time,
+                salt,
+            )?;
+
+            Ok(generate_bond_response(
+                &this,
+                *amount,
+                *min_mint_amount,
+                &zkgm_lst_config.lst_hub_contract,
+            )
+            .add_message(bond_msg))
+        }
+        LstConfig::NonZkgm(non_zkgm_lst_config) => {
+            let ExecuteBondPayload::NonZkgm { amount, salt, slippage } = bond_payload else {
+                return Err(ContractError::PayloadNotMatchingLstConfig {});
+            };
+            let staking_contract = non_zkgm_lst_config.lst_contract;
+            let (bond_msg, expected) =
+                internal_bond(deps, &this, &staking_contract, *amount, salt.clone(), *slippage)?;
+
+            Ok(generate_bond_response(&this, *amount, expected, staking_contract.as_str())
+                .add_message(bond_msg))
+        }
+    }
 }
 
 /// # Errors
@@ -373,7 +403,7 @@ pub fn complete_redemption_with_distribution(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{ACCESS_CONTROL, TOWER_CONFIG, TowerConfig};
+    use crate::state::{ACCESS_CONTROL, PAUSED_STATUS, PausedStatus, TOWER_CONFIG, TowerConfig};
     use cosmwasm_std::{
         Addr, Uint128,
         testing::{message_info, mock_dependencies, mock_env},

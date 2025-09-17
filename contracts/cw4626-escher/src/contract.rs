@@ -126,8 +126,8 @@ pub fn execute(
         ExecuteMsg::TogglePausedStatus {} => {
             crate::execute::toggle_paused_status(&mut deps, &info)?
         }
-        ExecuteMsg::Bond { amount, salt, slippage } => {
-            crate::execute::bond(&mut deps, &env, &info, amount, salt, slippage)?
+        ExecuteMsg::Bond(bond_payload) => {
+            crate::execute::bond(&mut deps, &env, &info, &bond_payload)?
         }
         ExecuteMsg::Unbond { amount } => crate::execute::unbond(&mut deps, &env, &info, amount)?,
         ExecuteMsg::AddLiquidity { underlying_token_amount } => {

@@ -36,7 +36,7 @@ pub fn generate_bond_response(
     sender: &Addr,
     amount: Uint128,
     expected: Uint128,
-    staking_contract: &Addr,
+    staking_contract: &str,
 ) -> Response {
     Response::new().add_event(
         Event::new(EVENT_BOND)
