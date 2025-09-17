@@ -16,7 +16,7 @@ use crate::{
     },
     state::{
         ACCESS_CONTROL, AccessControlRole, ORACLE_PRICES, PAUSED_STATUS, PausedStatus,
-        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, STAKING_CONTRACT, TOWER_CONFIG, UNDERLYING_ASSET,
+        REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
         USER_REDEMPTION_IDS,
     },
     tower::{calculate_total_assets, get_tower_lp_token_deposit, get_tower_pending_rewards},
@@ -53,9 +53,8 @@ pub fn oracle_prices(deps: &Deps) -> StdResult<OraclePricesResponse> {
 /// # Errors
 /// Will return error if queries fail
 pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
-    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse { staking_contract, tower_config })
+    Ok(ConfigResponse { tower_config })
 }
 
 /// # Errors
