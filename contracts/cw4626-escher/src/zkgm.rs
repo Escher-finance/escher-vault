@@ -100,15 +100,19 @@ const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
 pub fn call_lst_bond(
-    bond_request: &BondRequest,
+    // bond_request: &BondRequest,
+    this: &Addr,
+    this_proxy: &Addr,
+    amount: Uint128,
+    min_mint_amount: Uint128,
     zkgm_lst_config: &ZkgmLstConfig,
     time: Timestamp,
     salt: &str,
 ) -> ContractResult<CosmosMsg> {
-    let proxy_account_address = validate_and_parse_hex(bond_request.proxy_account.as_ref())?;
+    let proxy_account_address = validate_and_parse_hex(&this_proxy.to_string())?;
     let quote_token = validate_and_parse_hex(zkgm_lst_config.underlying_quote_token.as_ref())?;
 
-    let sender_bytes: AlloyBytes = bond_request.sender.as_bytes().to_vec().into();
+    let sender_bytes: AlloyBytes = validate_and_parse_hex(&this.to_string())?.into();
 
     let metadata = SolverMetadata {
         solverAddress: Vec::from(zkgm_lst_config.underlying_solver.clone()).into(),
@@ -123,9 +127,9 @@ pub fn call_lst_bond(
             sender: sender_bytes.clone(), // vault is the sender
             receiver: Vec::from(proxy_account_address.clone()).into(),
             base_token: validate_and_parse_hex(&zkgm_lst_config.underlying_base_token)?.into(),
-            base_amount: AlloyUint256::from(bond_request.amount.u128()),
+            base_amount: AlloyUint256::from(amount.u128()),
             quote_token: Vec::from(quote_token).into(),
-            quote_amount: AlloyUint256::from(bond_request.amount.u128()),
+            quote_amount: AlloyUint256::from(amount.u128()),
             kind: TOKEN_ORDER_KIND_SOLVE,
             metadata: metadata.abi_encode_params().into(),
         }
@@ -137,9 +141,15 @@ pub fn call_lst_bond(
 
     let salt = validate_and_parse_salt(salt)?;
 
-    // Generate 3 payloads as array/vector: bond, increase_allowance and send back via tokenorderv2, these need to be encoded as Bytes
-    let contract_calldata =
-        generate_bond_calldata(bond_request, zkgm_lst_config, timeout_timestamp, salt)?;
+    let contract_calldata = generate_bond_calldata(
+        this,
+        this_proxy,
+        amount,
+        min_mint_amount,
+        zkgm_lst_config,
+        timeout_timestamp,
+        salt,
+    )?;
 
     let call_instruction: Instruction = Instruction {
         version: INSTR_VERSION_0,
@@ -229,7 +239,10 @@ pub enum TestCW20ExecuteMsg {
 /// # Errors
 /// Will return error if validations fail
 pub fn generate_bond_calldata(
-    request: &BondRequest,
+    this: &Addr,
+    this_proxy: &Addr,
+    amount: Uint128,
+    min_mint_amount: Uint128,
     zkgm_lst_config: &ZkgmLstConfig,
     timeout: Timestamp,
     salt: unionlabs_primitives::H256,
@@ -244,14 +257,11 @@ pub fn generate_bond_calldata(
 
     // 1. construct bond msg call to LST
 
-    let bond_msg = LstExecuteMsg::Bond {
-        mint_to_address: Addr::unchecked(request.proxy_account.clone()),
-        min_mint_amount: request.min_mint_amount,
-    };
+    let bond_msg = LstExecuteMsg::Bond { mint_to_address: this_proxy.clone(), min_mint_amount };
     let execute_bond_msg = WasmMsg::Execute {
         contract_addr: lst_contract_address.clone(),
         msg: to_json_binary(&bond_msg)?,
-        funds: vec![Coin { denom: request.denom.clone(), amount: request.amount }],
+        funds: vec![Coin { denom: zkgm_lst_config.underlying_quote_token.clone(), amount }],
     };
     call_msgs.push(execute_bond_msg.into());
 
@@ -259,7 +269,7 @@ pub fn generate_bond_calldata(
 
     let increase_allowance_msg = Cw20ExecuteMsg::IncreaseAllowance {
         spender: zkgm_token_minter.clone(),
-        amount: if cfg!(test) { request.amount } else { request.min_mint_amount },
+        amount: if cfg!(test) { amount } else { min_mint_amount },
         expires: None,
     };
 
@@ -271,7 +281,7 @@ pub fn generate_bond_calldata(
     call_msgs.push(execute_increase_allowance_msg.into());
 
     let quote_token =
-        validate_and_parse_hex(if cfg!(test) { &lst_quote_token } else { &request.proxy_account })?;
+        validate_and_parse_hex(if cfg!(test) { &lst_quote_token } else { this_proxy.as_str() })?;
 
     let metadata = SolverMetadata {
         solverAddress: quote_token.clone().into(),
@@ -283,10 +293,10 @@ pub fn generate_bond_calldata(
     let sender_bytes = validate_and_parse_hex(if cfg!(test) {
         "union1ylfrhs2y5zdj2394m6fxgpzrjav7le3z07jffq"
     } else {
-        &request.proxy_account
+        this_proxy.as_str()
     })?;
 
-    let receiver = validate_and_parse_hex(&request.sender)?.into();
+    let receiver = validate_and_parse_hex(this.as_str())?.into();
 
     let fungible_order_instruction = Instruction {
         version: INSTR_VERSION_2,
@@ -295,9 +305,9 @@ pub fn generate_bond_calldata(
             sender: sender_bytes.into(),
             receiver,
             base_token: Vec::from(lst_base_token).into(), // eU contract address on union
-            base_amount: AlloyUint256::from(request.min_mint_amount.u128()),
+            base_amount: AlloyUint256::from(min_mint_amount.u128()),
             quote_token: quote_token.into(), // eU contract address on babylon
-            quote_amount: AlloyUint256::from(request.min_mint_amount.u128()),
+            quote_amount: AlloyUint256::from(min_mint_amount.u128()),
             kind: TOKEN_ORDER_KIND_SOLVE,
             metadata: metadata.abi_encode_params().into(),
         }
