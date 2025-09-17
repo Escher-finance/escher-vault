@@ -144,6 +144,7 @@ pub struct OracleTokensListResponse {
 
 #[cw_serde]
 pub struct ConfigResponse {
+    pub lst_config: LstConfig,
     pub tower_config: TowerConfig,
 }
 

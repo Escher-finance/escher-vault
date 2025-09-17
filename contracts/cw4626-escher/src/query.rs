@@ -15,7 +15,7 @@ use crate::{
         RedemptionStatsResponse, TotalAssetsResponse, UserRedemptionRequestsResponse,
     },
     state::{
-        ACCESS_CONTROL, AccessControlRole, ORACLE_PRICES, PAUSED_STATUS, PausedStatus,
+        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, ORACLE_PRICES, PAUSED_STATUS, PausedStatus,
         REDEMPTION_COUNTER, REDEMPTION_REQUESTS, TOWER_CONFIG, UNDERLYING_ASSET,
         USER_REDEMPTION_IDS,
     },
@@ -53,8 +53,9 @@ pub fn oracle_prices(deps: &Deps) -> StdResult<OraclePricesResponse> {
 /// # Errors
 /// Will return error if queries fail
 pub fn config(deps: &Deps) -> StdResult<ConfigResponse> {
+    let lst_config = LST_CONFIG.load(deps.storage)?;
     let tower_config = TOWER_CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse { tower_config })
+    Ok(ConfigResponse { lst_config, tower_config })
 }
 
 /// # Errors
