@@ -418,13 +418,4 @@ mod tests {
         );
         let _ = env; // silence unused
     }
-
-    #[test]
-    fn test_unbond_builds_cw20_send_message() {
-        // Covered in integration tests where wasm smart queries are mocked.
-        // Keeping a lightweight assertion here that setup does not panic.
-        let mut deps = mock_dependencies();
-        setup_test_contract(&mut deps.as_mut());
-        assert!(true);
-    }
 }

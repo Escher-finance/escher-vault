@@ -2,7 +2,6 @@ use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_std::{Addr, Decimal, Event, Response, Timestamp, Uint128};
 
 pub const EVENT_BOND: &str = "bond";
-pub const EVENT_UNBOND: &str = "unbond";
 pub const EVENT_DEPOSIT: &str = "deposit";
 pub const EVENT_WITHDRAW: &str = "withdraw";
 pub const EVENT_ADD_LIQUIDITY: &str = "add_liquidity";
@@ -42,20 +41,6 @@ pub fn generate_bond_response(
         Event::new(EVENT_BOND)
             .add_attribute("sender", sender)
             .add_attribute("amount", amount)
-            .add_attribute("expected", expected)
-            .add_attribute("staking_contract", staking_contract),
-    )
-}
-
-#[must_use]
-pub fn generate_unbond_response(
-    sender: &Addr,
-    expected: Uint128,
-    staking_contract: &Addr,
-) -> Response {
-    Response::new().add_event(
-        Event::new(EVENT_UNBOND)
-            .add_attribute("sender", sender)
             .add_attribute("expected", expected)
             .add_attribute("staking_contract", staking_contract),
     )

@@ -28,8 +28,6 @@ export function ExecuteActions({ client, sender, contractAddress }: Props) {
   const [bondSalt, setBondSalt] = useState('')
   const [bondSlippage, setBondSlippage] = useState('')
 
-  const [unbondAmount, setUnbondAmount] = useState('0')
-
   const [addLiqUnderlying, setAddLiqUnderlying] = useState('0')
   const [removeLiqLp, setRemoveLiqLp] = useState('0')
 
@@ -96,22 +94,6 @@ export function ExecuteActions({ client, sender, contractAddress }: Props) {
               setStatus(`OK: ${res.transactionHash}`)
             } catch (e:any) { setError(e?.message||String(e)) }
           }}>Bond</button>
-        </div>
-      </section>
-
-      <section>
-        <h4>Unbond</h4>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input placeholder="amount" value={unbondAmount} onChange={(e)=>setUnbondAmount(e.target.value)} />
-          <button onClick={async ()=>{
-            setStatus(''); setError('');
-            try {
-              const c = ensure();
-              const msg = { unbond: { amount: unbondAmount } } as any
-              const res = await doExec(c, sender, contract, msg)
-              setStatus(`OK: ${res.transactionHash}`)
-            } catch (e:any) { setError(e?.message||String(e)) }
-          }}>Unbond</button>
         </div>
       </section>
 

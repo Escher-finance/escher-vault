@@ -58,13 +58,6 @@ pub enum LstExecuteMsg {
         /// for the operation to be considered valid.
         min_mint_amount: Uint128,
     },
-    /// Initiates the unbonding process for a user.
-    Unbond {
-        /// The address that will receive the native tokens on.
-        staker: Addr,
-        /// The amount to unstake.
-        amount: Uint128,
-    },
 }
 
 type AlloyUint256 = Uint<256, 4>;
