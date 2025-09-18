@@ -75,7 +75,7 @@ const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 ///
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
-pub fn generate_lst_bond_msg(
+pub fn internal_zkgm_bond(
     // bond_request: &BondRequest,
     this: &Addr,
     this_proxy: &Addr,
@@ -205,11 +205,6 @@ pub fn validate_and_parse_hex(address: &str) -> ContractResult<Bytes> {
         format!("0x{}", hex::encode(address.as_bytes()))
     };
     Bytes::from_str(&hex_address).map_err(|_| ContractError::InvalidHex {})
-}
-
-#[cw_serde]
-pub enum TestCW20ExecuteMsg {
-    IncreaseAllowance { spender: String, amount: Uint128 },
 }
 
 /// # Errors
@@ -380,7 +375,6 @@ pub fn get_or_update_this_proxy(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::zkgm::generate_bond_calldata;
     use cosmwasm_std::HexBinary;
     use cosmwasm_std::Uint128;
     use cosmwasm_std::from_json;

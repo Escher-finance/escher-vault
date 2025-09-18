@@ -1,38 +1,14 @@
 use astroport::asset::{Asset, AssetInfo};
 use cosmwasm_schema::{QueryResponses, cw_serde};
-use cosmwasm_std::{
-    Addr, Decimal, DepsMut, MessageInfo, StdError, Timestamp, Uint128, WasmMsg, to_json_binary,
-};
+use cosmwasm_std::{Addr, Decimal, DepsMut, StdError, Timestamp, Uint128, WasmMsg, to_json_binary};
 
 use crate::{
     ContractError,
     asset::{asset_cw20_send_or_attach_funds, query_asset_info_balance},
     error::ContractResult,
     helpers::validate_salt,
-    state::{LST_CONFIG, LstConfig, NonZkgmLstConfig, TowerConfig, UNDERLYING_ASSET},
-    zkgm::validate_and_store_zkgm_lst_config,
+    state::{LST_CONFIG, LstConfig, NonZkgmLstConfig, UNDERLYING_ASSET},
 };
-
-/// Validates and stores a new LST config
-///
-/// # Errors
-/// Will return error if validation or state update fails
-pub fn validate_and_store_lst_config(
-    deps: &mut DepsMut,
-    lst_config: &LstConfig,
-    tower_config: &TowerConfig,
-) -> ContractResult<LstConfig> {
-    match lst_config {
-        LstConfig::NonZkgm(non_zkgm_lst_config) => validate_and_store_non_zkgm_lst_config(
-            deps,
-            non_zkgm_lst_config,
-            &tower_config.lp_other_asset,
-        ),
-        LstConfig::Zkgm(zkgm_lst_config) => {
-            validate_and_store_zkgm_lst_config(deps, zkgm_lst_config, tower_config)
-        }
-    }
-}
 
 #[cw_serde]
 pub struct EscherHubParameters {
@@ -139,7 +115,7 @@ pub fn validate_and_store_non_zkgm_lst_config(
 ///
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
-pub fn internal_bond(
+pub fn internal_non_zkgm_bond(
     deps: &mut DepsMut,
     this: &Addr,
     staking_contract: &Addr,
@@ -180,41 +156,4 @@ pub fn internal_bond(
     )?;
 
     Ok((bond_msg, expected))
-}
-
-/// Returns (`unbond_msg`, `expected`)
-///
-/// # Errors
-/// Will return error if messages fail to serialize or validation fails
-pub fn internal_unbond(
-    deps: &mut DepsMut,
-    info: &MessageInfo,
-    other_lp_token: AssetInfo,
-    staking_contract: &Addr,
-    amount: Uint128,
-) -> ContractResult<(WasmMsg, Uint128)> {
-    // Query the staking contract to get current liquidity info
-    let EscherHubStakingLiquidity { exchange_rate, .. } = deps
-        .querier
-        .query_wasm_smart(staking_contract.clone(), &EscherHubQueryMsg::StakingLiquidity {})?;
-
-    // Calculate the expected amount of underlying tokens to receive
-    let expected = amount
-        .checked_mul_floor(exchange_rate)
-        .map_err(|err| ContractError::Std(StdError::generic_err(err.to_string())))?;
-
-    // Create the unbond message by sending eBABY tokens to the staking contract
-    // The staking contract's Receive handler will process the unbond when it receives the eBABY tokens
-    let unbond_msg = asset_cw20_send_or_attach_funds(
-        Asset { info: other_lp_token, amount },
-        staking_contract,
-        to_json_binary(&EscherHubExecuteMsg::Unstake {
-            amount,
-            recipient: Some(info.sender.to_string()), // Send unstaked tokens back to the caller
-            recipient_channel_id: None,
-            recipient_ibc_channel_id: None,
-        })?,
-    )?;
-
-    Ok((unbond_msg, expected))
 }

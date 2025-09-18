@@ -43,17 +43,6 @@ pub enum ExecuteBondPayload {
     Zkgm { amount: Uint128, salt: String, min_mint_amount: Uint128 },
 }
 
-impl ExecuteBondPayload {
-    /// Validates that the bond payload matches the current lst config
-    #[must_use]
-    pub fn matches_lst_config(&self, lst_config: &LstConfig) -> bool {
-        match self {
-            Self::Zkgm { .. } => matches!(lst_config, LstConfig::Zkgm(..)),
-            Self::NonZkgm { .. } => matches!(lst_config, LstConfig::NonZkgm(..)),
-        }
-    }
-}
-
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Access control - add user to role
