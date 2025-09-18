@@ -69,7 +69,6 @@ const TIMEOUT_OFFSET: u64 = 604_800; // 7 days period
 /// # Errors
 /// Will return error if messages fail to serialize or validation fails
 pub fn internal_zkgm_bond(
-    // bond_request: &BondRequest,
     this: &Addr,
     this_proxy: &Addr,
     amount: Uint128,
@@ -81,7 +80,7 @@ pub fn internal_zkgm_bond(
     let proxy_account_address = validate_and_parse_hex(this_proxy.as_ref())?;
     let quote_token = validate_and_parse_hex(zkgm_lst_config.underlying_quote_token.as_ref())?;
 
-    let sender_bytes: AlloyBytes = validate_and_parse_hex(this.as_ref())?.into();
+    let sender_bytes = validate_and_parse_hex(this.as_ref())?;
 
     let metadata = SolverMetadata {
         solverAddress: Vec::from(zkgm_lst_config.underlying_solver.clone()).into(),
@@ -93,11 +92,11 @@ pub fn internal_zkgm_bond(
         version: INSTR_VERSION_2,
         opcode: OP_TOKEN_ORDER,
         operand: TokenOrderV2 {
-            sender: sender_bytes.clone(), // vault is the sender
-            receiver: Vec::from(proxy_account_address.clone()).into(),
+            sender: sender_bytes.clone().into(), // vault is the sender
+            receiver: proxy_account_address.clone().into(),
             base_token: validate_and_parse_hex(&zkgm_lst_config.underlying_base_token)?.into(),
             base_amount: AlloyUint256::from(amount.u128()),
-            quote_token: Vec::from(quote_token).into(),
+            quote_token: quote_token.into(),
             quote_amount: AlloyUint256::from(amount.u128()),
             kind: TOKEN_ORDER_KIND_SOLVE,
             metadata: metadata.abi_encode_params().into(),
@@ -124,9 +123,9 @@ pub fn internal_zkgm_bond(
         version: INSTR_VERSION_0,
         opcode: OP_CALL,
         operand: Call {
-            sender: sender_bytes,
+            sender: sender_bytes.into(),
             eureka: false,
-            contract_address: Vec::from(proxy_account_address).into(),
+            contract_address: proxy_account_address.into(),
             contract_calldata: contract_calldata.into(),
         }
         .abi_encode_params()
@@ -268,7 +267,7 @@ pub fn generate_bond_calldata(
         operand: TokenOrderV2 {
             sender: sender_bytes.into(),
             receiver,
-            base_token: Vec::from(lst_base_token).into(), // eU contract address on union
+            base_token: validate_and_parse_hex(&lst_base_token)?.into(), // eU contract address on union
             base_amount: AlloyUint256::from(min_mint_amount.u128()),
             quote_token: quote_token.into(), // eU contract address on babylon
             quote_amount: AlloyUint256::from(min_mint_amount.u128()),
@@ -467,17 +466,11 @@ mod tests {
                     let LstExecuteMsg::Bond {
                         mint_to_address: result_mint_to_address,
                         min_mint_amount: result_min_mint_amount,
-                    } = from_json(result_msg).unwrap()
-                    else {
-                        panic!()
-                    };
+                    } = from_json(result_msg).unwrap();
                     let LstExecuteMsg::Bond {
                         mint_to_address: expected_mint_to_address,
                         min_mint_amount: expected_min_mint_amount,
-                    } = from_json(expected_msg).unwrap()
-                    else {
-                        panic!()
-                    };
+                    } = from_json(expected_msg).unwrap();
                     assert_eq!(result_mint_to_address, expected_mint_to_address);
                     assert_eq!(result_min_mint_amount, expected_min_mint_amount);
                 }
