@@ -23,8 +23,6 @@ schemars = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 astroport = { workspace = true }
-astroport-pair = { workspace = true }
-astroport-pair-concentrated = { workspace = true }
 unionlabs-primitives = { workspace = true }
 ucs03-zkgm = { workspace = true }
 alloy = { workspace = true }
