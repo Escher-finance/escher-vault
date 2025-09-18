@@ -6,24 +6,22 @@ use crate::{
     helpers::{
         PreviewDepositKind, internal_deposit, internal_update_minimum_deposit, validate_addrs,
     },
+    lst::{internal_bond, internal_update_lst_config},
     msg::{ExecuteBondPayload, MaxDepositResponse, PreviewDepositResponse, ReceiveMsg},
     query,
     receive::receive_deposit,
     responses::{
         add_liquidity_event, claim_incentives_event, generate_add_role_response,
-        generate_bond_response, generate_oracle_update_prices_response,
-        generate_remove_role_response, remove_liquidity_event, swap_event,
+        generate_oracle_update_prices_response, generate_remove_role_response,
+        remove_liquidity_event, swap_event,
     },
-    staking::{internal_bond, validate_and_store_lst_config},
     state::{
-        ACCESS_CONTROL, AccessControlRole, LST_CONFIG, LstConfig, PAUSED_STATUS, PausedStatus,
-        PricesMap, TOWER_CONFIG, UNDERLYING_ASSET,
+        ACCESS_CONTROL, AccessControlRole, LstConfig, PricesMap, TOWER_CONFIG, UNDERLYING_ASSET,
     },
     tower::{
         add_tower_liquidity, claim_tower_incentives, get_tower_lp_token_deposit,
         remove_tower_liquidity, tower_swap, update_and_validate_prices,
     },
-    zkgm::{generate_lst_bond_msg, get_or_update_this_proxy, update_this_proxy},
 };
 use astroport::{asset::AssetInfo, pair_concentrated::QueryMsg as PairConcentratedQueryMsg};
 use cosmwasm_std::{
@@ -84,11 +82,7 @@ pub fn update_lst_config(
     config: &LstConfig,
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
-    let tower_config = TOWER_CONFIG.load(deps.storage)?;
-    let lst_config = validate_and_store_lst_config(deps, config, &tower_config)?;
-    if let LstConfig::Zkgm(zkgm_lst_config) = lst_config {
-        update_this_proxy(deps, env, &zkgm_lst_config)?;
-    }
+    internal_update_lst_config(deps, env, config)?;
     Ok(Response::new())
 }
 
@@ -122,54 +116,7 @@ pub fn bond(
 ) -> ContractResult<Response> {
     validate_only_role(deps.storage, &info.sender, AccessControlRole::Manager {})?;
     validate_only_not_paused(deps.storage, &info.sender)?;
-
-    // NOTE: Paused due to bonding; must be unpaused manually for now
-    PAUSED_STATUS.save(deps.storage, &PausedStatus::PausedOngoingBonding {})?;
-
-    let lst_config = LST_CONFIG.load(deps.storage)?;
-    let this = env.contract.address.clone();
-
-    if !bond_payload.matches_lst_config(&lst_config) {
-        return Err(ContractError::PayloadNotMatchingLstConfig {});
-    }
-
-    match lst_config {
-        LstConfig::Zkgm(zkgm_lst_config) => {
-            let ExecuteBondPayload::Zkgm { amount, salt, min_mint_amount } = bond_payload else {
-                return Err(ContractError::PayloadNotMatchingLstConfig {});
-            };
-            let this_proxy = get_or_update_this_proxy(deps, env, &zkgm_lst_config)?;
-            let time = ibc_union_spec::Timestamp::from_nanos(env.block.time.nanos());
-            let bond_msg = generate_lst_bond_msg(
-                &this,
-                &this_proxy,
-                *amount,
-                *min_mint_amount,
-                &zkgm_lst_config,
-                time,
-                salt,
-            )?;
-
-            Ok(generate_bond_response(
-                &this,
-                *amount,
-                *min_mint_amount,
-                &zkgm_lst_config.lst_hub_contract,
-            )
-            .add_message(bond_msg))
-        }
-        LstConfig::NonZkgm(non_zkgm_lst_config) => {
-            let ExecuteBondPayload::NonZkgm { amount, salt, slippage } = bond_payload else {
-                return Err(ContractError::PayloadNotMatchingLstConfig {});
-            };
-            let staking_contract = non_zkgm_lst_config.lst_contract;
-            let (bond_msg, expected) =
-                internal_bond(deps, &this, &staking_contract, *amount, salt.clone(), *slippage)?;
-
-            Ok(generate_bond_response(&this, *amount, expected, staking_contract.as_str())
-                .add_message(bond_msg))
-        }
-    }
+    internal_bond(deps, env, bond_payload)
 }
 
 /// # Errors
@@ -384,7 +331,8 @@ pub fn complete_redemption_with_distribution(
 mod tests {
     use super::*;
     use crate::state::{
-        ACCESS_CONTROL, NonZkgmLstConfig, PAUSED_STATUS, PausedStatus, TOWER_CONFIG, TowerConfig,
+        ACCESS_CONTROL, LST_CONFIG, NonZkgmLstConfig, PAUSED_STATUS, PausedStatus, TOWER_CONFIG,
+        TowerConfig,
     };
     use cosmwasm_std::{
         Addr, Uint128,
@@ -469,14 +417,5 @@ mod tests {
             res.events.iter().any(|e| e.ty.as_str() == crate::responses::EVENT_CLAIM_INCENTIVES)
         );
         let _ = env; // silence unused
-    }
-
-    #[test]
-    fn test_unbond_builds_cw20_send_message() {
-        // Covered in integration tests where wasm smart queries are mocked.
-        // Keeping a lightweight assertion here that setup does not panic.
-        let mut deps = mock_dependencies();
-        setup_test_contract(&mut deps.as_mut());
-        assert!(true);
     }
 }

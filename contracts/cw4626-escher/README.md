@@ -8,8 +8,10 @@ Opinionated `CW4626` implementation adapted from Ethereum's
   implements `CW20`, via `cw20_base`)
 - All other assets in the contract (including the underlying asset) can be
   either `CW20` or native (using `astroport::Asset` and `astroport::AssetInfo`)
-- It integrates with a concentrated liquidity pool on Tower Fi and an Escher
-  staking contract (currently in the same network, but that will change in the
-  future)
+- It integrates with:
+  - A concentrated liquidity pool on Tower Fi
+  - An LST contract
+    - `NonZkgm`: In the same network (Babylon vault with Babylon's Escher Hub)
+    - `Zkgm`: In a different network (Babylon vault with Union's LST)
 
 <img width="2850" height="1789" alt="cw4626-escher-diagram" src="https://github.com/user-attachments/assets/c482689d-f51e-4049-81ce-32c4b64a7214" />

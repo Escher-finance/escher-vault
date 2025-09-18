@@ -7,9 +7,9 @@ use crate::error::ContractResult;
 use crate::helpers::PreviewDepositKind;
 use crate::helpers::internal_update_minimum_deposit;
 use crate::helpers::validate_addrs;
+use crate::lst::validate_and_store_lst_config;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::staking::validate_and_store_lst_config;
 use crate::state::PAUSED_STATUS;
 use crate::state::PausedStatus;
 use crate::state::{

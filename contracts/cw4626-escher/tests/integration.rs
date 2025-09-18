@@ -106,7 +106,7 @@ mod staking_mock {
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{Timestamp, to_json_binary};
     use cw_storage_plus::Item;
-    use cw4626_escher::staking::{
+    use cw4626_escher::lst::non_zkgm::{
         EscherHubParameters, EscherHubQueryMsg, EscherHubStakingLiquidity,
     };
 
