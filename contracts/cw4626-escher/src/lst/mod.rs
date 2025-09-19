@@ -78,7 +78,7 @@ pub fn internal_bond(
             };
             let this_proxy = get_or_update_this_proxy(deps, env, &zkgm_lst_config)?;
             let time = ibc_union_spec::Timestamp::from_nanos(env.block.time.nanos());
-            let bond_msg = internal_zkgm_bond(
+            let msgs = internal_zkgm_bond(
                 &this,
                 &this_proxy,
                 *amount,
@@ -94,7 +94,7 @@ pub fn internal_bond(
                 *min_mint_amount,
                 &zkgm_lst_config.lst_hub_contract,
             )
-            .add_message(bond_msg)
+            .add_messages(msgs)
         }
         LstConfig::NonZkgm(non_zkgm_lst_config) => {
             let ExecuteBondPayload::NonZkgm { amount, salt, slippage } = bond_payload else {
