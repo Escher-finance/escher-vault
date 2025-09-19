@@ -1,4 +1,5 @@
 use alloy::hex;
+use astroport::asset::AssetInfo;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Api;
 use cosmwasm_std::DepsMut;
@@ -37,7 +38,12 @@ pub fn validate_and_store_zkgm_lst_config(
 ) -> ContractResult<LstConfig> {
     validate_and_parse_channel_id(config.this_chain_channel_id)?;
     validate_and_parse_channel_id(config.lst_chain_channel_id)?;
-    if tower_config.lp_underlying_asset.to_string() != config.underlying_base_token {
+    let AssetInfo::Token { contract_addr: underlying_addr } =
+        tower_config.lp_underlying_asset.clone()
+    else {
+        return Err(ContractError::NonCompatibleZkgmLst {});
+    };
+    if underlying_addr.to_string() != config.underlying_base_token {
         return Err(ContractError::NonCompatibleZkgmLst {});
     }
     if tower_config.lp_other_asset.to_string() != config.lst_base_token {
@@ -76,7 +82,7 @@ pub fn internal_zkgm_bond(
     zkgm_lst_config: &ZkgmLstConfig,
     time: Timestamp,
     salt: &str,
-) -> ContractResult<CosmosMsg> {
+) -> ContractResult<Vec<CosmosMsg>> {
     let proxy_account_address = validate_and_parse_hex(this_proxy.as_ref())?;
     let quote_token = validate_and_parse_hex(zkgm_lst_config.underlying_quote_token.as_ref())?;
 
@@ -86,6 +92,16 @@ pub fn internal_zkgm_bond(
         solverAddress: Vec::from(zkgm_lst_config.underlying_solver.clone()).into(),
         metadata: AlloyBytes::default(),
     };
+
+    let increase_allowance_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: zkgm_lst_config.underlying_base_token.clone(),
+        msg: to_json_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+            spender: zkgm_lst_config.this_chain_ucs03_zkgm.clone(),
+            amount,
+            expires: None,
+        })?,
+        funds: vec![],
+    });
 
     // Create token order v2 to send U from babylon vault to union LST
     let token_order_v2 = Instruction {
@@ -157,7 +173,7 @@ pub fn internal_zkgm_bond(
     }
     .into();
 
-    Ok(send_msg)
+    Ok(vec![increase_allowance_msg, send_msg])
 }
 
 /// # Errors
