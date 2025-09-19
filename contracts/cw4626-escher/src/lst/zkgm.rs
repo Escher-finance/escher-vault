@@ -150,15 +150,14 @@ pub fn internal_zkgm_bond(
         instruction: batch_instruction.abi_encode_params().into(),
     };
 
-    let send_msg = to_json_binary(&ucs03_send_msg)?;
-    let execute_increase_allowance_msg: CosmosMsg = WasmMsg::Execute {
+    let send_msg: CosmosMsg = WasmMsg::Execute {
         contract_addr: zkgm_lst_config.this_chain_ucs03_zkgm.clone(),
-        msg: send_msg,
+        msg: to_json_binary(&ucs03_send_msg)?,
         funds: vec![],
     }
     .into();
 
-    Ok(execute_increase_allowance_msg)
+    Ok(send_msg)
 }
 
 /// # Errors
