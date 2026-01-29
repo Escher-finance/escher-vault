@@ -18,7 +18,8 @@ This project provides the following vault implementations:
 - **Deposit/Withdraw**: Users can deposit underlying tokens and receive vault
   shares
 - **Mint/Redeem**: Exact share minting and redemption
-- **CW20 Compliance**: Vault shares are standard CW20 tokens
+- **CW20 Compliance**: Vault shares are standard CW20 tokens while the
+  underlying asset can be CW20 or native
 - **Ownership Management**: Secure access control with `cw-ownable`
 
 ### LP Automation (Escher Contract)
@@ -40,21 +41,10 @@ Shares   Auto-LP    Fee Collection
 ### How It Works
 
 1. **User deposits** underlying tokens (e.g., USDC)
-2. **Vault automatically** provides liquidity to Astroport pairs
-3. **User receives** vault shares representing their LP position
+2. **User receives** vault shares representing their LP position
+3. **Vault manager** provides liquidity to Astroport pairs
 4. **Vault earns** LP rewards, trading fees, and incentives
 5. **User can redeem** shares for underlying tokens + accumulated rewards
-
-## 📦 Project Structure
-
-```
-cw-vault/
-├── contracts/
-│   └── cw4626-escher/     # Enhanced LP automation vault
-├── scripts/               # Build and deployment scripts
-├── schema/                # Generated JSON schemas
-└── tests/                 # Integration tests
-```
 
 ## 🛠️ Prerequisites
 
@@ -424,39 +414,6 @@ details.
 - **CosmWasm**: [Documentation](https://docs.cosmwasm.com/)
 - **Astroport**: [Protocol](https://astroport.fi/)
 - **BabyDEX**: [Fork Repository](https://github.com/quasar-finance/babydex)
-
----
-
-## 🎯 **Getting Started Checklist**
-
-### **🐳 Option 1: Docker + Nix (Recommended for most users)**
-
-- [ ] Install Docker Desktop
-- [ ] Clone repository
-- [ ] Run `./scripts/dev-docker.sh`
-- [ ] Build contracts with Nix
-- [ ] Run tests with Nix
-- [ ] Optimize WASM files
-- [ ] Deploy to testnet
-
-### **🐧 Option 2: Nix Only (For Nix users)**
-
-- [ ] Install Nix (if not already installed)
-- [ ] Clone repository
-- [ ] Run `nix develop`
-- [ ] Build contracts with Nix
-- [ ] Run tests with Nix
-- [ ] Optimize WASM files
-- [ ] Deploy to testnet
-
-### **🔧 Option 3: Traditional Setup (Fallback)**
-
-- [ ] Install Rust toolchain
-- [ ] Install wasm-opt
-- [ ] Clone repository
-- [ ] Build contracts
-- [ ] Run tests
-- [ ] Deploy to testnet
 
 ---
 
