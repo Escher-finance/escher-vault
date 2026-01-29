@@ -30,7 +30,6 @@ pub struct InstantiateMsg {
     /// Entry fee configuration (applied on deposit/mint)
     /// e.g., 0.1 (10%); None => 0
     pub entry_fee_rate: Option<Decimal>,
-    /// If None, defaults to `fee_recipient`
     pub entry_fee_recipient: Addr,
 }
 
