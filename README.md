@@ -8,41 +8,37 @@ blockchains.
 
 This project provides the following vault implementations:
 
-1. **`cw4626-escher`** - Enhanced vault with automated LP management and
-   incentives
+1. **`cw4626-escher`** - Enhanced vault with automated LP management, liquid
+   staking and incentives
 
 ## ✨ Features
 
 ### Core Vault Functionality
 
-- **Deposit/Withdraw**: Users can deposit underlying tokens and receive vault
-  shares
-- **Mint/Redeem**: Exact share minting and redemption
+- **Deposit**: Users can deposit underlying tokens and receive vault shares
+- **Redeem**: Exact share minting and redemption
 - **CW20 Compliance**: Vault shares are standard CW20 tokens while the
   underlying asset can be CW20 or native
-- **Ownership Management**: Secure access control with `cw-ownable`
+- **Escher Hub Integration**: Liquid stake on the Escher Hub in the same chain
+  or across chains
 
-### LP Automation (Escher Contract)
+### Management and security
 
-- **Automated Liquidity Provision**: Automatic LP to Astroport pairs
 - **Incentive Management**: Integration with Astroport's reward system
 - **Oracle Integration**: Real-time price feeds for optimal LP management
 - **Slippage Protection**: Configurable slippage tolerance
 - **Role-Based Access**: Manager and Oracle roles for secure operations
-
-## 🏗️ Architecture
-
-```
-User → Vault → Astroport LP Pair → Rewards & Incentives
-  ↓         ↓           ↓
-Shares   Auto-LP    Fee Collection
-```
+- **Ownership Management**: Secure transfer and management of vault ownership
+- **Input Validation**: Comprehensive parameter validation and bounds checking
 
 ### How It Works
 
-1. **User deposits** underlying tokens (e.g., USDC)
-2. **User receives** vault shares representing their LP position
-3. **Vault manager** provides liquidity to Astroport pairs
+1. **User deposits** underlying token
+2. **User receives** vault shares representing their position
+3. **Vault manager**
+   - Stakes in the Escher Hub
+   - Provides liquidity to Astroport pairs
+   - Handles the Vault's position
 4. **Vault earns** LP rewards, trading fees, and incentives
 5. **User can redeem** shares for underlying tokens + accumulated rewards
 
@@ -276,14 +272,6 @@ wasmd query wasm contract-state smart <vault-address> '{"total_assets": {}}'
 # Get user balance
 wasmd query wasm contract-state smart <vault-address> '{"balance": {"address": "<user-address>"}}'
 ```
-
-## 🔒 Security Features
-
-- **Access Control**: Role-based permissions for managers and oracles
-- **Slippage Protection**: Configurable maximum slippage tolerance
-- **Oracle Validation**: Price feed verification and validation
-- **Ownership Management**: Secure transfer and management of vault ownership
-- **Input Validation**: Comprehensive parameter validation and bounds checking
 
 ## 📊 Monitoring
 
