@@ -12,11 +12,9 @@ services:
       - RUST_BACKTRACE=1
       - CARGO_TARGET_DIR=/workspace/target
     ports:
-      - "8080:8080"  # For any web interfaces
+      - "8080:8080" # For any web interfaces
     stdin_open: true
     tty: true
-    command: bash
-
 volumes:
   cargo-cache:
   rustup-cache:
