@@ -379,7 +379,6 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "astroport"
 version = "5.7.0"
-source = "git+https://github.com/quasar-finance/babydex.git#8fce1b955a1769a1f4286c73cbfd36701753ac1e"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -653,7 +652,6 @@ checksum = "2382f75942f4b3be3690fe4f86365e9c853c1587d6ee58212cebf6e2a9ccd101"
 [[package]]
 name = "consensus-primitives"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "bincode",
  "schemars",
@@ -905,7 +903,6 @@ dependencies = [
 [[package]]
 name = "cw-account"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "bincode",
  "cosmwasm-std",
@@ -1110,7 +1107,6 @@ dependencies = [
 [[package]]
 name = "depolama"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "cosmwasm-std",
  "num-traits",
@@ -1385,7 +1381,6 @@ dependencies = [
 [[package]]
 name = "embed-commit"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "bytemuck",
  "const-hex",
@@ -1574,7 +1569,6 @@ dependencies = [
 [[package]]
 name = "frissitheto"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "cosmwasm-std",
  "serde",
@@ -1701,7 +1695,6 @@ dependencies = [
 [[package]]
 name = "ibc-union-msg"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "ibc-union-spec",
  "serde",
@@ -1711,7 +1704,6 @@ dependencies = [
 [[package]]
 name = "ibc-union-spec"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "alloy-sol-types",
  "bincode",
@@ -2095,7 +2087,6 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2420,7 +2411,6 @@ dependencies = [
 [[package]]
 name = "protos"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "prost 0.12.6",
  "serde",
@@ -2817,7 +2807,6 @@ dependencies = [
 [[package]]
 name = "serde-utils"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "base64 0.21.7",
  "bitvec",
@@ -2945,7 +2934,6 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 [[package]]
 name = "solidity-slot"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "sha3",
  "unionlabs-primitives",
@@ -2978,7 +2966,6 @@ dependencies = [
 [[package]]
 name = "ssz"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "derivative",
  "itertools 0.13.0",
@@ -2996,7 +2983,6 @@ dependencies = [
 [[package]]
 name = "ssz-derive"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3223,7 +3209,6 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 [[package]]
 name = "token-factory-api"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3297,7 +3282,6 @@ checksum = "2896d95c02a80c6d6a5d6e953d479f5ddf2dfdb6a244441010e373ac0fb88971"
 [[package]]
 name = "ucs03-solvable"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "cosmwasm-std",
  "ibc-union-spec",
@@ -3308,7 +3292,6 @@ dependencies = [
 [[package]]
 name = "ucs03-zkgm"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -3334,7 +3317,6 @@ dependencies = [
 [[package]]
 name = "ucs03-zkgm-token-minter-api"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "alloy",
  "alloy-primitives",
@@ -3349,7 +3331,6 @@ dependencies = [
 [[package]]
 name = "ucs03-zkgmable"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "cosmwasm-std",
  "ibc-union-spec",
@@ -3390,7 +3371,6 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "unionlabs"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "base64 0.21.7",
  "bcs",
@@ -3426,7 +3406,6 @@ dependencies = [
 [[package]]
 name = "unionlabs-encoding"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "alloy-sol-types",
  "bincode",
@@ -3439,7 +3418,6 @@ dependencies = [
 [[package]]
 name = "unionlabs-primitives"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -3547,7 +3525,6 @@ checksum = "051eb1abcf10076295e815102942cc58f9d5e3b4560e46e53c21e8ff6f3af7b1"
 [[package]]
 name = "voyager-primitives"
 version = "0.0.0"
-source = "git+https://github.com/unionlabs/union?rev=8768bb1f3a7e4c73901fdcd356789c4fb29b051f#8768bb1f3a7e4c73901fdcd356789c4fb29b051f"
 dependencies = [
  "consensus-primitives",
  "macros",
@@ -3851,3 +3828,19 @@ dependencies = [
  "quote",
  "syn 2.0.106",
 ]
+
+[[patch.unused]]
+name = "astroport-factory"
+version = "1.9.0"
+
+[[patch.unused]]
+name = "astroport-pair"
+version = "2.1.1"
+
+[[patch.unused]]
+name = "astroport-pair-concentrated"
+version = "4.1.1"
+
+[[patch.unused]]
+name = "astroport-pcl-common"
+version = "2.1.1"
