@@ -38,7 +38,7 @@ This project provides the following vault implementations:
 1. **User deposits** underlying token
 2. **User receives** vault shares representing their position
 3. **Vault manager**
-   - Stakes in the Escher Hub
+   - Stakes in the Escher Hub (from the same or other network via ZKGM)
    - Provides liquidity to Astroport pairs
    - Handles the Vault's position
 4. **Vault earns** LP rewards, trading fees, and incentives
@@ -266,9 +266,6 @@ cargo fmt
 
 # Lint code with Clippy
 cargo clippy --workspace -- -D warnings
-
-# Or use the Clippy script
-./scripts/clippy.sh
 ```
 
 ## 📖 Documentation
@@ -303,7 +300,8 @@ details.
 - **EIP4626 Standard**:
   [Specification](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4626.md)
 - **CosmWasm**: [Documentation](https://docs.cosmwasm.com/)
-- **Astroport**: [Protocol](https://astroport.fi/)
+- **Astroport**: [Protocol](https://docs.astroport.fi/)
+- **Union**: [Protocol](https://docs.union.build/)
 - **TowerFi/BabyDEX**: [Repository](https://github.com/quasar-finance/babydex)
 
 ---
