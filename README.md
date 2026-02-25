@@ -44,67 +44,54 @@ This project provides the following vault implementations:
 4. **Vault earns** LP rewards, trading fees, and incentives
 5. **User can redeem** shares for underlying tokens + accumulated rewards
 
-### Entrypoints
-
-## 🛠️ Prerequisites
-
-### 🐧 **Option 1: Nix Only (Recommended for most users)**
-
-- **Nix** installed and working
-- **Git** for cloning the repository
-
-### 🔧 **Option 2: Traditional Setup (Fallback)**
-
-- **Rust** 1.70+
-- **wasm-opt** (binaryen)
-
 ---
 
-## 🐧 **Option 1: Quick start with Nix**
+## 🚀 **Option 1: Quick start with Docker + Nix (recommended)**
 
-### 1. **Clone and Setup**
+### 1. **Start Docker**
 
 ```bash
-git clone https://github.com/your-org/cw-vault.git
-cd cw-vault
+./scripts/dev-docker.sh
 ```
+
+### 2. **Build Contracts with Nix through Docker**
+
+```bash
+docker-compose exec cw4626-nix ./scripts/nix-bash.sh ./scripts/build-optimize.sh
+
+# To instead enter into an interactive shell run `nix-bash.sh` without any arguments. Like this:
+docker-compose exec cw4626-nix ./scripts/nix-bash.sh
+```
+
+### 3. **Run Tests**
+
+```bash
+docker-compose exec cw4626-nix ./scripts/nix-bash.sh cargo test
+```
+
+## 🐧 **Option 2: Quick start with Nix**
 
 ### 2. **Enter Nix Environment**
 
 ```bash
-# Enter Nix development environment
-nix develop
+./scripts/nix-bash.sh
 ```
 
-### 3. **Build Contracts with Nix**
+### 3. **Build Contracts**
 
 ```bash
 ./scripts/build-optimize.sh
 ```
 
-### 4. **Run Tests with Nix**
+### 4. **Run Tests**
 
 ```bash
-# Run all tests
 cargo test
-
-# Or run specific packages
-cargo test --package cw4626-escher
-```
-
-### 5. **Deploy with Nix**
-
-```bash
-# Use existing deployment scripts
-./scripts/deploy-babylon-env.sh
-
-# Or manually deploy the optimized files:
-# target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 ```
 
 ---
 
-## 🔧 **Option 2: Traditional Installation & Build**
+## 🔧 **Option 3: Traditional Installation & Build**
 
 ### 1. **Install Dependencies**
 
@@ -134,28 +121,12 @@ cargo schema -p cw4626-escher
 ### 3. **Run Tests**
 
 ```bash
-# Run all tests
 cargo test
-
-# Or use the test script
-./scripts/test-vault.sh
 ```
 
 ---
 
 ## 🚀 Deployment
-
-### **Quick Deployment with Nix**
-
-```bash
-# Deploy to testnet
-./scripts/deploy.sh testnet escher my-key
-
-# Deploy to mainnet
-./scripts/deploy.sh mainnet escher my-key
-```
-
-### **Manual Deployment**
 
 ```bash
 # 1. Upload contract code
@@ -176,57 +147,6 @@ wasmd tx wasm instantiate <code-id> '{
   ...
 }' --from <key> --chain-id <chain-id>
 ```
-
-## 📚 Usage Examples
-
-### Deposit Assets
-
-```bash
-# 1. Approve spending
-wasmd tx wasm execute <cw20-token> '{
-  "increase_allowance": {
-    "spender": "<vault-address>",
-    "amount": "1000000"
-  }
-}' --from <user> --chain-id <chain-id>
-
-# 2. Deposit to vault
-wasmd tx wasm execute <vault-address> '{
-  "deposit": {
-    "assets": "1000000",
-    "receiver": "<user-address>"
-  }
-}' --from <user> --chain-id <chain-id>
-```
-
-### Query Vault State
-
-```bash
-# Get vault info
-wasmd query wasm contract-state smart <vault-address> '{"asset": {}}'
-
-# Get total assets
-wasmd query wasm contract-state smart <vault-address> '{"total_assets": {}}'
-
-# Get user balance
-wasmd query wasm contract-state smart <vault-address> '{"balance": {"address": "<user-address>"}}'
-```
-
-## 📊 Monitoring
-
-### Key Metrics
-
-- Total assets under management
-- Share price (assets/shares ratio)
-- LP position performance
-- Reward accumulation rate
-
-### Events to Track
-
-- Deposit/withdrawal events
-- LP provision/withdrawal
-- Price updates
-- Role changes
 
 ## 🧪 Testing
 
@@ -268,13 +188,11 @@ cargo fmt
 cargo clippy --workspace -- -D warnings
 ```
 
-## 📖 Documentation
+## 📖 Deployment Code Verification
 
 - **🚀 Deployment Guide**: See `DEPLOYMENT.md`
 - **✅ Deployment Code Verification**: See `VERIFY.md`
-- **🌌 Babylon Deployment**: See `BABYLON-DEPLOYMENT.md`
 - **API Reference**: Generated schemas in `schema/` directory
-- **Integration Guide**: Examples and usage patterns
 
 ## 🤝 Contributing
 
@@ -286,7 +204,7 @@ cargo clippy --workspace -- -D warnings
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for
+This project is licensed under the MIT License - see the `LICENSE` file for
 details.
 
 ## 🆘 Support
@@ -306,4 +224,4 @@ details.
 
 ---
 
-**Built with ❤️ for the Cosmos ecosystem using Nix**
+**Built with ❤️ for the Cosmos ecosystem using Docker and Nix**
