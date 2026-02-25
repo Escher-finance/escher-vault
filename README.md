@@ -190,7 +190,7 @@ cargo clippy --workspace -- -D warnings
 
 ## 📖 Documentation
 
-- **Deployment Guide**: See `./DEPLOYMENT.md`
+- **Deployment Guide**: See `./BABYLON-DEPLOYMENT.md`
 - **Deployment Code Verification**: See `./VERIFY.md`
 - **CW4626-Escher Spec**: See `./contracts/cw4626-escher/README.md`
 - **API Reference**: Generated schemas in `./schema/` directory
