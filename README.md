@@ -188,11 +188,12 @@ cargo fmt
 cargo clippy --workspace -- -D warnings
 ```
 
-## 📖 Deployment Code Verification
+## 📖 Documentation
 
-- **🚀 Deployment Guide**: See `DEPLOYMENT.md`
-- **✅ Deployment Code Verification**: See `VERIFY.md`
-- **API Reference**: Generated schemas in `schema/` directory
+- **Deployment Guide**: See `./DEPLOYMENT.md`
+- **Deployment Code Verification**: See `./VERIFY.md`
+- **CW4626-Escher Spec**: See `./contracts/cw4626-escher/README.md`
+- **API Reference**: Generated schemas in `./schema/` directory
 
 ## 🤝 Contributing
 
