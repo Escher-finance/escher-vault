@@ -89,8 +89,6 @@ docker-compose exec cw4626-nix ./scripts/nix-bash.sh cargo test
 cargo test
 ```
 
----
-
 ## 🔧 **Option 3: Traditional Installation & Build**
 
 ### 1. **Install Dependencies**
@@ -123,6 +121,8 @@ cargo schema -p cw4626-escher
 ```bash
 cargo test
 ```
+
+---
 
 ## 🚀 Deployment
 
@@ -167,6 +167,8 @@ wasmd tx wasm instantiate <code-id> '{
 }' --from <key> --chain-id <chain-id> --gas auto --fees <amount>
 ```
 
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -192,9 +194,9 @@ cargo cov
 cargo cov --open
 ```
 
-## 🔧 Development
+---
 
-### **Code Quality**
+## 🔧 Code Quality
 
 ```bash
 # Check for warnings
@@ -206,6 +208,8 @@ cargo fmt
 # Lint code with Clippy
 cargo clippy --workspace -- -D warnings
 ```
+
+---
 
 ## 📖 Documentation
 
