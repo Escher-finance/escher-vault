@@ -8,177 +8,85 @@ blockchains.
 
 This project provides the following vault implementations:
 
-1. **`cw4626-escher`** - Enhanced vault with automated LP management and
-   incentives
+1. **`cw4626-escher`** - Enhanced vault with automated LP management, liquid
+   staking and incentives
 
 ## ✨ Features
 
 ### Core Vault Functionality
 
-- **Deposit/Withdraw**: Users can deposit underlying tokens and receive vault
-  shares
-- **Mint/Redeem**: Exact share minting and redemption
-- **CW20 Compliance**: Vault shares are standard CW20 tokens
-- **Ownership Management**: Secure access control with `cw-ownable`
+- **Deposit**: Users can deposit underlying tokens and receive vault shares
+- **Redeem**: Exact share minting and redemption
+- **CW20 Compliance**: Vault shares are standard CW20 tokens while the
+  underlying asset can be CW20 or native
+- **Escher Hub Integration**: Liquid stake on the Escher Hub in the same chain
+  or across chains
 
-### LP Automation (Escher Contract)
+### Management and security
 
-- **Automated Liquidity Provision**: Automatic LP to Astroport pairs
 - **Incentive Management**: Integration with Astroport's reward system
 - **Oracle Integration**: Real-time price feeds for optimal LP management
 - **Slippage Protection**: Configurable slippage tolerance
 - **Role-Based Access**: Manager and Oracle roles for secure operations
+- **Ownership Management**: Secure transfer and management of vault ownership
+- **Input Validation**: Comprehensive parameter validation and bounds checking
 
 ## 🏗️ Architecture
 
-```
-User → Vault → Astroport LP Pair → Rewards & Incentives
-  ↓         ↓           ↓
-Shares   Auto-LP    Fee Collection
-```
-
 ### How It Works
 
-1. **User deposits** underlying tokens (e.g., USDC)
-2. **Vault automatically** provides liquidity to Astroport pairs
-3. **User receives** vault shares representing their LP position
+1. **User deposits** underlying token
+2. **User receives** vault shares representing their position
+3. **Vault manager**
+   - Stakes in the Escher Hub (from the same or other network via ZKGM)
+   - Provides liquidity to Astroport pairs
+   - Handles the Vault's position
 4. **Vault earns** LP rewards, trading fees, and incentives
 5. **User can redeem** shares for underlying tokens + accumulated rewards
 
-## 📦 Project Structure
-
-```
-cw-vault/
-├── contracts/
-│   └── cw4626-escher/     # Enhanced LP automation vault
-├── scripts/               # Build and deployment scripts
-├── schema/                # Generated JSON schemas
-└── tests/                 # Integration tests
-```
-
-## 🛠️ Prerequisites
-
-### 🐳 **Option 1: Docker + Nix (Recommended for most users)**
-
-- **Docker Desktop** installed and running
-- **Git** for cloning the repository
-
-### 🐧 **Option 2: Nix Only (For Nix users)**
-
-- **Nix** installed and working
-- **Git** for cloning the repository
-
-### 🔧 **Option 3: Traditional Setup (Fallback)**
-
-- **Rust** 1.70+
-- **wasm-opt** (binaryen)
-- **CosmWasm** compatible blockchain
-- **Astroport fork** (babydex)
-
 ---
 
-## 🚀 **Quick Start with Docker + Nix (Recommended)**
+## 🚀 **Option 1: Quick start with Docker + Nix (recommended)**
 
-### 1. **Clone and Setup**
-
-```bash
-git clone https://github.com/your-org/cw-vault.git
-cd cw-vault
-```
-
-### 2. **Start Nix Environment**
+### 1. **Start Docker**
 
 ```bash
-# Start the Docker + Nix environment
 ./scripts/dev-docker.sh
-
-# Or manually:
-docker-compose up -d
 ```
 
-### 3. **Build Contracts with Nix**
+### 2. **Build Contracts with Nix through Docker**
 
 ```bash
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release"
+docker-compose exec cw4626-nix ./scripts/nix-bash.sh ./scripts/build-optimize.sh
+
+# To instead enter into an interactive shell run `nix-bash.sh` without any arguments. Like this:
+docker-compose exec cw4626-nix ./scripts/nix-bash.sh
 ```
 
-### 4. **Run Tests with Nix**
+### 3. **Run Tests**
 
 ```bash
-# Run all tests
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test"
-
-# Or use the test script
-./scripts/test-vault.sh
+docker-compose exec cw4626-nix ./scripts/nix-bash.sh cargo test
 ```
 
-### 5. **Optimize WASM Files**
-
-```bash
-# Optimize with Nix wasm-opt
-docker-compose exec cw4626-nix bash -c "cd /workspace && wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm"
-```
-
-### 6. **Deploy with Nix**
-
-```bash
-# Use the deployment script
-./scripts/deploy-docker.sh
-
-# Or manually deploy the optimized files:
-# - target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
-```
-
----
-
-## 🐧 **Option 2: Nix Only (No Docker Required)**
-
-### 1. **Clone and Setup**
-
-```bash
-git clone https://github.com/your-org/cw-vault.git
-cd cw-vault
-```
+## 🐧 **Option 2: Quick start with Nix**
 
 ### 2. **Enter Nix Environment**
 
 ```bash
-# Enter Nix development environment
-nix develop
+./scripts/nix-bash.sh
 ```
 
-### 3. **Build Contracts with Nix**
+### 3. **Build Contracts**
 
 ```bash
-# Build both contracts
-cargo build --package cw4626-escher --lib --target wasm32-unknown-unknown --release
+./scripts/build-optimize.sh
 ```
 
-### 4. **Run Tests with Nix**
+### 4. **Run Tests**
 
 ```bash
-# Run all tests
 cargo test
-
-# Or run specific packages
-cargo test --package cw4626-escher
-```
-
-### 5. **Optimize WASM Files**
-
-```bash
-# Optimize with Nix wasm-opt
-wasm-opt -Os target/wasm32-unknown-unknown/release/cw4626_escher.wasm -o target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
-```
-
-### 6. **Deploy with Nix**
-
-```bash
-# Use existing deployment scripts
-./scripts/deploy-babylon-env.sh
-
-# Or manually deploy the optimized files:
-# - target/wasm32-unknown-unknown/release/cw4626_escher_optimized.wasm
 ```
 
 ---
@@ -205,33 +113,18 @@ cargo wasm -p cw4626-escher
 
 # Generate schemas
 cargo schema -p cw4626-escher
+
+# Build optimized version
+./scripts/build-optimize.sh
 ```
 
 ### 3. **Run Tests**
 
 ```bash
-# Run all tests
 cargo test
-
-# Or use the test script
-./scripts/test-vault.sh
 ```
-
----
 
 ## 🚀 Deployment
-
-### **Quick Deployment with Nix**
-
-```bash
-# Deploy to testnet
-./scripts/deploy.sh testnet escher my-key
-
-# Deploy to mainnet
-./scripts/deploy.sh mainnet escher my-key
-```
-
-### **Manual Deployment**
 
 ```bash
 # 1. Upload contract code
@@ -240,90 +133,41 @@ wasmd tx wasm store target/wasm32-unknown-unknown/release/cw4626_escher_optimize
 
 # 2. Instantiate contract
 wasmd tx wasm instantiate <code-id> '{
-  "underlying_token_address": "<cw20-token-address>",
+  "managers": [
+    "<manager-address>",
+    ...
+  ],
+  "oracles": [
+    "<oracle-address>",
+    ...
+  ],
+  "underlying_token": {
+    "native_token": {
+      "denom": "ibc/..."
+    }
+  },
   "share_name": "Escher USDC",
   "share_symbol": "eUSDC",
-  "manager": "<manager-address>",
-  "oracle": "<oracle-address>",
   "tower_incentives": "<tower-incentives-address>",
-  "lp": "<astroport-pair-address>",
+  "lp": "<lp-address>",
   "slippage_tolerance": "0.01",
-  "incentives": [{"native_token": {"denom": "uatom"}}]
-}' --from <key> --chain-id <chain-id>
+  "incentives": [
+    {
+      "native_token": {
+        "denom": "ibc/..."
+      }
+    },
+    {
+      "token": {
+        "contract_addr": "<cw20-address>"
+      }
+    }
+  ],
+  "entry_fee_recipient": "<fee-recipient>"
+}' --from <key> --chain-id <chain-id> --gas auto --fees <amount>
 ```
-
-## 📚 Usage Examples
-
-### Deposit Assets
-
-```bash
-# 1. Approve spending
-wasmd tx wasm execute <cw20-token> '{
-  "increase_allowance": {
-    "spender": "<vault-address>",
-    "amount": "1000000"
-  }
-}' --from <user> --chain-id <chain-id>
-
-# 2. Deposit to vault
-wasmd tx wasm execute <vault-address> '{
-  "deposit": {
-    "assets": "1000000",
-    "receiver": "<user-address>"
-  }
-}' --from <user> --chain-id <chain-id>
-```
-
-### Query Vault State
-
-```bash
-# Get vault info
-wasmd query wasm contract-state smart <vault-address> '{"asset": {}}'
-
-# Get total assets
-wasmd query wasm contract-state smart <vault-address> '{"total_assets": {}}'
-
-# Get user balance
-wasmd query wasm contract-state smart <vault-address> '{"balance": {"address": "<user-address>"}}'
-```
-
-## 🔒 Security Features
-
-- **Access Control**: Role-based permissions for managers and oracles
-- **Slippage Protection**: Configurable maximum slippage tolerance
-- **Oracle Validation**: Price feed verification and validation
-- **Ownership Management**: Secure transfer and management of vault ownership
-- **Input Validation**: Comprehensive parameter validation and bounds checking
-
-## 📊 Monitoring
-
-### Key Metrics
-
-- Total assets under management
-- Share price (assets/shares ratio)
-- LP position performance
-- Reward accumulation rate
-
-### Events to Track
-
-- Deposit/withdrawal events
-- LP provision/withdrawal
-- Price updates
-- Role changes
 
 ## 🧪 Testing
-
-### **Run Tests with Nix (Recommended)**
-
-```bash
-# All tests
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test"
-
-# Specific package
-docker-compose exec cw4626-nix bash -c "cd /workspace && cargo test --package cw4626-escher"
-```
-
-### **Run Tests Traditionally**
 
 ```bash
 # All tests
@@ -350,26 +194,6 @@ cargo cov --open
 
 ## 🔧 Development
 
-### **Development with Nix (Recommended)**
-
-```bash
-# Enter Nix environment
-docker-compose exec cw4626-nix bash
-
-# Inside container:
-cargo check
-cargo fmt
-cargo clippy
-cargo build
-cargo test
-```
-
-### **Adding New Features**
-
-1. **Update messages** in `packages/cw4626/src/msg.rs`
-2. **Implement logic** in contract files
-3. **Add tests** for new functionality
-
 ### **Code Quality**
 
 ```bash
@@ -381,22 +205,13 @@ cargo fmt
 
 # Lint code with Clippy
 cargo clippy --workspace -- -D warnings
-
-# Or use the Clippy script
-./scripts/clippy.sh
 ```
 
 ## 📖 Documentation
 
-- **🐳 Docker + Nix Setup**: See `DOCKER-SETUP.md`
-- **🐧 Nix Only Setup**: See `NIX-ONLY-SETUP.md`
-- **🐧 Nix Setup**: See `NIX-SETUP.md`
-- **🚀 Deployment Guide**: See `DEPLOYMENT.md`
-- **✅ Deployment Code Verification**: See `VERIFY.md`
-- **🌌 Babylon Deployment**: See `BABYLON-DEPLOYMENT.md`
-- **📋 Quick Reference**: See `NIX-QUICK-REFERENCE.md`
-- **API Reference**: Generated schemas in `schema/` directory
-- **Integration Guide**: Examples and usage patterns
+- **Deployment Code Verification**: See `./VERIFY.md`
+- **CW4626-Escher Spec**: See `./contracts/cw4626-escher/README.md`
+- **API Reference**: Generated schemas in `./schema/` directory
 
 ## 🤝 Contributing
 
@@ -408,7 +223,7 @@ cargo clippy --workspace -- -D warnings
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for
+This project is licensed under the MIT License - see the `LICENSE` file for
 details.
 
 ## 🆘 Support
@@ -419,45 +234,13 @@ details.
 
 ## 🔗 Related Links
 
-- **CW4626 Standard**:
+- **EIP4626 Standard**:
   [Specification](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4626.md)
 - **CosmWasm**: [Documentation](https://docs.cosmwasm.com/)
-- **Astroport**: [Protocol](https://astroport.fi/)
-- **BabyDEX**: [Fork Repository](https://github.com/quasar-finance/babydex)
+- **Astroport**: [Protocol](https://docs.astroport.fi/)
+- **Union**: [Protocol](https://docs.union.build/)
+- **TowerFi/BabyDEX**: [Repository](https://github.com/quasar-finance/babydex)
 
 ---
 
-## 🎯 **Getting Started Checklist**
-
-### **🐳 Option 1: Docker + Nix (Recommended for most users)**
-
-- [ ] Install Docker Desktop
-- [ ] Clone repository
-- [ ] Run `./scripts/dev-docker.sh`
-- [ ] Build contracts with Nix
-- [ ] Run tests with Nix
-- [ ] Optimize WASM files
-- [ ] Deploy to testnet
-
-### **🐧 Option 2: Nix Only (For Nix users)**
-
-- [ ] Install Nix (if not already installed)
-- [ ] Clone repository
-- [ ] Run `nix develop`
-- [ ] Build contracts with Nix
-- [ ] Run tests with Nix
-- [ ] Optimize WASM files
-- [ ] Deploy to testnet
-
-### **🔧 Option 3: Traditional Setup (Fallback)**
-
-- [ ] Install Rust toolchain
-- [ ] Install wasm-opt
-- [ ] Clone repository
-- [ ] Build contracts
-- [ ] Run tests
-- [ ] Deploy to testnet
-
----
-
-**Built with ❤️ for the Cosmos ecosystem using �� Nix + 🐳 Docker**
+**Built with ❤️ for the Cosmos ecosystem using Docker and Nix**
