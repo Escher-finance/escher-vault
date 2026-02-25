@@ -44,3 +44,8 @@ target/
 
 # Logs
 *.log
+
+.env
+.envrc
+instantiate*.json
+babylon-testnet-config.toml
