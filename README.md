@@ -124,8 +124,6 @@ cargo schema -p cw4626-escher
 cargo test
 ```
 
----
-
 ## 🚀 Deployment
 
 ```bash
@@ -135,17 +133,38 @@ wasmd tx wasm store target/wasm32-unknown-unknown/release/cw4626_escher_optimize
 
 # 2. Instantiate contract
 wasmd tx wasm instantiate <code-id> '{
-  "underlying_token_address": "<cw20-token-address>",
+  "managers": [
+    "<manager-address>",
+    ...
+  ],
+  "oracles": [
+    "<oracle-address>",
+    ...
+  ],
+  "underlying_token": {
+    "native_token": {
+      "denom": "ibc/..."
+    }
+  },
   "share_name": "Escher USDC",
   "share_symbol": "eUSDC",
-  "manager": "<manager-address>",
-  "oracle": "<oracle-address>",
   "tower_incentives": "<tower-incentives-address>",
-  "lp": "<astroport-pair-address>",
+  "lp": "<lp-address>",
   "slippage_tolerance": "0.01",
-  "incentives": [{"native_token": {"denom": "uatom"}}]
-  ...
-}' --from <key> --chain-id <chain-id>
+  "incentives": [
+    {
+      "native_token": {
+        "denom": "ibc/..."
+      }
+    },
+    {
+      "token": {
+        "contract_addr": "<cw20-address>"
+      }
+    }
+  ],
+  "entry_fee_recipient": "<fee-recipient>"
+}' --from <key> --chain-id <chain-id> --gas auto --fees <amount>
 ```
 
 ## 🧪 Testing
@@ -190,7 +209,6 @@ cargo clippy --workspace -- -D warnings
 
 ## 📖 Documentation
 
-- **Deployment Guide**: See `./BABYLON-DEPLOYMENT.md`
 - **Deployment Code Verification**: See `./VERIFY.md`
 - **CW4626-Escher Spec**: See `./contracts/cw4626-escher/README.md`
 - **API Reference**: Generated schemas in `./schema/` directory
