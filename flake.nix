@@ -93,7 +93,6 @@
             echo "✅ Node.js: $(node --version)"
             echo ""
             echo "🔧 Available commands:"
-            echo "  - cargo build    # Build contracts"
             echo "  - cargo wasm     # Build WebAssembly"
             echo "  - cargo test     # Run tests"
             echo "  - cargo schema   # Generate schemas"
@@ -121,6 +120,7 @@
             CFG
 
             echo "🔧 Cargo patches applied for development"
+            echo "======================================"
           '';
 
           # Rust environment
