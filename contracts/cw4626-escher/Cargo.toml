@@ -29,6 +29,8 @@ alloy = { workspace = true }
 alloy-primitives = { workspace = true }
 ibc-union-spec = { workspace = true }
 sha3 = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ed25519-zebra = { workspace = true }
 
 [build-dependencies]
