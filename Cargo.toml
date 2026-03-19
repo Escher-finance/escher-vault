@@ -35,6 +35,8 @@ ucs03-zkgm = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c
 ibc-union-spec = { git = "https://github.com/unionlabs/union", rev = "8768bb1f3a7e4c73901fdcd356789c4fb29b051f", default-features = false }
 
 static_assertions = "1.1.0"
+# Required for clippy to pass, cosmwasm-crypto uses ed25519_zebra::batch which requires alloc but doesn't declare it
+ed25519-zebra = { version = "4", features = ["alloc"] }
 
 
 cw4626-escher = { path = "contracts/cw4626-escher", version = "0.1.0-rc.0" }
